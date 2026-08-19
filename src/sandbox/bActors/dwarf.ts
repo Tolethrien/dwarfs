@@ -19,12 +19,12 @@ export default class Dwarf extends PragmaActor {
       type: "rigid",
       velocity: props.velocity.scale(props.launchSpeed),
       body: { type: "circle", radius: 110 / 2 },
-      baseSpeed: 1500,
+      baseSpeed: 400,
     });
     this.addComponent(Stats, {
       kind: "dwarf",
       baseDmg: 10,
-      baseSpeed: 1500,
+      baseSpeed: 0,
       beerLeft: 10,
       beerPerMinute: 10,
     });

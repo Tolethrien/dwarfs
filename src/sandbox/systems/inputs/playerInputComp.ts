@@ -5,6 +5,8 @@ import Vec2 from "@/core/axiom/vec2";
 import InputManager from "@/core/engine/inputManager";
 import PragmaComponent from "@/core/pragma/component";
 import Dwarf from "@/sandbox/bActors/dwarf";
+import { ACTION } from "@/sandbox/inputActions";
+import CameraObject from "@/sandbox/managers/cameraObject";
 export default class PlayerInputsComponent extends PragmaComponent {
   private mouseLocked: boolean = false;
   private mousePos: Position2D = { x: 0, y: 0 };
@@ -12,21 +14,21 @@ export default class PlayerInputsComponent extends PragmaComponent {
     super(internal);
   }
   preUpdate(): void {
-    if (InputManager.isKeyPressed("1")) console.log(1);
-    if (InputManager.isMouseHold("LEFT") && !this.mouseLocked)
+    if (InputManager.isKeyPressed("Digit1")) console.log(1);
+    if (InputManager.onActionHold(ACTION.shoot) && !this.mouseLocked)
       this.saveMousePos();
-    if (InputManager.isMouseReleased("LEFT") && this.mouseLocked)
+    if (InputManager.onActionReleased(ACTION.shoot) && this.mouseLocked)
       this.shootDwarf();
   }
   private saveMousePos() {
     this.mouseLocked = true;
     const pos = InputManager.getMousePos();
-    const worldPos = AuroraCamera.screenToWorld(pos);
+    const worldPos = CameraObject.screenToWorld(pos);
     this.mousePos = worldPos;
   }
   private async shootDwarf() {
     const pos = InputManager.getMousePos();
-    const worldPos = AuroraCamera.screenToWorld(pos);
+    const worldPos = CameraObject.screenToWorld(pos);
 
     const delta = Vec2.sub(
       Vec2.create(this.mousePos.x, this.mousePos.y),

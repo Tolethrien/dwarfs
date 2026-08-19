@@ -70,53 +70,19 @@ export default class AuroraCamera {
   public static get getZoom() {
     return this.zoom.current;
   }
+  public static setMatrix(matrix: Mat4) {
+    this.projectionViewMatrix = matrix;
+  }
   public static update(buffer: GPUBuffer) {
-    const width = Aurora.canvas.width;
-    const height = Aurora.canvas.height;
-    if (this.useInputs) this.updateControls();
-
-    // Zaokrąglij pozycję i zoom do pełnych wartości
-    const snappedPosX = Math.round(this.position.x);
-    const snappedPosY = Math.round(this.position.y);
-    const snappedZoom = this.zoom.current;
-
-    this.projectionViewMatrix = Mat4.ortho(0, width, height, 0, 0, 1)
-      .translate([this.origin.x, this.origin.y, 0])
-      .scale(this.zoom.current)
-      .translate([-this.position.x, -this.position.y, 0]);
-
     Aurora.device.queue.writeBuffer(
       buffer,
       0,
-      AuroraCamera.getProjectionViewMatrix.elements,
+      this.projectionViewMatrix.elements,
     );
   }
 
-  private static updateControls() {
-    const dt = Time.getDeltaTime();
-    if (cameraData.keyPressed.has("d")) this.position.x += this.speed;
-    else if (cameraData.keyPressed.has("a")) this.position.x -= this.speed;
-    if (cameraData.keyPressed.has("w")) this.position.y -= this.speed;
-    else if (cameraData.keyPressed.has("s")) this.position.y += this.speed;
-    if (cameraData.keyPressed.has("ArrowDown")) {
-      const factor = Math.pow(1 / 1.02, dt * 30); // smooth multiplicative change
-      this.zoom.current = Math.max(this.zoom.min, this.zoom.current * factor);
-    } else if (cameraData.keyPressed.has("ArrowUp")) {
-      const factor = Math.pow(1.02, dt * 30);
-      this.zoom.current = Math.min(this.zoom.max, this.zoom.current * factor);
-    }
-  }
   public static updateCameraBound(buffer: GPUBuffer) {
     Aurora.device.queue.writeBuffer(buffer, 0, this.cameraBounds);
-  }
-  public static move(pos: Position2D) {
-    this.position = pos;
-  }
-  public static setOrigin(pos: Position2D) {
-    this.origin = pos;
-  }
-  public static scale(zoom: number) {
-    this.zoom.current = zoom;
   }
 
   public static setCameraBounds(y: number, h: number) {

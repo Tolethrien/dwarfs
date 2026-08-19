@@ -3,23 +3,36 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 interface MapGenConfig {
-  tileSize: Size2D; // px
-  chunkSize: Size2D; // tile'i
-  mapSize: Size2D; // chunk'ów
+  tileSize: Size2D;
+  chunkSize: Size2D;
+  mapSize: Size2D;
+  start: Position2D;
 }
 
 const CONFIG: MapGenConfig = {
   tileSize: { width: 96, height: 96 },
   chunkSize: { width: 32, height: 32 },
   mapSize: { width: 12, height: 12 },
+  start: { x: 0, y: 0 },
 };
-
+/**
+ * offset  type    val
+0       i32    startX
+4       i32    startY
+8       u16    tileWidth
+10      u16    tileHeight
+12      u16    chunkTilesW
+14      u16    chunkTilesH
+16      u16    mapChunksW
+18      u16    mapChunksH
+sum = 20 b
+ */
 const BYTES_PER_BLOCK = 2; // typ + zniszczenie
-const HEADER_SIZE = 12; // 6x Uint16
+const HEADER_SIZE = 20;
 const BORDER_TYPE = 3;
 
 function generateMap(config: MapGenConfig, outPath: string): void {
-  const { tileSize, chunkSize, mapSize } = config;
+  const { tileSize, chunkSize, mapSize, start } = config;
 
   const mapTilesW = chunkSize.width * mapSize.width;
   const mapTilesH = chunkSize.height * mapSize.height;
@@ -30,12 +43,14 @@ function generateMap(config: MapGenConfig, outPath: string): void {
 
   const buffer = Buffer.alloc(HEADER_SIZE + totalBlocks * BYTES_PER_BLOCK);
 
-  buffer.writeUInt16LE(tileSize.width, 0);
-  buffer.writeUInt16LE(tileSize.height, 2);
-  buffer.writeUInt16LE(chunkSize.width, 4);
-  buffer.writeUInt16LE(chunkSize.height, 6);
-  buffer.writeUInt16LE(mapSize.width, 8);
-  buffer.writeUInt16LE(mapSize.height, 10);
+  buffer.writeInt32LE(start.x, 0);
+  buffer.writeInt32LE(start.y, 4);
+  buffer.writeUInt16LE(tileSize.width, 8);
+  buffer.writeUInt16LE(tileSize.height, 10);
+  buffer.writeUInt16LE(chunkSize.width, 12);
+  buffer.writeUInt16LE(chunkSize.height, 14);
+  buffer.writeUInt16LE(mapSize.width, 16);
+  buffer.writeUInt16LE(mapSize.height, 18);
 
   for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
     const chunkX = chunkIndex % mapSize.width;

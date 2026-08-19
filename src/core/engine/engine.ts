@@ -16,7 +16,7 @@ export default class Engine {
     setup: () => void;
   }) {
     await this.setCanvas();
-    InputManager.registerEvents(this.canvas);
+    InputManager.registerEvents();
     await Aurora.init(this.canvas);
     Time.initTimer(performance.now());
     await preload();

@@ -1,5 +1,5 @@
 import PragmaComponent from "@/core/pragma/component";
-type StatsProps = DwarfStats | DepositStats;
+type StatsProps = DwarfStats;
 interface DwarfStats {
   kind: "dwarf";
   baseSpeed: number;
@@ -7,12 +7,7 @@ interface DwarfStats {
   beerLeft: number;
   beerPerMinute: number;
 }
-interface DepositStats {
-  kind: "deposit";
-  strength: number;
-  currentHP: number;
-  maxHP: number;
-}
+
 export default class Stats extends PragmaComponent {
   public data: StatsProps;
   constructor(internal: InternalPCProps, props: StatsProps) {

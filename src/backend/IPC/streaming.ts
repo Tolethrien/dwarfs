@@ -3,6 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 
 type MapHeader = {
+  start: Position2D;
   tileInPixels: Size2D;
   chunkInPixels: Size2D;
   chunkInTiles: Size2D;
@@ -13,9 +14,10 @@ type MapHeader = {
   HEADER_SIZE: number;
   BYTES_PER_BLOCK: number;
 };
+
 export type LoadedMap = { header: MapHeader; data: Uint8Array };
 
-const HEADER_SIZE = 12; // 6x Uint16
+const HEADER_SIZE = 20;
 const BYTES_PER_BLOCK = 2;
 
 export function registerGameStreamingEventsIPC() {
@@ -27,17 +29,21 @@ export function registerGameStreamingEventsIPC() {
   });
 }
 function parseHeader(buffer: Buffer): MapHeader {
+  const start: Position2D = {
+    x: buffer.readInt32LE(0),
+    y: buffer.readInt32LE(4),
+  };
   const tileInPixels: Size2D = {
-    width: buffer.readUInt16LE(0),
-    height: buffer.readUInt16LE(2),
-  };
-  const chunkInTiles: Size2D = {
-    width: buffer.readUInt16LE(4),
-    height: buffer.readUInt16LE(6),
-  };
-  const mapInChunks: Size2D = {
     width: buffer.readUInt16LE(8),
     height: buffer.readUInt16LE(10),
+  };
+  const chunkInTiles: Size2D = {
+    width: buffer.readUInt16LE(12),
+    height: buffer.readUInt16LE(14),
+  };
+  const mapInChunks: Size2D = {
+    width: buffer.readUInt16LE(16),
+    height: buffer.readUInt16LE(18),
   };
 
   const chunkInPixels: Size2D = {
@@ -56,6 +62,7 @@ function parseHeader(buffer: Buffer): MapHeader {
     (mapInTiles.width * mapInTiles.height * BYTES_PER_BLOCK) / (1024 * 1024);
 
   return {
+    start,
     tileInPixels,
     chunkInPixels,
     chunkInTiles,

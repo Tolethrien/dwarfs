@@ -2,11 +2,14 @@ import Draw from "@/core/aurora/draw";
 import PragmaComponent from "@/core/pragma/component";
 import { assert } from "@/utils/utils";
 import Transform from "./transform";
+import AuroraCamera from "@/core/aurora/camera";
+import CameraObject from "../managers/cameraObject";
 interface SpriteProps {
   sprite: string;
   crop: Crop;
   tint?: RGBA;
 }
+const CULL_MARGIN = 100;
 export default class Sprite extends PragmaComponent {
   public sprite: SpriteProps["sprite"];
   public crop: SpriteProps["crop"];
@@ -28,6 +31,17 @@ export default class Sprite extends PragmaComponent {
   }
   render(): void {
     const pos = this.transform.getRenderPosition();
+    const x = pos.x - this.crop.width / 2;
+    const y = pos.y - this.crop.height / 2;
+
+    const view = CameraObject.getViewBox();
+    if (
+      x + this.crop.width < view.x - CULL_MARGIN ||
+      y + this.crop.height < view.y - CULL_MARGIN ||
+      x > view.x + view.w + CULL_MARGIN ||
+      y > view.y + view.h + CULL_MARGIN
+    )
+      return;
     Draw.sprite({
       position: {
         x: pos.x - this.crop.width / 2,

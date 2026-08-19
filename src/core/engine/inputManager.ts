@@ -1,3 +1,5 @@
+import { KEY_GROUP, type KeyCode } from "./keys";
+
 interface MouseEvents {
   mousePos: Position2D;
   buttons: Set<number>;
@@ -13,12 +15,14 @@ enum MouseKey {
   BUTTON6,
 }
 
-const MODS = ["Shift", "Alt", "Control"] as const;
+const MODS = ["shift", "ctrl", "alt"] as const;
+type ModKey = (typeof MODS)[number];
+
 type Action = {
   name: string;
-  mods: (typeof MODS)[number][] | "NoMod";
+  mods: ModKey[] | "NoMod";
 } & (
-  | { key: string; mouse?: never }
+  | { key: KeyCode; mouse?: never }
   | { mouse: keyof typeof MouseKey; key?: never }
 );
 
@@ -30,15 +34,22 @@ export default class InputManager {
   private static keyCurrentFrame = new Set<string>();
   private static keyInputBuffer = new Set<string>();
   private static actionMap: Map<string, Action> = new Map();
-  public static registerEvents(canvas: HTMLCanvasElement) {
-    canvas.addEventListener("mousedown", (e) => this.mouseEvents(e, "down"));
-    canvas.addEventListener("mouseup", (e) => this.mouseEvents(e, "up"));
-    canvas.addEventListener("mousemove", (e) => this.mouseMove(e));
-    canvas.addEventListener("wheel", (e) => this.wheelEvent(e));
-    //this should be maybe on window? if you want to build UI in html then could be better.
-    canvas.addEventListener("keydown", (e) => this.keyEvents(e, "down"));
-    canvas.addEventListener("keyup", (e) => this.keyEvents(e, "up"));
+
+  public static registerEvents() {
+    window.addEventListener("mousedown", (e) => this.mouseEvents(e, "down"));
+    window.addEventListener("mouseup", (e) => this.mouseEvents(e, "up"));
+    window.addEventListener("mousemove", (e) => this.mouseMove(e));
+    window.addEventListener("wheel", (e) => this.wheelEvent(e));
+    window.addEventListener("keydown", (e) => this.keyEvents(e, "down"));
+    window.addEventListener("keyup", (e) => this.keyEvents(e, "up"));
+
+    // alt-tab z wciśniętym klawiszem: keyup poleci do innego okna
+    window.addEventListener("blur", () => {
+      this.keyInputBuffer.clear();
+      this.mouseInputBuffer.buttons.clear();
+    });
   }
+
   public static updateInputs() {
     this.keyPreviousFrame = new Set(this.keyCurrentFrame);
     this.keyCurrentFrame = new Set(this.keyInputBuffer);
@@ -55,6 +66,7 @@ export default class InputManager {
     this.mouseInputBuffer.wheel = 0;
   }
 
+  //MOUSE
   public static isMouseClicked(button: keyof typeof MouseKey) {
     const btn = MouseKey[button];
     return (
@@ -89,15 +101,21 @@ export default class InputManager {
   public static getMouseScroll() {
     return this.mouseCurrentFrame.wheel;
   }
-  public static isKeyPressed(char: string) {
-    return this.keyCurrentFrame.has(char) && !this.keyPreviousFrame.has(char);
+
+  //KEYBOARD
+  public static isKeyPressed(key: KeyCode) {
+    return this.keyCurrentFrame.has(key) && !this.keyPreviousFrame.has(key);
   }
-  public static isKeyHold(char: string) {
-    return this.keyCurrentFrame.has(char);
+  public static isKeyHold(key: KeyCode) {
+    return this.keyCurrentFrame.has(key);
   }
-  public static isKeyRelease(char: string) {
-    return !this.keyCurrentFrame.has(char) && this.keyPreviousFrame.has(char);
+  public static isKeyRelease(key: KeyCode) {
+    return !this.keyCurrentFrame.has(key) && this.keyPreviousFrame.has(key);
   }
+  public static isAnyKeyHold(keys: readonly KeyCode[]) {
+    return keys.some((key) => this.keyCurrentFrame.has(key));
+  }
+
   //ACTIONS
   public static bindAction(action: Action) {
     this.actionMap.set(action.name, action);
@@ -155,8 +173,8 @@ export default class InputManager {
     this.mouseInputBuffer.wheel = e.deltaY;
   }
   private static keyEvents(e: KeyboardEvent, type: "up" | "down") {
-    if (type === "down") this.keyInputBuffer.add(e.key);
-    else this.keyInputBuffer.delete(e.key);
+    if (type === "down") this.keyInputBuffer.add(e.code);
+    else this.keyInputBuffer.delete(e.code);
   }
   private static generateMouseManifold(): MouseEvents {
     return {
@@ -165,9 +183,12 @@ export default class InputManager {
       wheel: 0,
     };
   }
+  private static isModHeld(mod: ModKey) {
+    return this.isAnyKeyHold(KEY_GROUP[mod]);
+  }
   private static checkActionModsPressed(action: Action) {
-    const anyModPressed = MODS.some((mod) => this.keyPreviousFrame.has(mod));
-    if (action.mods === "NoMod") return !anyModPressed;
-    return action.mods.every((mod) => this.keyPreviousFrame.has(mod));
+    if (action.mods === "NoMod")
+      return !MODS.some((mod) => this.isModHeld(mod));
+    return action.mods.every((mod) => this.isModHeld(mod));
   }
 }
