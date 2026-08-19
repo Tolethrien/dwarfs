@@ -1,3 +1,4 @@
+import { HEADER_SIZE, sectionOffsets, SectionOffsets } from "@/mapFormat";
 import { ipcMain } from "electron";
 import fs from "fs/promises";
 import path from "path";
@@ -10,15 +11,13 @@ type MapHeader = {
   mapInPixels: Size2D;
   mapInTiles: Size2D;
   mapInChunks: Size2D;
+  blocksPerChunk: number;
+  totalBlocks: number;
+  offsets: SectionOffsets;
   mapSizeInMB: number;
-  HEADER_SIZE: number;
-  BYTES_PER_BLOCK: number;
 };
 
 export type LoadedMap = { header: MapHeader; data: Uint8Array };
-
-const HEADER_SIZE = 20;
-const BYTES_PER_BLOCK = 2;
 
 export function registerGameStreamingEventsIPC() {
   ipcMain.handle("loadMap", async (_, fileName: string) => {
@@ -58,8 +57,9 @@ function parseHeader(buffer: Buffer): MapHeader {
     width: mapInTiles.width * tileInPixels.width,
     height: mapInTiles.height * tileInPixels.height,
   };
-  const mapSizeInMB =
-    (mapInTiles.width * mapInTiles.height * BYTES_PER_BLOCK) / (1024 * 1024);
+
+  const blocksPerChunk = chunkInTiles.width * chunkInTiles.height;
+  const totalBlocks = blocksPerChunk * mapInChunks.width * mapInChunks.height;
 
   return {
     start,
@@ -69,9 +69,10 @@ function parseHeader(buffer: Buffer): MapHeader {
     mapInPixels,
     mapInTiles,
     mapInChunks,
-    mapSizeInMB,
-    BYTES_PER_BLOCK,
-    HEADER_SIZE,
+    blocksPerChunk,
+    totalBlocks,
+    offsets: sectionOffsets(totalBlocks),
+    mapSizeInMB: (buffer.length - HEADER_SIZE) / (1024 * 1024),
   };
 }
 function mapFilePath(fileName: string) {

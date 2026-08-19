@@ -6,6 +6,7 @@ import Time from "@/core/engine/time";
 import PragmaComponent from "@/core/pragma/component";
 import { ACTION } from "@/sandbox/inputActions";
 import CameraObject from "@/sandbox/managers/cameraObject";
+import MapObject from "@/sandbox/managers/mapObject";
 
 const MOVE_SPEED = 500;
 const ACCEL_SMOOTH = 0.03;
@@ -31,6 +32,7 @@ export default class CameraController extends PragmaComponent {
 
   start(): void {
     this.targetZoom = CameraObject.getZoom;
+    this.setBounds(MapObject.getWorldBounds());
   }
 
   preUpdate(): void {
@@ -48,8 +50,6 @@ export default class CameraController extends PragmaComponent {
     this.bounds = bounds;
   }
 
-  // ============ RUCH ============
-
   private updateMove(dt: number) {
     const dirX =
       (InputManager.onActionHold(ACTION.cameraRight) ? 1 : 0) -
@@ -63,7 +63,6 @@ export default class CameraController extends PragmaComponent {
     if (moving)
       this.moveTarget.normalize().scale(MOVE_SPEED / CameraObject.getZoom);
 
-    // hamowanie wolniejsze niż rozpęd — stąd dwie stałe
     const smooth = moving ? ACCEL_SMOOTH : DECEL_SMOOTH;
     this.velocity.lerp(this.moveTarget, 1 - Math.exp(-dt / smooth));
 
@@ -73,8 +72,6 @@ export default class CameraController extends PragmaComponent {
       pos.y + this.velocity.y * dt,
     );
   }
-
-  // ============ ZOOM ============
 
   private updateZoom(dt: number) {
     if (InputManager.isMouseScrolled()) {
@@ -93,7 +90,6 @@ export default class CameraController extends PragmaComponent {
       this.setTargetZoom(
         this.targetZoom * Math.pow(ZOOM_KEY_RATE, keyDir * dt),
       );
-      // klawisze nie mają punktu zainteresowania — zoom do środka kadru
       this.anchorScreen = null;
       this.anchorWorld = null;
     }
@@ -108,7 +104,6 @@ export default class CameraController extends PragmaComponent {
     const t = 1 - Math.exp(-dt / ZOOM_SMOOTH);
     CameraObject.setZoom(current + (this.targetZoom - current) * t);
 
-    // po zmianie zoomu przesuń kamerę tak, żeby punkt pod kursorem został na miejscu
     if (this.anchorScreen && this.anchorWorld) {
       const drifted = CameraObject.screenToWorld(this.anchorScreen);
       const pos = CameraObject.getPosition;
@@ -122,8 +117,6 @@ export default class CameraController extends PragmaComponent {
   private setTargetZoom(zoom: number) {
     this.targetZoom = AxiomMath.clamp(zoom, ZOOM_MIN, ZOOM_MAX);
   }
-
-  // ============ GRANICE ============
 
   private clampToBounds() {
     if (!this.bounds) return;

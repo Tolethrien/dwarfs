@@ -1,4 +1,3 @@
-import AuroraCamera from "@/core/aurora/camera";
 import Grid from "@/core/axiom/grid";
 import PragmaComponent from "@/core/pragma/component";
 import { BLOCK_NAMES, BLOCK_TYPES } from "@/sandbox/data";
@@ -24,8 +23,6 @@ export interface TileDamagedEvent {
 const AIR = BLOCK_NAMES.indexOf("air");
 const MAX_DAMAGE = 255;
 const MARGIN = 1; //viewbox margin
-const MAX_SPAN = 5; // max load chunks
-const POOL_SIZE = MAX_SPAN * MAX_SPAN + 8;
 
 export default class MapComponent extends PragmaComponent {
   private pool: Chunk[] = [];
@@ -37,7 +34,6 @@ export default class MapComponent extends PragmaComponent {
   }
 
   start(): void {
-    this.fillPool();
     this.syncChunks(this.computeRange());
     this.emitSceneEvent<MapSystemReady>("mapReady", { map: this });
   }
@@ -64,31 +60,12 @@ export default class MapComponent extends PragmaComponent {
       x: view.x + view.w,
       y: view.y + view.h,
     });
-    const center = MapObject.worldToChunkTile({
-      x: view.x + view.w / 2,
-      y: view.y + view.h / 2,
-    });
-
-    let minX = topLeft.x - MARGIN;
-    let minY = topLeft.y - MARGIN;
-    let maxX = bottomRight.x + MARGIN;
-    let maxY = bottomRight.y + MARGIN;
-
-    const half = Math.floor((MAX_SPAN - 1) / 2);
-    if (maxX - minX + 1 > MAX_SPAN) {
-      minX = center.x - half;
-      maxX = center.x + half;
-    }
-    if (maxY - minY + 1 > MAX_SPAN) {
-      minY = center.y - half;
-      maxY = center.y + half;
-    }
 
     return {
-      minX: Math.max(0, minX),
-      minY: Math.max(0, minY),
-      maxX: Math.min(mapInChunks.width - 1, maxX),
-      maxY: Math.min(mapInChunks.height - 1, maxY),
+      minX: Math.max(0, topLeft.x - MARGIN),
+      minY: Math.max(0, topLeft.y - MARGIN),
+      maxX: Math.min(mapInChunks.width - 1, bottomRight.x + MARGIN),
+      maxY: Math.min(mapInChunks.height - 1, bottomRight.y + MARGIN),
     };
   }
 
@@ -114,11 +91,6 @@ export default class MapComponent extends PragmaComponent {
     }
   }
 
-  private loadChunk(index: number) {
-    const chunk = new Chunk({ index });
-    this.scene.spawnActor(chunk);
-    this.loadedChunks.set(index, chunk);
-  }
   public applyHit(
     gx: number,
     gy: number,
@@ -205,13 +177,5 @@ export default class MapComponent extends PragmaComponent {
     this.loadedChunks.delete(index);
     chunk.setVisibility(false);
     this.pool.push(chunk);
-  }
-  private fillPool() {
-    for (let i = 0; i < POOL_SIZE; i++) {
-      const chunk = new Chunk({ index: 0 });
-      chunk.setVisibility(false);
-      this.scene.spawnActor(chunk);
-      this.pool.push(chunk);
-    }
   }
 }

@@ -46,7 +46,7 @@ export default class Sprite extends PragmaComponent {
       position: {
         x: pos.x - this.crop.width / 2,
         y: pos.y - this.crop.height / 2,
-        z: 1,
+        z: 0.4,
       },
       crop: this.crop,
       size: { height: this.crop.height, width: this.crop.width },

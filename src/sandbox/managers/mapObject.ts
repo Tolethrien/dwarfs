@@ -11,16 +11,23 @@ export interface TileHit {
   type: number;
 }
 
+export enum LAYER {
+  background,
+  decoBack,
+  solid,
+  decoFront,
+}
+export const MAX_DAMAGE = 65535;
+const SKY_MARGIN = 300;
 const AIR = BLOCK_NAMES.indexOf("air");
 const OUT_OF_BOUNDS = BLOCK_NAMES.indexOf("bedrock");
 const MAX_RAYCAST_TILES = 64;
 
 export default class MapObject {
-  declare private static original: Uint8Array;
-  declare private static working: Uint8Array;
+  declare private static layers: Uint16Array[];
+  declare private static damage: Uint16Array;
   declare private static mapConfig: LoadedMap["header"];
   declare private static chunkVersions: Uint32Array;
-  declare private static blocksPerChunk: number;
   declare private static origin: Position2D;
 
   private static hitPool: TileHit[] = Array.from(
@@ -36,17 +43,26 @@ export default class MapObject {
 
   public static async loadMap(path: string) {
     const data = await window.API.STREAMING.loadMapFromFile(path);
-    const { chunkInTiles, mapInChunks } = data.header;
+    const { mapInChunks, totalBlocks, offsets } = data.header;
+    const bytes = data.data;
+
+    const view = (offset: number) =>
+      new Uint16Array(bytes.buffer, bytes.byteOffset + offset, totalBlocks);
 
     this.mapConfig = data.header;
-    this.original = data.data;
-    this.working = new Uint8Array(data.data);
+    this.origin = data.header.start;
 
-    this.blocksPerChunk = chunkInTiles.width * chunkInTiles.height;
+    this.layers = [
+      view(offsets.background),
+      view(offsets.decoBack),
+      view(offsets.solidType),
+      view(offsets.decoFront),
+    ];
+    this.damage = view(offsets.solidDamage);
+
     this.chunkVersions = new Uint32Array(
       mapInChunks.width * mapInChunks.height,
     );
-    this.origin = data.header.start;
 
     console.log("loaded map", data.header);
   }
@@ -54,6 +70,7 @@ export default class MapObject {
   public static get mapMeta() {
     return this.mapConfig;
   }
+
   public static worldToTile(pos: Position2D): Position2D {
     const { tileInPixels } = this.mapConfig;
     return {
@@ -62,13 +79,6 @@ export default class MapObject {
     };
   }
 
-  public static tileToWorld(tile: Position2D): Position2D {
-    const { tileInPixels } = this.mapConfig;
-    return {
-      x: this.origin.x + tile.x * tileInPixels.width,
-      y: this.origin.y + tile.y * tileInPixels.height,
-    };
-  }
   public static tileCenterToWorld(tile: Position2D): Position2D {
     const { tileInPixels } = this.mapConfig;
     return {
@@ -94,8 +104,18 @@ export default class MapObject {
     };
   }
 
-  private static tileOffset(gx: number, gy: number) {
-    const { chunkInTiles, mapInTiles, mapInChunks, BYTES_PER_BLOCK } =
+  public static getWorldBounds(): Box {
+    const { mapInPixels } = this.mapConfig;
+    return {
+      x: this.origin.x,
+      y: this.origin.y - SKY_MARGIN,
+      w: mapInPixels.width,
+      h: mapInPixels.height + SKY_MARGIN,
+    };
+  }
+
+  private static tileIndex(gx: number, gy: number) {
+    const { chunkInTiles, mapInTiles, mapInChunks, blocksPerChunk } =
       this.mapConfig;
 
     if (gx < 0 || gy < 0 || gx >= mapInTiles.width || gy >= mapInTiles.height)
@@ -108,31 +128,39 @@ export default class MapObject {
       (gy - cy * chunkInTiles.height) * chunkInTiles.width +
       (gx - cx * chunkInTiles.width);
 
-    return (chunkIndex * this.blocksPerChunk + localIndex) * BYTES_PER_BLOCK;
+    return chunkIndex * blocksPerChunk + localIndex;
   }
 
   public static chunkIndexOfTile(gx: number, gy: number) {
     const { chunkInTiles, mapInChunks } = this.mapConfig;
-    const cx = Math.floor(gx / chunkInTiles.width);
-    const cy = Math.floor(gy / chunkInTiles.height);
-    return cy * mapInChunks.width + cx;
+    return (
+      Math.floor(gy / chunkInTiles.height) * mapInChunks.width +
+      Math.floor(gx / chunkInTiles.width)
+    );
   }
 
-  public static getTileType(gx: number, gy: number) {
-    const offset = this.tileOffset(gx, gy);
-    return offset === -1 ? OUT_OF_BOUNDS : this.working[offset];
+  public static getTileType(gx: number, gy: number, layer = LAYER.solid) {
+    const index = this.tileIndex(gx, gy);
+    if (index === -1) return layer === LAYER.solid ? OUT_OF_BOUNDS : AIR;
+    return this.layers[layer][index];
   }
 
   public static getTileDamage(gx: number, gy: number) {
-    const offset = this.tileOffset(gx, gy);
-    return offset === -1 ? 0 : this.working[offset + 1];
+    const index = this.tileIndex(gx, gy);
+    return index === -1 ? 0 : this.damage[index];
   }
+
   //THIS IS WINDOW FOR DATA - DO NOT COPY IT - ALWAYS WORK ON WINDOW
-  public static getChunkData(chunkIndex: number) {
-    const start =
-      chunkIndex * this.blocksPerChunk * this.mapConfig.BYTES_PER_BLOCK;
-    const length = this.blocksPerChunk * this.mapConfig.BYTES_PER_BLOCK;
-    return this.working.subarray(start, start + length);
+  public static getChunkData(layer: LAYER, chunkIndex: number) {
+    const { blocksPerChunk } = this.mapConfig;
+    const start = chunkIndex * blocksPerChunk;
+    return this.layers[layer].subarray(start, start + blocksPerChunk);
+  }
+
+  public static getChunkDamage(chunkIndex: number) {
+    const { blocksPerChunk } = this.mapConfig;
+    const start = chunkIndex * blocksPerChunk;
+    return this.damage.subarray(start, start + blocksPerChunk);
   }
 
   public static getChunkVersion(chunkIndex: number) {
@@ -140,17 +168,12 @@ export default class MapObject {
   }
 
   public static setTile(gx: number, gy: number, type: number, damage: number) {
-    const offset = this.tileOffset(gx, gy);
-    if (offset === -1) return;
+    const index = this.tileIndex(gx, gy);
+    if (index === -1) return;
 
-    this.working[offset] = type;
-    this.working[offset + 1] = damage;
+    this.layers[LAYER.solid][index] = type;
+    this.damage[index] = damage;
     this.chunkVersions[this.chunkIndexOfTile(gx, gy)]++;
-  }
-
-  public static resetToOriginal() {
-    this.working.set(this.original);
-    for (let i = 0; i < this.chunkVersions.length; i++) this.chunkVersions[i]++;
   }
 
   public static getTilesForRaycast(
@@ -160,7 +183,6 @@ export default class MapObject {
     radius = 0,
   ): TileHit[] {
     const tileSize = this.mapConfig.tileInPixels;
-
     const endX = rayOrigin.x + direction.x * distance;
     const endY = rayOrigin.y + direction.y * distance;
 
@@ -181,7 +203,7 @@ export default class MapObject {
         if (type === AIR) continue;
         assert(
           this.result.length < MAX_RAYCAST_TILES,
-          `error with raycast pool size overflow! ball was to fast or to big! change pool size! size: ${MAX_RAYCAST_TILES}`,
+          `raycast pool overflow (${MAX_RAYCAST_TILES}) — kulka za szybka albo za duża`,
         );
 
         const hit = this.hitPool[this.result.length];
