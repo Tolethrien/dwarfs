@@ -43,6 +43,7 @@ function setup() {
   world.spawnActor(new PlayerInputs());
   world.spawnActor(new MapSystem());
   CameraObject.setZoom(0.05);
+  CameraObject.setPosition(9216, 1500);
   world.spawnActor(new CameraActor());
 }
 Engine.initialize({ setup, preload });

@@ -7,6 +7,7 @@ import CameraObject from "../managers/cameraObject";
 interface SpriteProps {
   sprite: string;
   crop: Crop;
+  zIndex: number;
   tint?: RGBA;
 }
 const CULL_MARGIN = 100;
@@ -14,12 +15,14 @@ export default class Sprite extends PragmaComponent {
   public sprite: SpriteProps["sprite"];
   public crop: SpriteProps["crop"];
   public tint: SpriteProps["tint"];
+  public zIndex: SpriteProps["zIndex"];
   declare private transform: Transform;
   constructor(internal: InternalPCProps, props: SpriteProps) {
     super(internal);
     this.crop = props.crop;
     this.sprite = props.sprite;
     this.tint = props.tint;
+    this.zIndex = props.zIndex;
   }
   start(): void {
     const transform = this.actor.transform;
@@ -46,7 +49,7 @@ export default class Sprite extends PragmaComponent {
       position: {
         x: pos.x - this.crop.width / 2,
         y: pos.y - this.crop.height / 2,
-        z: 0.4,
+        z: this.zIndex,
       },
       crop: this.crop,
       size: { height: this.crop.height, width: this.crop.width },

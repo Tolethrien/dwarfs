@@ -1,8 +1,16 @@
-// generateMap.ts — generuje losowy .dwb z czterema warstwami
+// generateMap.ts — generuje testowy .dwb
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-
+import {
+  HEADER_SIZE,
+  SECTIONS,
+  sectionOffsets,
+  dataSize,
+  BG_SHADES,
+  type SectionName,
+} from "../src/mapFormat.ts";
+import { BlocksID, DecosID } from "../src/sandbox/managers/entitiesObject.ts";
 interface MapGenConfig {
   tileSize: Size2D; // px
   chunkSize: Size2D; // tile'i
@@ -17,24 +25,16 @@ const CONFIG: MapGenConfig = {
   start: { x: 0, y: 0 },
 };
 
-const HEADER_SIZE = 20;
-const BORDER_TYPE = 3;
-const BG_SHADES = 32;
+/** bedrock jest wyłącznie ramką, nie losowym terenem */
+const TERRAIN = [BlocksID.air, BlocksID.rock, BlocksID.coal];
+const BORDER = BlocksID.bedrock;
+
+const START_CHUNK = 3; // jedyny odkryty na starcie
 const DECO_BACK_CHANCE = 0.02;
 const DECO_FRONT_CHANCE = 0.01;
+const CHUNKS_PER_BIOME = 3; // biomy jako pasma głębokości
 
-/** wszystkie sekcje u16, więc kolejność jest dowolna — nie ma czego wyrównywać */
-const SECTIONS = [
-  { name: "background", bytes: 2 },
-  { name: "decoBack", bytes: 2 },
-  { name: "solidType", bytes: 2 },
-  { name: "solidDamage", bytes: 2 },
-  { name: "decoFront", bytes: 2 },
-] as const;
-
-type SectionName = (typeof SECTIONS)[number]["name"];
-
-function generateMap(config: MapGenConfig, outPath: string): void {
+function generateMap(config: MapGenConfig, outPaths: string[]): void {
   const { tileSize, chunkSize, mapSize, start } = config;
 
   const blocksPerChunk = chunkSize.width * chunkSize.height;
@@ -43,15 +43,13 @@ function generateMap(config: MapGenConfig, outPath: string): void {
   const mapTilesW = chunkSize.width * mapSize.width;
   const mapTilesH = chunkSize.height * mapSize.height;
 
-  const base = {} as Record<SectionName, number>;
-  let cursor = HEADER_SIZE;
-  for (const section of SECTIONS) {
-    base[section.name] = cursor;
-    cursor += totalBlocks * section.bytes;
-  }
+  const offsets = sectionOffsets(totalBlocks, totalChunks);
+  const buffer = Buffer.alloc(HEADER_SIZE + dataSize(totalBlocks, totalChunks));
 
-  const buffer = Buffer.alloc(cursor);
+  const at = (section: SectionName, index: number, bytes: number) =>
+    HEADER_SIZE + offsets[section] + index * bytes;
 
+  // ---- nagłówek ----
   buffer.writeInt32LE(start.x, 0);
   buffer.writeInt32LE(start.y, 4);
   buffer.writeUInt16LE(tileSize.width, 8);
@@ -61,51 +59,75 @@ function generateMap(config: MapGenConfig, outPath: string): void {
   buffer.writeUInt16LE(mapSize.width, 16);
   buffer.writeUInt16LE(mapSize.height, 18);
 
+  // ---- sekcje per chunk ----
+  for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+    const cy = Math.floor(chunkIndex / mapSize.width);
+    buffer.writeUInt8(
+      chunkIndex === START_CHUNK ? 1 : 0,
+      at("discovered", chunkIndex, 1),
+    );
+    buffer.writeUInt8(
+      Math.floor(cy / CHUNKS_PER_BIOME),
+      at("biome", chunkIndex, 1),
+    );
+  }
+
+  // ---- sekcje per blok ----
   for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
     const chunkX = chunkIndex % mapSize.width;
     const chunkY = Math.floor(chunkIndex / mapSize.width);
-
-    // każdy chunk dostaje inny odcień — od razu widać granice chunków na ekranie
+    // inny odcień na każdy chunk — od razu widać granice chunków
     const bgShade = (chunkIndex % BG_SHADES) + 1;
 
     for (let ly = 0; ly < chunkSize.height; ly++) {
       for (let lx = 0; lx < chunkSize.width; lx++) {
-        const globalX = chunkX * chunkSize.width + lx;
-        const globalY = chunkY * chunkSize.height + ly;
-        const blockIndex =
-          chunkIndex * blocksPerChunk + ly * chunkSize.width + lx;
+        const gx = chunkX * chunkSize.width + lx;
+        const gy = chunkY * chunkSize.height + ly;
+        const index = chunkIndex * blocksPerChunk + ly * chunkSize.width + lx;
 
         const isBorder =
-          globalX === 0 ||
-          globalY === 0 ||
-          globalX === mapTilesW - 1 ||
-          globalY === mapTilesH - 1;
+          gx === 0 || gy === 0 || gx === mapTilesW - 1 || gy === mapTilesH - 1;
 
-        buffer.writeUInt16LE(bgShade, base.background + blockIndex * 2);
+        buffer.writeUInt16LE(bgShade, at("background", index, 2));
         buffer.writeUInt16LE(
-          isBorder ? BORDER_TYPE : Math.floor(Math.random() * 3),
-          base.solidType + blockIndex * 2,
+          isBorder
+            ? BORDER
+            : TERRAIN[Math.floor(Math.random() * TERRAIN.length)],
+          at("solidType", index, 2),
         );
-        // solidDamage zostaje 0 — Buffer.alloc już wyzerował
+        // solidDamage zostaje 0 — Buffer.alloc wyzerował
 
         // 0 = brak dekoracji
         if (Math.random() < DECO_BACK_CHANCE)
-          buffer.writeUInt16LE(1, base.decoBack + blockIndex * 2);
+          buffer.writeUInt16LE(DecosID.flower, at("decoBack", index, 2));
         if (Math.random() < DECO_FRONT_CHANCE)
-          buffer.writeUInt16LE(2, base.decoFront + blockIndex * 2);
+          buffer.writeUInt16LE(DecosID.flower, at("decoFront", index, 2));
       }
     }
   }
 
-  fs.writeFileSync(outPath, buffer);
+  for (const out of outPaths) {
+    fs.mkdirSync(path.dirname(out), { recursive: true });
+    fs.writeFileSync(out, buffer);
+    console.log(`Zapisano ${out}`);
+  }
 
-  console.log(`Zapisano ${outPath}`);
-  console.log(`  bloków: ${totalBlocks.toLocaleString()}`);
+  console.log(
+    `  bloków: ${totalBlocks.toLocaleString()}, chunków: ${totalChunks}`,
+  );
   console.log(`  rozmiar: ${(buffer.length / 1024 / 1024).toFixed(2)} MB`);
-  console.log(`  sekcje:`);
+  console.log(`  odkryty na starcie: chunk ${START_CHUNK}`);
   for (const section of SECTIONS)
-    console.log(`    ${section.name.padEnd(12)} @ ${base[section.name]}`);
+    console.log(
+      `    ${section.name.padEnd(12)} @ ${offsets[section.name]} (u${section.bytes * 8}, per ${section.per})`,
+    );
 }
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-generateMap(CONFIG, path.join(__dirname, "test.dwb"));
+const ROOT = path.join(__dirname, "..");
+
+const OUTPUTS = [
+  path.join(__dirname, "test.dwb"),
+  path.join(ROOT, ".vite", "build", "test.dwb"),
+];
+
+generateMap(CONFIG, OUTPUTS);

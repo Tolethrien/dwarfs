@@ -1,13 +1,13 @@
 import Grid from "@/core/axiom/grid";
 import PragmaComponent from "@/core/pragma/component";
-import { BLOCK_NAMES, BLOCK_TYPES } from "@/sandbox/data";
 import Chunk from "@/sandbox/bActors/chunk";
 import CameraObject from "@/sandbox/managers/cameraObject";
-import MapObject from "@/sandbox/managers/mapObject";
+import EntitiesObject, { BlocksID } from "@/sandbox/managers/entitiesObject";
+import MapObject, { MAX_DAMAGE } from "@/sandbox/managers/mapObject";
 
 type ChunkRange = { minX: number; minY: number; maxX: number; maxY: number };
 export interface MapSystemReady {
-  map: MapComponent;
+  map: mapDirector;
 }
 export interface TileMinedEvent {
   gx: number;
@@ -20,15 +20,13 @@ export interface TileDamagedEvent {
   type: number;
   damage: number;
 }
-const AIR = BLOCK_NAMES.indexOf("air");
-const MAX_DAMAGE = 255;
 const MARGIN = 1; //viewbox margin
 
-export default class MapComponent extends PragmaComponent {
+export default class mapDirector extends PragmaComponent {
   private pool: Chunk[] = [];
   private loadedChunks: Map<number, Chunk> = new Map();
   private lastRange: ChunkRange = { minX: -1, minY: -1, maxX: -1, maxY: -1 };
-
+  private dirty = false;
   constructor(internal: InternalPCProps) {
     super(internal);
   }
@@ -40,14 +38,14 @@ export default class MapComponent extends PragmaComponent {
 
   update(): void {
     const range = this.computeRange();
-    if (
+    const sameRange =
       range.minX === this.lastRange.minX &&
       range.minY === this.lastRange.minY &&
       range.maxX === this.lastRange.maxX &&
-      range.maxY === this.lastRange.maxY
-    )
-      return;
+      range.maxY === this.lastRange.maxY;
 
+    if (sameRange && !this.dirty) return;
+    this.dirty = false;
     this.syncChunks(range);
   }
 
@@ -76,7 +74,9 @@ export default class MapComponent extends PragmaComponent {
     const wanted = new Set<number>();
     for (let cy = range.minY; cy <= range.maxY; cy++) {
       for (let cx = range.minX; cx <= range.maxX; cx++) {
-        wanted.add(Grid.tileToIndex({ x: cx, y: cy }, mapWidth));
+        const index = Grid.tileToIndex({ x: cx, y: cy }, mapWidth);
+        if (!MapObject.isDiscovered(index)) continue;
+        wanted.add(index);
       }
     }
 
@@ -97,10 +97,9 @@ export default class MapComponent extends PragmaComponent {
     power: number,
   ): "penetrate" | "bounce" {
     const type = MapObject.getTileType(gx, gy);
-    if (type === AIR) return "bounce";
+    if (type === BlocksID.air) return "bounce";
 
-    const ratio = power / BLOCK_TYPES[BLOCK_NAMES[type]].str;
-
+    const ratio = power / EntitiesObject.getBlock(type).str;
     if (ratio >= 1.5) {
       this.destroyTile(gx, gy, type);
       return "penetrate";
@@ -125,7 +124,7 @@ export default class MapComponent extends PragmaComponent {
     amount: number,
     type = MapObject.getTileType(gx, gy),
   ) {
-    if (type === AIR || amount <= 0) return;
+    if (type === BlocksID.air || amount <= 0) return;
 
     const damage = MapObject.getTileDamage(gx, gy) + amount;
     if (damage >= MAX_DAMAGE) {
@@ -152,8 +151,8 @@ export default class MapComponent extends PragmaComponent {
     gy: number,
     type = MapObject.getTileType(gx, gy),
   ) {
-    if (type === AIR) return;
-    MapObject.setTile(gx, gy, AIR, 0);
+    if (type === BlocksID.air) return;
+    MapObject.setTile(gx, gy, BlocksID.air, 0);
 
     if (this.loadedChunks.has(MapObject.chunkIndexOfTile(gx, gy))) {
       // const world = MapObject.tileCenterToWorld({ x: gx, y: gy });
@@ -177,5 +176,8 @@ export default class MapComponent extends PragmaComponent {
     this.loadedChunks.delete(index);
     chunk.setVisibility(false);
     this.pool.push(chunk);
+  }
+  public markDirty() {
+    this.dirty = true;
   }
 }

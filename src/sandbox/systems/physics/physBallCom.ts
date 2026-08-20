@@ -5,10 +5,9 @@ import Collision from "@/core/axiom/collision";
 import Physics from "@/sandbox/components/physics";
 import Time from "@/core/engine/time";
 import Stats from "@/sandbox/components/stats";
-import Transform from "@/sandbox/components/transform";
 import MapObject from "@/sandbox/managers/mapObject";
-import { BLOCK_NAMES } from "@/sandbox/data";
-import MapComponent, { MapSystemReady } from "../map/mapComponent";
+import MapDirector, { MapSystemReady } from "../map/mapDirector";
+import { BlocksID } from "@/sandbox/managers/entitiesObject";
 
 type Hit =
   | { kind: "entity"; physics: Physics; distance: number; normal: Vec2 }
@@ -20,17 +19,19 @@ type Hit =
       distance: number;
       normal: Vec2;
     };
-
+export interface BallChangedChunkEvent {
+  chunk: number;
+}
 const MAX_BOUNCES_PER_TICK = 4;
 const SKIN = 0.01;
 const DECAY_RATE = 1;
-const AIR = BLOCK_NAMES.indexOf("air");
 
 export default class PhysBallComponent extends PragmaComponent {
   private grid = new SpatialGrid<Physics>({ width: 256, height: 256 });
   private movingBodies = new Set<Physics>();
   private triggeredThisFrame = new Map<Symbol, Set<Symbol>>();
-  declare private map: MapComponent;
+  private ballChunk = new Map<Symbol, number>();
+  declare private map: MapDirector;
   constructor(internal: InternalPCProps) {
     super(internal);
   }
@@ -62,6 +63,7 @@ export default class PhysBallComponent extends PragmaComponent {
   private unregister(physics: Physics) {
     this.grid.remove(physics.actor.ID);
     this.movingBodies.delete(physics);
+    this.ballChunk.delete(physics.actor.ID);
   }
 
   preUpdate(): void {
@@ -134,6 +136,7 @@ export default class PhysBallComponent extends PragmaComponent {
     }
 
     if (physics.body) this.grid.move(physics.actor.ID, physics.getBounds());
+    this.checkChunkChange(physics);
   }
 
   private findClosestHit(
@@ -167,7 +170,7 @@ export default class PhysBallComponent extends PragmaComponent {
       // z zewnątrz nie da się w nią trafić (fix na fałszywe odbicia od gładkiej ściany)
       const nx = tile.gx + Math.sign(hit.normal.x);
       const ny = tile.gy + Math.sign(hit.normal.y);
-      if (MapObject.getTileType(nx, ny) !== AIR) continue;
+      if (MapObject.getTileType(nx, ny) !== BlocksID.air) continue;
 
       closest = {
         kind: "tile",
@@ -253,5 +256,26 @@ export default class PhysBallComponent extends PragmaComponent {
     _other: Physics,
   ): "penetrate" | "bounce" {
     return "bounce"; // TODO: moby/bossy
+  }
+  private checkChunkChange(physics: Physics) {
+    const { mapInChunks } = MapObject.mapMeta;
+    const chunkPos = MapObject.worldToChunkTile(
+      physics.actor.transform.getWorldPosition(),
+    );
+
+    if (
+      chunkPos.x < 0 ||
+      chunkPos.y < 0 ||
+      chunkPos.x >= mapInChunks.width ||
+      chunkPos.y >= mapInChunks.height
+    )
+      return;
+
+    const chunk = chunkPos.y * mapInChunks.width + chunkPos.x;
+    const id = physics.actor.ID;
+    if (this.ballChunk.get(id) === chunk) return;
+
+    this.ballChunk.set(id, chunk);
+    this.emitSceneEvent<BallChangedChunkEvent>("ballChangedChunk", { chunk });
   }
 }

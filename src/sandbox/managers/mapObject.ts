@@ -1,8 +1,8 @@
 import { LoadedMap } from "@/backend/IPC/streaming";
 import Grid from "@/core/axiom/grid";
 import Vec2 from "@/core/axiom/vec2";
-import { BLOCK_NAMES } from "@/sandbox/data";
 import { assert } from "@/utils/utils";
+import EntitiesObject, { BlocksID } from "./entitiesObject";
 
 export interface TileHit {
   rect: Rect;
@@ -11,21 +11,24 @@ export interface TileHit {
   type: number;
 }
 
+/** warstwy rysowalne, per blok */
 export enum LAYER {
   background,
   decoBack,
   solid,
   decoFront,
 }
+
 export const MAX_DAMAGE = 65535;
 const SKY_MARGIN = 300;
-const AIR = BLOCK_NAMES.indexOf("air");
-const OUT_OF_BOUNDS = BLOCK_NAMES.indexOf("bedrock");
 const MAX_RAYCAST_TILES = 64;
 
 export default class MapObject {
   declare private static layers: Uint16Array[];
   declare private static damage: Uint16Array;
+  declare private static discovered: Uint8Array;
+  declare private static biome: Uint8Array;
+
   declare private static mapConfig: LoadedMap["header"];
   declare private static chunkVersions: Uint32Array;
   declare private static origin: Position2D;
@@ -43,26 +46,28 @@ export default class MapObject {
 
   public static async loadMap(path: string) {
     const data = await window.API.STREAMING.loadMapFromFile(path);
-    const { mapInChunks, totalBlocks, offsets } = data.header;
+    const { totalBlocks, totalChunks, offsets, start } = data.header;
     const bytes = data.data;
 
-    const view = (offset: number) =>
+    const blocks = (offset: number) =>
       new Uint16Array(bytes.buffer, bytes.byteOffset + offset, totalBlocks);
+    const chunks = (offset: number) =>
+      new Uint8Array(bytes.buffer, bytes.byteOffset + offset, totalChunks);
 
     this.mapConfig = data.header;
-    this.origin = data.header.start;
+    this.origin = start;
 
     this.layers = [
-      view(offsets.background),
-      view(offsets.decoBack),
-      view(offsets.solidType),
-      view(offsets.decoFront),
+      blocks(offsets.background),
+      blocks(offsets.decoBack),
+      blocks(offsets.solidType),
+      blocks(offsets.decoFront),
     ];
-    this.damage = view(offsets.solidDamage);
+    this.damage = blocks(offsets.solidDamage);
+    this.discovered = chunks(offsets.discovered);
+    this.biome = chunks(offsets.biome);
 
-    this.chunkVersions = new Uint32Array(
-      mapInChunks.width * mapInChunks.height,
-    );
+    this.chunkVersions = new Uint32Array(totalChunks);
 
     console.log("loaded map", data.header);
   }
@@ -70,6 +75,8 @@ export default class MapObject {
   public static get mapMeta() {
     return this.mapConfig;
   }
+
+  // ============ KONWERSJE ============
 
   public static worldToTile(pos: Position2D): Position2D {
     const { tileInPixels } = this.mapConfig;
@@ -114,6 +121,9 @@ export default class MapObject {
     };
   }
 
+  // ============ ADRESOWANIE ============
+
+  /** indeks elementu w sekcji per-blok, -1 poza mapą */
   private static tileIndex(gx: number, gy: number) {
     const { chunkInTiles, mapInTiles, mapInChunks, blocksPerChunk } =
       this.mapConfig;
@@ -123,12 +133,11 @@ export default class MapObject {
 
     const cx = Math.floor(gx / chunkInTiles.width);
     const cy = Math.floor(gy / chunkInTiles.height);
-    const chunkIndex = cy * mapInChunks.width + cx;
     const localIndex =
       (gy - cy * chunkInTiles.height) * chunkInTiles.width +
       (gx - cx * chunkInTiles.width);
 
-    return chunkIndex * blocksPerChunk + localIndex;
+    return (cy * mapInChunks.width + cx) * blocksPerChunk + localIndex;
   }
 
   public static chunkIndexOfTile(gx: number, gy: number) {
@@ -139,9 +148,12 @@ export default class MapObject {
     );
   }
 
+  // ============ ODCZYT PER BLOK ============
+
   public static getTileType(gx: number, gy: number, layer = LAYER.solid) {
     const index = this.tileIndex(gx, gy);
-    if (index === -1) return layer === LAYER.solid ? OUT_OF_BOUNDS : AIR;
+    if (index === -1)
+      return layer === LAYER.solid ? BlocksID.bedrock : BlocksID.air;
     return this.layers[layer][index];
   }
 
@@ -156,16 +168,28 @@ export default class MapObject {
     const start = chunkIndex * blocksPerChunk;
     return this.layers[layer].subarray(start, start + blocksPerChunk);
   }
-
+  //THIS IS WINDOW FOR DATA - DO NOT COPY IT - ALWAYS WORK ON WINDOW
   public static getChunkDamage(chunkIndex: number) {
     const { blocksPerChunk } = this.mapConfig;
     const start = chunkIndex * blocksPerChunk;
     return this.damage.subarray(start, start + blocksPerChunk);
   }
 
+  // ============ ODCZYT PER CHUNK ============
+
+  public static isDiscovered(chunkIndex: number) {
+    return this.discovered[chunkIndex] === 1;
+  }
+
+  public static getBiome(chunkIndex: number) {
+    return this.biome[chunkIndex];
+  }
+
   public static getChunkVersion(chunkIndex: number) {
     return this.chunkVersions[chunkIndex];
   }
+
+  // ============ ZAPIS ============
 
   public static setTile(gx: number, gy: number, type: number, damage: number) {
     const index = this.tileIndex(gx, gy);
@@ -175,6 +199,13 @@ export default class MapObject {
     this.damage[index] = damage;
     this.chunkVersions[this.chunkIndexOfTile(gx, gy)]++;
   }
+
+  public static setDiscovered(chunkIndex: number) {
+    if (chunkIndex < 0 || chunkIndex >= this.discovered.length) return;
+    this.discovered[chunkIndex] = 1;
+  }
+
+  // ============ FIZYKA ============
 
   public static getTilesForRaycast(
     rayOrigin: Position2D,
@@ -200,7 +231,8 @@ export default class MapObject {
     for (let gy = min.y; gy <= max.y; gy++) {
       for (let gx = min.x; gx <= max.x; gx++) {
         const type = this.getTileType(gx, gy);
-        if (type === AIR) continue;
+        if (!EntitiesObject.getBlock(type).solid) continue;
+
         assert(
           this.result.length < MAX_RAYCAST_TILES,
           `raycast pool overflow (${MAX_RAYCAST_TILES}) — kulka za szybka albo za duża`,

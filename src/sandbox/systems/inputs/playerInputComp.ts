@@ -7,6 +7,7 @@ import PragmaComponent from "@/core/pragma/component";
 import Dwarf from "@/sandbox/bActors/dwarf";
 import { ACTION } from "@/sandbox/inputActions";
 import CameraObject from "@/sandbox/managers/cameraObject";
+import EntitiesObject from "@/sandbox/managers/entitiesObject";
 export default class PlayerInputsComponent extends PragmaComponent {
   private mouseLocked: boolean = false;
   private mousePos: Position2D = { x: 0, y: 0 };
@@ -37,11 +38,13 @@ export default class PlayerInputsComponent extends PragmaComponent {
     const dragDistance = delta.length();
     const direction = delta.clone().normalize();
     const speed = AxiomMath.clamp(dragDistance, 500, 3500);
+    const dwarfID = EntitiesObject.getRandomDwarfID();
     this.scene.spawnActor(
       new Dwarf({
         position: this.mousePos,
         launchSpeed: speed,
         velocity: direction,
+        dwarfID,
       }),
     );
     this.mouseLocked = false;

@@ -10,7 +10,8 @@
     "make"   :"electron-forge make",
     "publish":"electron-forge publish",
     "lint"   :"eslint --ext .ts,.tsx .",
-    "preview":"electron-forge make && set ELECTRON_PREVIEW=true && electron ."
+    "preview":"electron-forge make && set ELECTRON_PREVIEW=true && electron .",
+    "genmap" :"node --experimental-transform-types scripts/generateMap.ts"
   },
   "keywords"       :[],
   "author"         :{"name":"Pavel","email":"tolethrien@gmail.com"},

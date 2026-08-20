@@ -13,6 +13,7 @@ type MapHeader = {
   mapInChunks: Size2D;
   blocksPerChunk: number;
   totalBlocks: number;
+  totalChunks: number;
   offsets: SectionOffsets;
   mapSizeInMB: number;
 };
@@ -59,7 +60,8 @@ function parseHeader(buffer: Buffer): MapHeader {
   };
 
   const blocksPerChunk = chunkInTiles.width * chunkInTiles.height;
-  const totalBlocks = blocksPerChunk * mapInChunks.width * mapInChunks.height;
+  const totalChunks = mapInChunks.width * mapInChunks.height;
+  const totalBlocks = blocksPerChunk * totalChunks;
 
   return {
     start,
@@ -71,7 +73,8 @@ function parseHeader(buffer: Buffer): MapHeader {
     mapInChunks,
     blocksPerChunk,
     totalBlocks,
-    offsets: sectionOffsets(totalBlocks),
+    totalChunks,
+    offsets: sectionOffsets(totalBlocks, totalChunks),
     mapSizeInMB: (buffer.length - HEADER_SIZE) / (1024 * 1024),
   };
 }

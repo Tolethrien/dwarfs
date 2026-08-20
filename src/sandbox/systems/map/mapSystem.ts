@@ -1,9 +1,11 @@
 import PragmaActor from "@/core/pragma/actor";
-import MapComponent from "./mapComponent";
+import mapDirector from "./mapDirector";
+import MapDiscovery from "./mapDiscovery";
 
 export default class MapSystem extends PragmaActor {
   constructor() {
     super();
-    this.addComponent(MapComponent);
+    this.addComponent(mapDirector);
+    this.addComponent(MapDiscovery);
   }
 }
