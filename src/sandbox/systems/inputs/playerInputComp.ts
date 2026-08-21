@@ -5,6 +5,7 @@ import Vec2 from "@/core/axiom/vec2";
 import InputManager from "@/core/engine/inputManager";
 import PragmaComponent from "@/core/pragma/component";
 import Dwarf from "@/sandbox/bActors/dwarf";
+import Spark from "@/sandbox/bActors/spark";
 import { ACTION } from "@/sandbox/inputActions";
 import CameraObject from "@/sandbox/managers/cameraObject";
 import EntitiesObject from "@/sandbox/managers/entitiesObject";

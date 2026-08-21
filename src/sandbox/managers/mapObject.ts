@@ -10,8 +10,7 @@ export interface TileHit {
   gy: number;
   type: number;
 }
-
-/** warstwy rysowalne, per blok */
+//map layers
 export enum LAYER {
   background,
   decoBack,
@@ -76,8 +75,6 @@ export default class MapObject {
     return this.mapConfig;
   }
 
-  // ============ KONWERSJE ============
-
   public static worldToTile(pos: Position2D): Position2D {
     const { tileInPixels } = this.mapConfig;
     return {
@@ -121,9 +118,6 @@ export default class MapObject {
     };
   }
 
-  // ============ ADRESOWANIE ============
-
-  /** indeks elementu w sekcji per-blok, -1 poza mapą */
   private static tileIndex(gx: number, gy: number) {
     const { chunkInTiles, mapInTiles, mapInChunks, blocksPerChunk } =
       this.mapConfig;
@@ -147,8 +141,6 @@ export default class MapObject {
       Math.floor(gx / chunkInTiles.width)
     );
   }
-
-  // ============ ODCZYT PER BLOK ============
 
   public static getTileType(gx: number, gy: number, layer = LAYER.solid) {
     const index = this.tileIndex(gx, gy);
@@ -175,8 +167,6 @@ export default class MapObject {
     return this.damage.subarray(start, start + blocksPerChunk);
   }
 
-  // ============ ODCZYT PER CHUNK ============
-
   public static isDiscovered(chunkIndex: number) {
     return this.discovered[chunkIndex] === 1;
   }
@@ -188,8 +178,6 @@ export default class MapObject {
   public static getChunkVersion(chunkIndex: number) {
     return this.chunkVersions[chunkIndex];
   }
-
-  // ============ ZAPIS ============
 
   public static setTile(gx: number, gy: number, type: number, damage: number) {
     const index = this.tileIndex(gx, gy);
@@ -204,8 +192,6 @@ export default class MapObject {
     if (chunkIndex < 0 || chunkIndex >= this.discovered.length) return;
     this.discovered[chunkIndex] = 1;
   }
-
-  // ============ FIZYKA ============
 
   public static getTilesForRaycast(
     rayOrigin: Position2D,
@@ -235,7 +221,7 @@ export default class MapObject {
 
         assert(
           this.result.length < MAX_RAYCAST_TILES,
-          `raycast pool overflow (${MAX_RAYCAST_TILES}) — kulka za szybka albo za duża`,
+          `raycast pool overflow (${MAX_RAYCAST_TILES}) — ball too big or too fast`,
         );
 
         const hit = this.hitPool[this.result.length];

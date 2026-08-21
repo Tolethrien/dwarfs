@@ -1,6 +1,7 @@
 import Grid from "@/core/axiom/grid";
 import PragmaComponent from "@/core/pragma/component";
 import Chunk from "@/sandbox/bActors/chunk";
+import Spark from "@/sandbox/bActors/spark";
 import CameraObject from "@/sandbox/managers/cameraObject";
 import EntitiesObject, { BlocksID } from "@/sandbox/managers/entitiesObject";
 import MapObject, { MAX_DAMAGE } from "@/sandbox/managers/mapObject";
@@ -21,7 +22,7 @@ export interface TileDamagedEvent {
   damage: number;
 }
 const MARGIN = 1; //viewbox margin
-
+const SHOW_ALL_CHUNKS = true;
 export default class mapDirector extends PragmaComponent {
   private pool: Chunk[] = [];
   private loadedChunks: Map<number, Chunk> = new Map();
@@ -75,7 +76,7 @@ export default class mapDirector extends PragmaComponent {
     for (let cy = range.minY; cy <= range.maxY; cy++) {
       for (let cx = range.minX; cx <= range.maxX; cx++) {
         const index = Grid.tileToIndex({ x: cx, y: cy }, mapWidth);
-        if (!MapObject.isDiscovered(index)) continue;
+        if (!SHOW_ALL_CHUNKS && !MapObject.isDiscovered(index)) continue;
         wanted.add(index);
       }
     }
@@ -135,8 +136,9 @@ export default class mapDirector extends PragmaComponent {
     MapObject.setTile(gx, gy, type, damage);
 
     if (this.loadedChunks.has(MapObject.chunkIndexOfTile(gx, gy))) {
-      // const world = MapObject.tileCenterToWorld({ x: gx, y: gy });
-      //spawn sparks
+      const world = MapObject.tileCenterToWorld({ x: gx, y: gy });
+      const spark = new Spark({ position: world });
+      this.scene.spawnActor(spark); // nowy komponent na animacje mapy bo nie ma sensu spawnowac ich jak nie widac tego!
     }
 
     this.emitSceneEvent<TileDamagedEvent>("tileDamaged", {

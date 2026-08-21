@@ -17,6 +17,7 @@ export default class Dwarf extends PragmaActor {
     this.tags.add("dwarf");
     this.tags.add("friendly");
     const data = EntitiesObject.dwarfs[props.dwarfID];
+    // console.log("Dwarf", DwarfsID[props.dwarfID], "stats:", data);
     this.addComponent(Physics, {
       type: "rigid",
       velocity: props.velocity.scale(props.launchSpeed),

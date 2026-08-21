@@ -34,8 +34,11 @@ export default class Sprite extends PragmaComponent {
   }
   render(): void {
     const pos = this.transform.getRenderPosition();
-    const x = pos.x - this.crop.width / 2;
-    const y = pos.y - this.crop.height / 2;
+    const scale = this.transform.getScale();
+    const width = this.crop.width * scale.x;
+    const height = this.crop.height * scale.y;
+    const x = pos.x - width / 2;
+    const y = pos.y - height / 2;
 
     const view = CameraObject.getViewBox();
     if (
@@ -45,15 +48,27 @@ export default class Sprite extends PragmaComponent {
       y > view.y + view.h + CULL_MARGIN
     )
       return;
+
     Draw.sprite({
       position: {
-        x: pos.x - this.crop.width / 2,
-        y: pos.y - this.crop.height / 2,
+        x: x,
+        y: y,
         z: this.zIndex,
       },
       crop: this.crop,
-      size: { height: this.crop.height, width: this.crop.width },
+      size: { height: height, width: width },
       textureToUse: this.sprite,
+      tint: this.tint,
+    });
+    Draw.pointLight({
+      position: {
+        x: x,
+        y: y,
+        z: 1,
+      },
+      size: { height: 2000, width: 2000 },
+      intensity: 150,
+      tint: [255, 176, 64],
     });
   }
 }

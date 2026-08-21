@@ -9,10 +9,26 @@ export enum DwarfsID {
   driller,
   scout,
 }
+export enum BackgroundsID {
+  none,
+  someOne,
+  someTwo,
+}
 export enum BlocksID {
   air,
-  rock,
-  bedrock,
+  bonesOne,
+  bonesTwo,
+  rocksBrown,
+  rocksGray,
+  obsidian,
+  rocksDarkGray,
+  rocksLightGray,
+  rocksLightBrown,
+  gold,
+  diamonds,
+  silver,
+  sapphire,
+  copper,
   coal,
 }
 
@@ -20,6 +36,16 @@ export enum DecosID {
   none,
   flower,
   mushroom,
+}
+export enum BasesID {
+  none,
+  blacksmith,
+  school,
+  inn,
+}
+export enum AnimsID {
+  none,
+  sparks,
 }
 interface DwarfData {
   baseSpeed: number;
@@ -36,6 +62,18 @@ interface BlockData {
 interface DecoData {
   crop: Crop;
 }
+interface BaseData {
+  crop: Crop;
+}
+interface BackgroundData {
+  crop: Crop;
+}
+interface AnimData {
+  crop: Crop; // of 1 frame
+  frames: number;
+  fps: number;
+  texture: string;
+}
 export default class EntitiesObject {
   public static renderOrder = {
     bg: 0,
@@ -45,43 +83,50 @@ export default class EntitiesObject {
     overlay: 0.8,
     debug: 1,
   };
-  public static sprites = { dwarfs: "chars", blocks: "stones", deco: "decor" };
+  public static sprites = {
+    dwarfs: "chars",
+    blocks: "stones",
+    deco: "decor",
+    base: "base",
+    bg: "bg",
+    anims: "anims",
+  };
   public static dwarfs: Record<DwarfsID, DwarfData> = {
     [DwarfsID.intern]: {
       baseDmg: 10,
       baseSpeed: 400,
       bpm: 5,
-      crop: { x: 0, y: 0, width: 110, height: 110 },
+      crop: { x: 110, y: 0, width: 110, height: 110 },
     },
     [DwarfsID.miner]: {
-      baseDmg: 10,
+      baseDmg: 50,
       baseSpeed: 400,
       bpm: 5,
       crop: { x: 0, y: 0, width: 110, height: 110 },
     },
     [DwarfsID.carrier]: {
-      baseDmg: 10,
+      baseDmg: 5,
       baseSpeed: 400,
       bpm: 5,
-      crop: { x: 0, y: 0, width: 110, height: 110 },
+      crop: { x: 330, y: 0, width: 110, height: 110 },
     },
     [DwarfsID.pyro]: {
-      baseDmg: 10,
+      baseDmg: 75,
       baseSpeed: 400,
       bpm: 5,
-      crop: { x: 0, y: 0, width: 110, height: 110 },
+      crop: { x: 770, y: 0, width: 110, height: 110 },
     },
     [DwarfsID.driller]: {
-      baseDmg: 10,
+      baseDmg: 999,
       baseSpeed: 400,
       bpm: 5,
-      crop: { x: 0, y: 0, width: 110, height: 110 },
+      crop: { x: 660, y: 0, width: 110, height: 110 },
     },
     [DwarfsID.scout]: {
-      baseDmg: 10,
+      baseDmg: 5,
       baseSpeed: 400,
       bpm: 5,
-      crop: { x: 0, y: 0, width: 110, height: 110 },
+      crop: { x: 440, y: 0, width: 110, height: 110 },
     },
   };
   public static blocks: Record<BlocksID, BlockData> = {
@@ -91,21 +136,88 @@ export default class EntitiesObject {
       solid: false,
       category: "terrain",
     },
-    [BlocksID.rock]: {
+    [BlocksID.bonesOne]: {
       crop: { x: 0, y: 0, width: 96, height: 96 },
+      str: 15,
+      solid: true,
+      category: "terrain",
+    },
+    [BlocksID.bonesTwo]: {
+      crop: { x: 96, y: 0, width: 96, height: 96 },
+      str: 15,
+      solid: true,
+      category: "terrain",
+    },
+    [BlocksID.rocksBrown]: {
+      crop: { x: 192, y: 0, width: 96, height: 96 },
       str: 8,
       solid: true,
       category: "terrain",
     },
-    [BlocksID.bedrock]: {
-      crop: { x: 0, y: 96, width: 96, height: 96 },
+    [BlocksID.rocksGray]: {
+      crop: { x: 288, y: 0, width: 96, height: 96 },
+      str: 8,
+      solid: true,
+      category: "terrain",
+    },
+    [BlocksID.obsidian]: {
+      crop: { x: 384, y: 0, width: 96, height: 96 },
       str: 9999,
       solid: true,
       category: "terrain",
     },
-    [BlocksID.coal]: {
+    [BlocksID.rocksDarkGray]: {
+      crop: { x: 480, y: 0, width: 96, height: 96 },
+      str: 8,
+      solid: true,
+      category: "terrain",
+    },
+
+    [BlocksID.rocksLightGray]: {
+      crop: { x: 0, y: 96, width: 96, height: 96 },
+      str: 8,
+      solid: true,
+      category: "terrain",
+    },
+    [BlocksID.rocksLightBrown]: {
       crop: { x: 96, y: 96, width: 96, height: 96 },
+      str: 8,
+      solid: true,
+      category: "terrain",
+    },
+    [BlocksID.gold]: {
+      crop: { x: 192, y: 96, width: 96, height: 96 },
+      str: 20,
+      solid: true,
+      category: "terrain",
+    },
+    [BlocksID.diamonds]: {
+      crop: { x: 288, y: 96, width: 96, height: 96 },
+      str: 30,
+      solid: true,
+      category: "terrain",
+    },
+    [BlocksID.silver]: {
+      crop: { x: 384, y: 96, width: 96, height: 96 },
       str: 12,
+      solid: true,
+      category: "terrain",
+    },
+    [BlocksID.sapphire]: {
+      crop: { x: 480, y: 96, width: 96, height: 96 },
+      str: 20,
+      solid: true,
+      category: "terrain",
+    },
+    [BlocksID.copper]: {
+      crop: { x: 0, y: 192, width: 96, height: 96 },
+      str: 5,
+      solid: true,
+      category: "terrain",
+    },
+    [BlocksID.coal]: {
+      crop: { x: 96, y: 192, width: 96, height: 96 },
+      str: 10,
       solid: true,
       category: "terrain",
     },
@@ -121,6 +233,45 @@ export default class EntitiesObject {
       crop: { x: 0, y: 0, width: 0, height: 0 },
     },
   };
+  public static bases: Record<BasesID, BaseData> = {
+    [BasesID.none]: {
+      crop: { x: 0, y: 0, width: 0, height: 0 },
+    },
+    [BasesID.blacksmith]: {
+      crop: { x: 1, y: 1, width: 657, height: 427 },
+    },
+    [BasesID.school]: {
+      crop: { x: 0, y: 431, width: 577, height: 464 },
+    },
+    [BasesID.inn]: {
+      crop: { x: 2, y: 901, width: 705, height: 410 },
+    },
+  };
+  public static backgrounds: Record<BackgroundsID, BackgroundData> = {
+    [BackgroundsID.none]: {
+      crop: { x: 0, y: 0, width: 0, height: 0 },
+    },
+    [BackgroundsID.someOne]: {
+      crop: { x: 0, y: 0, width: 96, height: 96 },
+    },
+    [BackgroundsID.someTwo]: {
+      crop: { x: 96, y: 0, width: 96, height: 96 },
+    },
+  };
+  public static animations: Record<AnimsID, AnimData> = {
+    [AnimsID.none]: {
+      crop: { x: 0, y: 0, width: 0, height: 0 },
+      fps: 0,
+      frames: 0,
+      texture: this.sprites.base,
+    },
+    [AnimsID.sparks]: {
+      crop: { x: 0, y: 0, width: 94, height: 79 },
+      fps: 30,
+      frames: 8,
+      texture: this.sprites.anims,
+    },
+  };
 
   public static getBlock(ID: number): BlockData {
     return this.blocks[ID as BlocksID];
@@ -129,7 +280,7 @@ export default class EntitiesObject {
     return this.dwarfs[ID as DwarfsID];
   }
   public static getRandomDwarfID(): DwarfsID {
-    const size = Object.keys(EntitiesObject.blocks).length;
+    const size = Object.keys(EntitiesObject.dwarfs).length;
     return AxiomMath.randomInt(0, size - 1) as DwarfsID;
   }
 }

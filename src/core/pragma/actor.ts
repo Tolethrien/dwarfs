@@ -2,7 +2,7 @@ import { assert } from "@/utils/utils";
 import PragmaComponent from "./component";
 import Transform from "@/sandbox/components/transform";
 import PragmaScene from "./scene";
-import { EnginePhase, ITERATED_PHASES } from "./pragma";
+import Pragma, { EnginePhase, ITERATED_PHASES } from "./pragma";
 import { EventBus } from "./eventManager";
 
 export default abstract class PragmaActor {
@@ -140,5 +140,8 @@ export default abstract class PragmaActor {
       const set = this.scene.actorsWithPhase[phase];
       this.phaseRegistrator[phase].size > 0 ? set.add(this) : set.delete(this);
     }
+  }
+  public selfDestroy() {
+    this.scene.deleteActor(this);
   }
 }

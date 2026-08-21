@@ -4,6 +4,8 @@ import Engine from "@/core/engine/engine";
 import Pragma from "@/core/pragma/pragma";
 import chars from "@sandbox/assets/chars.png";
 import stones from "@sandbox/assets/stones.png";
+import bg from "@sandbox/assets/bg.png";
+import anims from "@sandbox/assets/anims.png";
 import PhysBall from "./systems/physics/physBall";
 import PlayerInputs from "./systems/inputs/playerInput";
 import MapSystem from "./systems/map/mapSystem";
@@ -17,6 +19,8 @@ async function preload() {
     userTextures: [
       { name: "chars", url: chars },
       { name: "stones", url: stones },
+      { name: "bg", url: bg },
+      { name: "anims", url: anims },
     ],
     userFonts: [],
     feature: {
@@ -38,6 +42,7 @@ async function preload() {
 }
 function setup() {
   registerInputsBindings();
+  Renderer.setGlobalIllumination([25, 25, 80]);
   const world = Pragma.addScene("testSetup");
   world.spawnActor(new PhysBall());
   world.spawnActor(new PlayerInputs());

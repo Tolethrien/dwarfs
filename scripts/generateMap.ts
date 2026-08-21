@@ -10,7 +10,12 @@ import {
   BG_SHADES,
   type SectionName,
 } from "../src/mapFormat.ts";
-import { BlocksID, DecosID } from "../src/sandbox/managers/entitiesObject.ts";
+import {
+  BlocksID,
+  DecosID,
+  BackgroundsID,
+} from "../src/sandbox/managers/entitiesObject.ts";
+
 interface MapGenConfig {
   tileSize: Size2D; // px
   chunkSize: Size2D; // tile'i
@@ -25,15 +30,83 @@ const CONFIG: MapGenConfig = {
   start: { x: 0, y: 0 },
 };
 
-/** bedrock jest wyłącznie ramką, nie losowym terenem */
-const TERRAIN = [BlocksID.air, BlocksID.rock, BlocksID.coal];
-const BORDER = BlocksID.bedrock;
-
+const BORDER = BlocksID.obsidian;
 const START_CHUNK = 3; // jedyny odkryty na starcie
 const DECO_BACK_CHANCE = 0.02;
 const DECO_FRONT_CHANCE = 0.01;
 const CHUNKS_PER_BIOME = 3; // biomy jako pasma głębokości
 
+/** górna połowa mapy — brązy, dolna — szarości, losowo w obrębie połowy */
+const ROCKS_TOP = [BlocksID.rocksLightBrown, BlocksID.rocksBrown];
+const ROCKS_BOTTOM = [
+  BlocksID.rocksGray,
+  BlocksID.rocksDarkGray,
+  BlocksID.rocksLightGray,
+];
+
+/** drobne ubytki w skale, żeby nie było zbitej ściany */
+const AIR_CHANCE = 0.12;
+
+/** szyb startowy — środkiem chunka, w dół na całą jego wysokość */
+const START_TUNNEL_WIDTH = 3; // przy 2 kafelkach kulka o średnicy 110 px ledwo się mieści
+
+/** jaskinie — puste plamy w skale */
+const CAVES = { count: 90, radius: [2, 6] as const };
+
+/**
+ * Złoża. `depth` to zakres głębokości 0–1, więc diamenty siedzą nisko,
+ * a węgiel wysoko. `count` i `radius` sterują rzadkością i wielkością plamy.
+ */
+const VEINS = [
+  {
+    type: BlocksID.coal,
+    count: 140,
+    radius: [2, 5] as const,
+    depth: [0.0, 0.6] as const,
+  },
+  {
+    type: BlocksID.bonesOne,
+    count: 50,
+    radius: [2, 4] as const,
+    depth: [0.1, 0.7] as const,
+  },
+  {
+    type: BlocksID.bonesTwo,
+    count: 40,
+    radius: [2, 4] as const,
+    depth: [0.2, 0.8] as const,
+  },
+  {
+    type: BlocksID.silver,
+    count: 60,
+    radius: [2, 4] as const,
+    depth: [0.3, 0.9] as const,
+  },
+  {
+    type: BlocksID.gold,
+    count: 35,
+    radius: [1, 3] as const,
+    depth: [0.5, 1.0] as const,
+  },
+  {
+    type: BlocksID.sapphire,
+    count: 22,
+    radius: [1, 3] as const,
+    depth: [0.6, 1.0] as const,
+  },
+  {
+    type: BlocksID.diamonds,
+    count: 12,
+    radius: [1, 2] as const,
+    depth: [0.8, 1.0] as const,
+  },
+];
+
+const randInt = (min: number, max: number) =>
+  min + Math.floor(Math.random() * (max - min + 1));
+const BG_TYPES = Object.values(BackgroundsID).filter(
+  (v) => typeof v === "number" && v !== BackgroundsID.none,
+) as BackgroundsID[];
 function generateMap(config: MapGenConfig, outPaths: string[]): void {
   const { tileSize, chunkSize, mapSize, start } = config;
 
@@ -48,6 +121,41 @@ function generateMap(config: MapGenConfig, outPaths: string[]): void {
 
   const at = (section: SectionName, index: number, bytes: number) =>
     HEADER_SIZE + offsets[section] + index * bytes;
+
+  /** globalne (gx,gy) -> indeks bloku w układzie chunk-major */
+  const blockIndex = (gx: number, gy: number) => {
+    const cx = Math.floor(gx / chunkSize.width);
+    const cy = Math.floor(gy / chunkSize.height);
+    const local =
+      (gy - cy * chunkSize.height) * chunkSize.width +
+      (gx - cx * chunkSize.width);
+    return (cy * mapSize.width + cx) * blocksPerChunk + local;
+  };
+
+  const setSolid = (gx: number, gy: number, type: BlocksID) => {
+    if (gx < 0 || gy < 0 || gx >= mapTilesW || gy >= mapTilesH) return;
+    buffer.writeUInt16LE(type, at("solidType", blockIndex(gx, gy), 2));
+  };
+
+  const pick = <T>(arr: readonly T[]) =>
+    arr[Math.floor(Math.random() * arr.length)];
+
+  /** plama o nierównej krawędzi — stąd „złoża", a nie kwadraty */
+  const blob = (
+    cx: number,
+    cy: number,
+    rx: number,
+    ry: number,
+    type: BlocksID,
+  ) => {
+    for (let dy = -ry; dy <= ry; dy++) {
+      for (let dx = -rx; dx <= rx; dx++) {
+        const d = (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry);
+        if (d <= 1 + (Math.random() - 0.5) * 0.7)
+          setSolid(cx + dx, cy + dy, type);
+      }
+    }
+  };
 
   // ---- nagłówek ----
   buffer.writeInt32LE(start.x, 0);
@@ -72,40 +180,76 @@ function generateMap(config: MapGenConfig, outPaths: string[]): void {
     );
   }
 
-  // ---- sekcje per blok ----
-  for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
-    const chunkX = chunkIndex % mapSize.width;
-    const chunkY = Math.floor(chunkIndex / mapSize.width);
-    // inny odcień na każdy chunk — od razu widać granice chunków
-    const bgShade = (chunkIndex % BG_SHADES) + 1;
+  // ---- skała + tło + dekoracje ----
+  const half = mapTilesH / 2;
+  for (let gy = 0; gy < mapTilesH; gy++) {
+    const rocks = gy < half ? ROCKS_TOP : ROCKS_BOTTOM;
 
-    for (let ly = 0; ly < chunkSize.height; ly++) {
-      for (let lx = 0; lx < chunkSize.width; lx++) {
-        const gx = chunkX * chunkSize.width + lx;
-        const gy = chunkY * chunkSize.height + ly;
-        const index = chunkIndex * blocksPerChunk + ly * chunkSize.width + lx;
+    for (let gx = 0; gx < mapTilesW; gx++) {
+      const index = blockIndex(gx, gy);
 
-        const isBorder =
-          gx === 0 || gy === 0 || gx === mapTilesW - 1 || gy === mapTilesH - 1;
+      buffer.writeUInt16LE(pick(BG_TYPES), at("background", index, 2));
+      buffer.writeUInt16LE(
+        Math.random() < AIR_CHANCE ? BlocksID.air : pick(rocks),
+        at("solidType", index, 2),
+      );
+      // solidDamage zostaje 0 — Buffer.alloc wyzerował
 
-        buffer.writeUInt16LE(bgShade, at("background", index, 2));
-        buffer.writeUInt16LE(
-          isBorder
-            ? BORDER
-            : TERRAIN[Math.floor(Math.random() * TERRAIN.length)],
-          at("solidType", index, 2),
-        );
-        // solidDamage zostaje 0 — Buffer.alloc wyzerował
-
-        // 0 = brak dekoracji
-        if (Math.random() < DECO_BACK_CHANCE)
-          buffer.writeUInt16LE(DecosID.flower, at("decoBack", index, 2));
-        if (Math.random() < DECO_FRONT_CHANCE)
-          buffer.writeUInt16LE(DecosID.flower, at("decoFront", index, 2));
-      }
+      if (Math.random() < DECO_BACK_CHANCE)
+        buffer.writeUInt16LE(DecosID.flower, at("decoBack", index, 2));
+      if (Math.random() < DECO_FRONT_CHANCE)
+        buffer.writeUInt16LE(DecosID.flower, at("decoFront", index, 2));
     }
   }
 
+  // ---- jaskinie ----
+  for (let i = 0; i < CAVES.count; i++) {
+    blob(
+      randInt(0, mapTilesW - 1),
+      randInt(0, mapTilesH - 1),
+      randInt(CAVES.radius[0], CAVES.radius[1]),
+      randInt(CAVES.radius[0], CAVES.radius[1]),
+      BlocksID.air,
+    );
+  }
+
+  // ---- złoża ----
+  for (const vein of VEINS) {
+    const minY = Math.floor(vein.depth[0] * mapTilesH);
+    const maxY = Math.floor(vein.depth[1] * mapTilesH) - 1;
+
+    for (let i = 0; i < vein.count; i++) {
+      blob(
+        randInt(0, mapTilesW - 1),
+        randInt(minY, maxY),
+        randInt(vein.radius[0], vein.radius[1]),
+        randInt(vein.radius[0], vein.radius[1]),
+        vein.type,
+      );
+    }
+  }
+
+  // ---- szyb startowy, po złożach żeby nic go nie zasypało ----
+  const tcx = START_CHUNK % mapSize.width;
+  const tcy = Math.floor(START_CHUNK / mapSize.width);
+  const tunnelX = tcx * chunkSize.width + Math.floor(chunkSize.width / 2);
+  const tunnelHalf = Math.floor(START_TUNNEL_WIDTH / 2);
+
+  for (let gy = tcy * chunkSize.height; gy < (tcy + 1) * chunkSize.height; gy++)
+    for (let dx = -tunnelHalf; dx <= tunnelHalf; dx++)
+      setSolid(tunnelX + dx, gy, BlocksID.air);
+
+  // ---- ramka na końcu, żeby nic jej nie nadpisało ----
+  for (let gx = 0; gx < mapTilesW; gx++) {
+    setSolid(gx, 0, BORDER);
+    setSolid(gx, mapTilesH - 1, BORDER);
+  }
+  for (let gy = 0; gy < mapTilesH; gy++) {
+    setSolid(0, gy, BORDER);
+    setSolid(mapTilesW - 1, gy, BORDER);
+  }
+
+  // ---- zapis ----
   for (const out of outPaths) {
     fs.mkdirSync(path.dirname(out), { recursive: true });
     fs.writeFileSync(out, buffer);
@@ -117,11 +261,15 @@ function generateMap(config: MapGenConfig, outPaths: string[]): void {
   );
   console.log(`  rozmiar: ${(buffer.length / 1024 / 1024).toFixed(2)} MB`);
   console.log(`  odkryty na starcie: chunk ${START_CHUNK}`);
+  console.log(
+    `  szyb startowy: kolumna ${tunnelX}, szerokość ${START_TUNNEL_WIDTH}`,
+  );
   for (const section of SECTIONS)
     console.log(
       `    ${section.name.padEnd(12)} @ ${offsets[section.name]} (u${section.bytes * 8}, per ${section.per})`,
     );
 }
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
 
