@@ -4,6 +4,8 @@ import Engine from "@/core/engine/engine";
 import Pragma from "@/core/pragma/pragma";
 import chars from "@sandbox/assets/chars.png";
 import stones from "@sandbox/assets/stones.png";
+import blockDamage from "@sandbox/assets/blockDamage.mp3";
+import mineAmbient from "@sandbox/assets/mineAmbient1.mp3";
 import bg from "@sandbox/assets/bg.png";
 import anims from "@sandbox/assets/anims.png";
 import PhysBall from "./systems/physics/physBall";
@@ -13,6 +15,8 @@ import MapObject from "./managers/mapObject";
 import CameraActor from "./systems/camera/cameraActor";
 import CameraObject from "./managers/cameraObject";
 import { registerInputsBindings } from "./inputActions";
+import Cello from "@/core/cello/cello";
+import SoundBank, { SoundsID } from "./managers/soundbank";
 
 async function preload() {
   const aurora = auroraConfig({
@@ -39,10 +43,21 @@ async function preload() {
   });
   await Renderer.initialize(aurora);
   await MapObject.loadMap("test.dwb");
+
+  await Cello.initialize({
+    preloadSounds: [
+      { name: "blockDamage", url: blockDamage },
+      { name: "mineAmbient", url: mineAmbient },
+    ],
+    masterVolume: 1,
+  });
 }
 function setup() {
   registerInputsBindings();
-  Renderer.setGlobalIllumination([25, 25, 80]);
+  Object.entries(SoundBank.categories).forEach(([name, volume]) =>
+    Cello.addCategory(name, volume),
+  );
+  // Renderer.setGlobalIllumination([25, 25, 80]);
   const world = Pragma.addScene("testSetup");
   world.spawnActor(new PhysBall());
   world.spawnActor(new PlayerInputs());
@@ -50,5 +65,6 @@ function setup() {
   CameraObject.setZoom(0.05);
   CameraObject.setPosition(9216, 1500);
   world.spawnActor(new CameraActor());
+  SoundBank.loopSound(SoundsID.ambientOne);
 }
 Engine.initialize({ setup, preload });

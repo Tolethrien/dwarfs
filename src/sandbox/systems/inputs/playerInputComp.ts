@@ -1,14 +1,12 @@
-import AuroraCamera from "@/core/aurora/camera";
 import Draw from "@/core/aurora/draw";
 import AxiomMath from "@/core/axiom/math";
 import Vec2 from "@/core/axiom/vec2";
 import InputManager from "@/core/engine/inputManager";
 import PragmaComponent from "@/core/pragma/component";
 import Dwarf from "@/sandbox/bActors/dwarf";
-import Spark from "@/sandbox/bActors/spark";
 import { ACTION } from "@/sandbox/inputActions";
 import CameraObject from "@/sandbox/managers/cameraObject";
-import EntitiesObject from "@/sandbox/managers/entitiesObject";
+import EntitiesObject, { DwarfsID } from "@/sandbox/managers/entitiesObject";
 export default class PlayerInputsComponent extends PragmaComponent {
   private mouseLocked: boolean = false;
   private mousePos: Position2D = { x: 0, y: 0 };
@@ -45,7 +43,7 @@ export default class PlayerInputsComponent extends PragmaComponent {
         position: this.mousePos,
         launchSpeed: speed,
         velocity: direction,
-        dwarfID,
+        dwarfID: DwarfsID.scout,
       }),
     );
     this.mouseLocked = false;

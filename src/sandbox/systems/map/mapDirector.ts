@@ -1,10 +1,12 @@
 import Grid from "@/core/axiom/grid";
+import Cello from "@/core/cello/cello";
 import PragmaComponent from "@/core/pragma/component";
 import Chunk from "@/sandbox/bActors/chunk";
 import Spark from "@/sandbox/bActors/spark";
 import CameraObject from "@/sandbox/managers/cameraObject";
 import EntitiesObject, { BlocksID } from "@/sandbox/managers/entitiesObject";
 import MapObject, { MAX_DAMAGE } from "@/sandbox/managers/mapObject";
+import SoundBank, { SoundsID } from "@/sandbox/managers/soundbank";
 
 type ChunkRange = { minX: number; minY: number; maxX: number; maxY: number };
 export interface MapSystemReady {
@@ -139,6 +141,7 @@ export default class mapDirector extends PragmaComponent {
       const world = MapObject.tileCenterToWorld({ x: gx, y: gy });
       const spark = new Spark({ position: world });
       this.scene.spawnActor(spark); // nowy komponent na animacje mapy bo nie ma sensu spawnowac ich jak nie widac tego!
+      SoundBank.playSound(SoundsID.blockDamage);
     }
 
     this.emitSceneEvent<TileDamagedEvent>("tileDamaged", {
