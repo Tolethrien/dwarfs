@@ -7,7 +7,6 @@ import {
   SECTIONS,
   sectionOffsets,
   dataSize,
-  BG_SHADES,
   type SectionName,
 } from "../src/mapFormat.ts";
 import {
@@ -52,6 +51,17 @@ const START_TUNNEL_WIDTH = 3; // przy 2 kafelkach kulka o średnicy 110 px ledwo
 
 /** jaskinie — puste plamy w skale */
 const CAVES = { count: 90, radius: [2, 6] as const };
+
+/**
+ * Skrzynie. Muszą siedzieć w LITEJ skale — wyglądają jak zwykła ściana,
+ * dopóki krasnolud w nie nie trafi. Chunki `guaranteed` dostają swoje na pewno,
+ * reszta jest rozsypana losowo po całej mapie.
+ */
+const CHESTS = {
+  random: 25,
+  guaranteed: [1, 2, 3],
+  perGuaranteed: [2, 4] as const,
+};
 
 /**
  * Złoża. `depth` to zakres głębokości 0–1, więc diamenty siedzą nisko,
@@ -104,9 +114,11 @@ const VEINS = [
 
 const randInt = (min: number, max: number) =>
   min + Math.floor(Math.random() * (max - min + 1));
+
 const BG_TYPES = Object.values(BackgroundsID).filter(
   (v) => typeof v === "number" && v !== BackgroundsID.none,
 ) as BackgroundsID[];
+
 function generateMap(config: MapGenConfig, outPaths: string[]): void {
   const { tileSize, chunkSize, mapSize, start } = config;
 
@@ -137,6 +149,12 @@ function generateMap(config: MapGenConfig, outPaths: string[]): void {
     buffer.writeUInt16LE(type, at("solidType", blockIndex(gx, gy), 2));
   };
 
+  const getSolid = (gx: number, gy: number): BlocksID => {
+    if (gx < 0 || gy < 0 || gx >= mapTilesW || gy >= mapTilesH)
+      return BlocksID.obsidian;
+    return buffer.readUInt16LE(at("solidType", blockIndex(gx, gy), 2));
+  };
+
   const pick = <T>(arr: readonly T[]) =>
     arr[Math.floor(Math.random() * arr.length)];
 
@@ -155,6 +173,25 @@ function generateMap(config: MapGenConfig, outPaths: string[]): void {
           setSolid(cx + dx, cy + dy, type);
       }
     }
+  };
+
+  /** stawia skrzynię w losowym LITYM kaflu z zakresu; false gdy nie znalazł miejsca */
+  const placeChest = (
+    minX: number,
+    maxX: number,
+    minY: number,
+    maxY: number,
+  ) => {
+    for (let attempt = 0; attempt < 60; attempt++) {
+      const gx = randInt(minX, maxX);
+      const gy = randInt(minY, maxY);
+      const current = getSolid(gx, gy);
+      if (current === BlocksID.air || current === BlocksID.hiddenChest)
+        continue;
+      setSolid(gx, gy, BlocksID.hiddenChest);
+      return true;
+    }
+    return false;
   };
 
   // ---- nagłówek ----
@@ -239,6 +276,29 @@ function generateMap(config: MapGenConfig, outPaths: string[]): void {
     for (let dx = -tunnelHalf; dx <= tunnelHalf; dx++)
       setSolid(tunnelX + dx, gy, BlocksID.air);
 
+  // ---- skrzynie: po szybie (żeby ich nie wykuł), przed ramką (żeby ramka wygrała) ----
+  let chestCount = 0;
+
+  for (const chunkIndex of CHESTS.guaranteed) {
+    const cx = chunkIndex % mapSize.width;
+    const cy = Math.floor(chunkIndex / mapSize.width);
+    const howMany = randInt(CHESTS.perGuaranteed[0], CHESTS.perGuaranteed[1]);
+
+    for (let i = 0; i < howMany; i++) {
+      const placed = placeChest(
+        cx * chunkSize.width,
+        (cx + 1) * chunkSize.width - 1,
+        cy * chunkSize.height,
+        (cy + 1) * chunkSize.height - 1,
+      );
+      if (placed) chestCount++;
+    }
+  }
+
+  for (let i = 0; i < CHESTS.random; i++) {
+    if (placeChest(0, mapTilesW - 1, 0, mapTilesH - 1)) chestCount++;
+  }
+
   // ---- ramka na końcu, żeby nic jej nie nadpisało ----
   for (let gx = 0; gx < mapTilesW; gx++) {
     setSolid(gx, 0, BORDER);
@@ -263,6 +323,9 @@ function generateMap(config: MapGenConfig, outPaths: string[]): void {
   console.log(`  odkryty na starcie: chunk ${START_CHUNK}`);
   console.log(
     `  szyb startowy: kolumna ${tunnelX}, szerokość ${START_TUNNEL_WIDTH}`,
+  );
+  console.log(
+    `  skrzynie: ${chestCount} (gwarantowane w chunkach ${CHESTS.guaranteed.join(", ")})`,
   );
   for (const section of SECTIONS)
     console.log(

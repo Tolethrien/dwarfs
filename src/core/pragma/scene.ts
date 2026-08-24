@@ -1,5 +1,5 @@
 import PragmaActor from "./actor";
-import { EventBus } from "./eventManager";
+import { EventBus, SharedData } from "./eventManager";
 import { ITERATED_PHASES } from "./pragma";
 
 interface SceneProps {
@@ -11,6 +11,7 @@ export default class PragmaScene {
   public active: boolean;
   private actorsInScene: Map<Symbol, PragmaActor> = new Map();
   public actorsDirty: Set<PragmaActor> = new Set();
+
   public readonly actorsWithPhase: Record<
     IteratedPragmaPhases,
     Set<PragmaActor>
@@ -20,6 +21,7 @@ export default class PragmaScene {
   public readonly actorsToAdd: Set<PragmaActor> = new Set();
   public readonly actorsToRemove: Set<PragmaActor> = new Set();
   public readonly events = new EventBus();
+  public readonly sharedData = new SharedData();
   constructor(props: SceneProps) {
     this.sceneName = props.sceneName;
     this.active = props.active ?? true;

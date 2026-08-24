@@ -1,6 +1,7 @@
 import AxiomMath from "@/core/axiom/math";
+import { SPRITES } from "./generalData";
+import { GameResourcesID } from "./resourcesObject";
 
-//DO NOT CHANGE PLACE, ADD AT THE END
 export enum DwarfsID {
   intern,
   miner,
@@ -30,6 +31,7 @@ export enum BlocksID {
   sapphire,
   copper,
   coal,
+  hiddenChest,
 }
 
 export enum DecosID {
@@ -46,6 +48,8 @@ export enum BasesID {
 export enum AnimsID {
   none,
   sparks,
+  explode,
+  chest,
 }
 interface DwarfData {
   baseSpeed: number;
@@ -58,6 +62,9 @@ interface BlockData {
   str: number;
   solid: boolean;
   category: "terrain" | "construct";
+  resource?: GameResourcesID;
+  spawn?: string;
+  spawnOnHit?: string;
 }
 interface DecoData {
   crop: Crop;
@@ -75,22 +82,6 @@ interface AnimData {
   texture: string;
 }
 export default class EntitiesObject {
-  public static renderOrder = {
-    bg: 0,
-    decoBack: 0.25,
-    main: 0.5,
-    decoFront: 0.75,
-    overlay: 0.8,
-    debug: 1,
-  };
-  public static sprites = {
-    dwarfs: "chars",
-    blocks: "stones",
-    deco: "decor",
-    base: "base",
-    bg: "bg",
-    anims: "anims",
-  };
   public static dwarfs: Record<DwarfsID, DwarfData> = {
     [DwarfsID.intern]: {
       baseDmg: 10,
@@ -135,42 +126,49 @@ export default class EntitiesObject {
       str: 0,
       solid: false,
       category: "terrain",
+      resource: GameResourcesID.none,
     },
     [BlocksID.bonesOne]: {
       crop: { x: 0, y: 0, width: 96, height: 96 },
       str: 15,
       solid: true,
       category: "terrain",
+      resource: GameResourcesID.bones,
     },
     [BlocksID.bonesTwo]: {
       crop: { x: 96, y: 0, width: 96, height: 96 },
       str: 15,
       solid: true,
       category: "terrain",
+      resource: GameResourcesID.bones,
     },
     [BlocksID.rocksBrown]: {
       crop: { x: 192, y: 0, width: 96, height: 96 },
       str: 8,
       solid: true,
       category: "terrain",
+      resource: GameResourcesID.stone,
     },
     [BlocksID.rocksGray]: {
       crop: { x: 288, y: 0, width: 96, height: 96 },
       str: 8,
       solid: true,
       category: "terrain",
+      resource: GameResourcesID.stone,
     },
     [BlocksID.obsidian]: {
       crop: { x: 384, y: 0, width: 96, height: 96 },
       str: 9999,
       solid: true,
       category: "terrain",
+      resource: GameResourcesID.none,
     },
     [BlocksID.rocksDarkGray]: {
       crop: { x: 480, y: 0, width: 96, height: 96 },
       str: 8,
       solid: true,
       category: "terrain",
+      resource: GameResourcesID.stone,
     },
 
     [BlocksID.rocksLightGray]: {
@@ -178,48 +176,64 @@ export default class EntitiesObject {
       str: 8,
       solid: true,
       category: "terrain",
+      resource: GameResourcesID.stone,
     },
     [BlocksID.rocksLightBrown]: {
       crop: { x: 96, y: 96, width: 96, height: 96 },
       str: 8,
       solid: true,
       category: "terrain",
+      resource: GameResourcesID.stone,
     },
     [BlocksID.gold]: {
       crop: { x: 192, y: 96, width: 96, height: 96 },
       str: 20,
       solid: true,
       category: "terrain",
+      resource: GameResourcesID.gold,
     },
     [BlocksID.diamonds]: {
       crop: { x: 288, y: 96, width: 96, height: 96 },
       str: 30,
       solid: true,
       category: "terrain",
+      resource: GameResourcesID.diamonds,
     },
     [BlocksID.silver]: {
       crop: { x: 384, y: 96, width: 96, height: 96 },
       str: 12,
       solid: true,
       category: "terrain",
+      resource: GameResourcesID.silver,
     },
     [BlocksID.sapphire]: {
       crop: { x: 480, y: 96, width: 96, height: 96 },
       str: 20,
       solid: true,
       category: "terrain",
+      resource: GameResourcesID.sapphire,
     },
     [BlocksID.copper]: {
       crop: { x: 0, y: 192, width: 96, height: 96 },
       str: 5,
       solid: true,
       category: "terrain",
+      resource: GameResourcesID.copper,
     },
     [BlocksID.coal]: {
       crop: { x: 96, y: 192, width: 96, height: 96 },
       str: 10,
       solid: true,
       category: "terrain",
+      resource: GameResourcesID.coal,
+    },
+    [BlocksID.hiddenChest]: {
+      crop: { x: 0, y: 96, width: 96, height: 96 },
+      str: 0.1,
+      solid: true,
+      category: "terrain",
+      resource: GameResourcesID.none,
+      spawnOnHit: "chest",
     },
   };
   public static decos: Record<DecosID, DecoData> = {
@@ -263,13 +277,25 @@ export default class EntitiesObject {
       crop: { x: 0, y: 0, width: 0, height: 0 },
       fps: 0,
       frames: 0,
-      texture: this.sprites.base,
+      texture: SPRITES.base,
     },
     [AnimsID.sparks]: {
       crop: { x: 0, y: 0, width: 94, height: 79 },
       fps: 30,
       frames: 8,
-      texture: this.sprites.anims,
+      texture: SPRITES.anims,
+    },
+    [AnimsID.explode]: {
+      crop: { x: 0, y: 79, width: 94, height: 79 },
+      fps: 30,
+      frames: 8,
+      texture: SPRITES.anims,
+    },
+    [AnimsID.chest]: {
+      crop: { x: 0, y: 158, width: 96, height: 96 },
+      fps: 30,
+      frames: 4,
+      texture: SPRITES.anims,
     },
   };
 

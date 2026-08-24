@@ -4,6 +4,7 @@ import Draw from "@/core/aurora/draw";
 import CameraObject from "@/sandbox/managers/cameraObject";
 import EntitiesObject from "@/sandbox/managers/entitiesObject";
 import { BG_SHADES } from "@/mapFormat";
+import { RENDER_ORDER, SPRITES } from "../managers/generalData";
 type TileDefs = Record<number, { crop: Crop }>;
 const TINTS: RGBA[] = Array.from({ length: BG_SHADES + 1 }, (_, i) => {
   const shade = ((i / BG_SHADES) * 200) | 0;
@@ -16,8 +17,8 @@ const BG_DEFS: TileDefs = Array.from({ length: BG_SHADES + 1 }, () => ({
 const LAYERS = [
   {
     layer: LAYER.background,
-    z: EntitiesObject.renderOrder.bg,
-    texture: EntitiesObject.sprites.bg,
+    z: RENDER_ORDER.bg,
+    texture: SPRITES.bg,
     defs: EntitiesObject.backgrounds as TileDefs,
     tints: null,
   },
@@ -30,8 +31,8 @@ const LAYERS = [
   // },
   {
     layer: LAYER.solid,
-    z: EntitiesObject.renderOrder.main,
-    texture: EntitiesObject.sprites.blocks,
+    z: RENDER_ORDER.main,
+    texture: SPRITES.blocks,
     defs: EntitiesObject.blocks as TileDefs,
     tints: null as RGBA[] | null,
   },

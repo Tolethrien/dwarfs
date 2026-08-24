@@ -1,6 +1,6 @@
 import PragmaActor from "@/core/pragma/actor";
 import MapObject from "../managers/mapObject";
-import TileLayer from "@sandbox/systems/map/tileLayer";
+import TileLayer from "@/sandbox/systems/tileLayer";
 
 interface ChunkProps {
   index: number;

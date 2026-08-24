@@ -3,6 +3,7 @@ import Grid from "@/core/axiom/grid";
 import Vec2 from "@/core/axiom/vec2";
 import { assert } from "@/utils/utils";
 import EntitiesObject, { BlocksID } from "./entitiesObject";
+import CameraObject from "./cameraObject";
 
 export interface TileHit {
   rect: Rect;
@@ -21,7 +22,7 @@ export enum LAYER {
 export const MAX_DAMAGE = 65535;
 const SKY_MARGIN = 300;
 const MAX_RAYCAST_TILES = 64;
-
+const EFFECT_VISIBILITY_MARGIN = 2;
 export default class MapObject {
   declare private static layers: Uint16Array[];
   declare private static damage: Uint16Array;
@@ -145,13 +146,30 @@ export default class MapObject {
   public static getTileType(gx: number, gy: number, layer = LAYER.solid) {
     const index = this.tileIndex(gx, gy);
     if (index === -1)
-      return layer === LAYER.solid ? BlocksID.bedrock : BlocksID.air;
+      return layer === LAYER.solid ? BlocksID.obsidian : BlocksID.air;
     return this.layers[layer][index];
   }
 
   public static getTileDamage(gx: number, gy: number) {
     const index = this.tileIndex(gx, gy);
     return index === -1 ? 0 : this.damage[index];
+  }
+  public static isTileVisible(gx: number, gy: number): boolean {
+    const view = CameraObject.getViewBox();
+    const pos = this.tileCenterToWorld({ x: gx, y: gy });
+    const { tileInPixels } = this.mapConfig;
+
+    const marginX = tileInPixels.width * EFFECT_VISIBILITY_MARGIN;
+    const marginY = tileInPixels.height * EFFECT_VISIBILITY_MARGIN;
+    const halfW = tileInPixels.width / 2;
+    const halfH = tileInPixels.height / 2;
+
+    return !(
+      pos.x + halfW < view.x - marginX ||
+      pos.y + halfH < view.y - marginY ||
+      pos.x - halfW > view.x + view.w + marginX ||
+      pos.y - halfH > view.y + view.h + marginY
+    );
   }
 
   //THIS IS WINDOW FOR DATA - DO NOT COPY IT - ALWAYS WORK ON WINDOW

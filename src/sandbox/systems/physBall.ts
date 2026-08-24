@@ -6,8 +6,9 @@ import Physics from "@/sandbox/components/physics";
 import Time from "@/core/engine/time";
 import Stats from "@/sandbox/components/stats";
 import MapObject from "@/sandbox/managers/mapObject";
-import MapDirector, { MapSystemReady } from "../map/mapDirector";
+import MapDirector from "./mapDirector";
 import { BlocksID } from "@/sandbox/managers/entitiesObject";
+import { assert } from "@/utils/utils";
 
 type Hit =
   | { kind: "entity"; physics: Physics; distance: number; normal: Vec2 }
@@ -26,7 +27,7 @@ const MAX_BOUNCES_PER_TICK = 4;
 const SKIN = 0.01;
 const DECAY_RATE = 1;
 
-export default class PhysBallComponent extends PragmaComponent {
+export default class PhysBall extends PragmaComponent {
   private grid = new SpatialGrid<Physics>({ width: 256, height: 256 });
   private movingBodies = new Set<Physics>();
   private triggeredThisFrame = new Map<Symbol, Set<Symbol>>();
@@ -43,12 +44,15 @@ export default class PhysBallComponent extends PragmaComponent {
     this.onSceneEvent<{ physics: Physics }>("physUnregister", ({ physics }) =>
       this.unregister(physics),
     );
-    this.onSceneEvent<MapSystemReady>(
-      "mapReady",
-      ({ map }) => (this.map = map),
-    );
   }
-
+  start(): void {
+    const mapComponent = this.systemSharedData.get<MapDirector>("mapDirector");
+    assert(
+      mapComponent !== undefined,
+      `mapComponent is required for physics to work`,
+    );
+    this.map = mapComponent;
+  }
   private register(physics: Physics) {
     if (physics.body) {
       this.grid.insert({
@@ -235,6 +239,7 @@ export default class PhysBallComponent extends PragmaComponent {
     }
     seen.add(trigger.actor.ID);
     self.emitActorEvent("triggerHit", { other: trigger.actor });
+    trigger.emitActorEvent("triggerEntered", { other: self.actor });
   }
 
   private resolveTileHit(

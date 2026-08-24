@@ -1,6 +1,6 @@
 import PragmaComponent from "@/core/pragma/component";
 import MapObject from "@/sandbox/managers/mapObject";
-import { BallChangedChunkEvent } from "../physics/physBallCom";
+import { BallChangedChunkEvent } from "../systems/physBall";
 import mapDirector from "./mapDirector";
 
 export default class MapDiscovery extends PragmaComponent {

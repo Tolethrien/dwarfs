@@ -52,6 +52,9 @@ abstract class PragmaComponent {
   public offSceneEvent<T>(name: string, cb: (data: T) => void) {
     this.actor.scene.events.off(name, cb);
   }
+  public get systemSharedData() {
+    return this.scene.sharedData;
+  }
 }
 
 interface PragmaComponent {

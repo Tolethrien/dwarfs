@@ -1,6 +1,7 @@
 import AuroraCamera from "@/core/aurora/camera";
 import AxiomMath from "@/core/axiom/math";
 import Vec2 from "@/core/axiom/vec2";
+import Cello from "@/core/cello/cello";
 import InputManager from "@/core/engine/inputManager";
 import Time from "@/core/engine/time";
 import PragmaComponent from "@/core/pragma/component";
@@ -17,7 +18,8 @@ const ZOOM_KEY_RATE = 1.8;
 const ZOOM_SMOOTH = 0.12;
 const ZOOM_MIN = 0.05;
 const ZOOM_MAX = 4;
-
+const SILENT_ZOOM = 0.15;
+const AUDIBLE_ZOOM = 0.42;
 export default class CameraController extends PragmaComponent {
   private velocity: Vec2 = Vec2.Zero;
   private moveTarget: Vec2 = Vec2.Zero;
@@ -29,7 +31,9 @@ export default class CameraController extends PragmaComponent {
   constructor(internal: InternalPCProps) {
     super(internal);
   }
-
+  awake(): void {
+    this.systemSharedData.add("camera", this);
+  }
   start(): void {
     this.targetZoom = CameraObject.getZoom;
     this.setBounds(MapObject.getWorldBounds());
@@ -103,7 +107,7 @@ export default class CameraController extends PragmaComponent {
 
     const t = 1 - Math.exp(-dt / ZOOM_SMOOTH);
     CameraObject.setZoom(current + (this.targetZoom - current) * t);
-
+    this.updateZoomVolume();
     if (this.anchorScreen && this.anchorWorld) {
       const drifted = CameraObject.screenToWorld(this.anchorScreen);
       const pos = CameraObject.getPosition;
@@ -134,5 +138,13 @@ export default class CameraController extends PragmaComponent {
         : AxiomMath.clamp(pos.y, b.y + view.h / 2, b.y + b.h - view.h / 2);
 
     CameraObject.setPosition(x, y);
+  }
+  private updateZoomVolume() {
+    const effect = Cello.getEffectNode("zoomVolume");
+    if (!effect) return;
+    const gainNode = effect.output as GainNode;
+    const raw =
+      (CameraObject.getZoom - SILENT_ZOOM) / (AUDIBLE_ZOOM - SILENT_ZOOM);
+    gainNode.gain.value = Math.min(1, Math.max(0, raw));
   }
 }

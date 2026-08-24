@@ -6,7 +6,7 @@ import { RENDER_ORDER, SPRITES } from "../managers/generalData";
 interface SparkProps {
   position: Position2D;
 }
-export default class Spark extends PragmaActor {
+export default class Explode extends PragmaActor {
   private anim: Animator;
   constructor(props: SparkProps) {
     super();
@@ -14,8 +14,8 @@ export default class Spark extends PragmaActor {
     this.transform.setScale(1.5, 1.5);
     this.anim = this.addComponent(Animator);
     this.addComponent(Sprite, {
-      tint: [184, 115, 51, 255],
-      crop: EntitiesObject.animations[AnimsID.sparks].crop,
+      tint: [255, 255, 255, 255],
+      crop: EntitiesObject.animations[AnimsID.explode].crop,
       sprite: SPRITES.anims,
       zIndex: RENDER_ORDER.decoFront,
     });
@@ -24,6 +24,6 @@ export default class Spark extends PragmaActor {
 
   public onStart(): void {
     super.onStart();
-    this.anim.play(AnimsID.sparks, false);
+    this.anim.play(AnimsID.explode, false);
   }
 }

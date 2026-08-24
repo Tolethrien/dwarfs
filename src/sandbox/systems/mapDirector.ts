@@ -1,21 +1,22 @@
 import Grid from "@/core/axiom/grid";
-import Cello from "@/core/cello/cello";
 import PragmaComponent from "@/core/pragma/component";
 import Chunk from "@/sandbox/bActors/chunk";
 import Spark from "@/sandbox/bActors/spark";
 import CameraObject from "@/sandbox/managers/cameraObject";
 import EntitiesObject, { BlocksID } from "@/sandbox/managers/entitiesObject";
-import MapObject, { MAX_DAMAGE } from "@/sandbox/managers/mapObject";
+import MapObject, { LAYER, MAX_DAMAGE } from "@/sandbox/managers/mapObject";
 import SoundBank, { SoundsID } from "@/sandbox/managers/soundbank";
+import Explode from "../bActors/explode";
+import { assert } from "@/utils/utils";
+import PragmaActor from "@/core/pragma/actor";
+import { SPAWN_REGISTRY } from "../managers/spawnRegistry";
 
 type ChunkRange = { minX: number; minY: number; maxX: number; maxY: number };
-export interface MapSystemReady {
-  map: mapDirector;
-}
+
 export interface TileMinedEvent {
   gx: number;
   gy: number;
-  type: number;
+  type: BlocksID;
 }
 export interface TileDamagedEvent {
   gx: number;
@@ -23,20 +24,24 @@ export interface TileDamagedEvent {
   type: number;
   damage: number;
 }
+export interface MapDiscoveryEvent {}
 const MARGIN = 1; //viewbox margin
 const SHOW_ALL_CHUNKS = true;
-export default class mapDirector extends PragmaComponent {
+export default class MapDirector extends PragmaComponent {
   private pool: Chunk[] = [];
   private loadedChunks: Map<number, Chunk> = new Map();
   private lastRange: ChunkRange = { minX: -1, minY: -1, maxX: -1, maxY: -1 };
+  private spawnedActors: Map<number, Map<number, PragmaActor>> = new Map();
   private dirty = false;
   constructor(internal: InternalPCProps) {
     super(internal);
   }
 
+  awake(): void {
+    this.systemSharedData.add("mapDirector", this);
+  }
   start(): void {
     this.syncChunks(this.computeRange());
-    this.emitSceneEvent<MapSystemReady>("mapReady", { map: this });
   }
 
   update(): void {
@@ -101,7 +106,16 @@ export default class mapDirector extends PragmaComponent {
   ): "penetrate" | "bounce" {
     const type = MapObject.getTileType(gx, gy);
     if (type === BlocksID.air) return "bounce";
-
+    const block = EntitiesObject.getBlock(type);
+    if (block.spawnOnHit) {
+      MapObject.setTile(gx, gy, BlocksID.air, 0);
+      const world = MapObject.tileCenterToWorld({ x: gx, y: gy });
+      this.scene.spawnActor(
+        SPAWN_REGISTRY[block.spawnOnHit]({ position: world, type: 1 }),
+      );
+      this.emitSceneEvent<MapDiscoveryEvent>("discoveryFound", { gx, gy });
+      return "bounce";
+    }
     const ratio = power / EntitiesObject.getBlock(type).str;
     if (ratio >= 1.5) {
       this.destroyTile(gx, gy, type);
@@ -138,10 +152,12 @@ export default class mapDirector extends PragmaComponent {
     MapObject.setTile(gx, gy, type, damage);
 
     if (this.loadedChunks.has(MapObject.chunkIndexOfTile(gx, gy))) {
-      const world = MapObject.tileCenterToWorld({ x: gx, y: gy });
-      const spark = new Spark({ position: world });
-      this.scene.spawnActor(spark); // nowy komponent na animacje mapy bo nie ma sensu spawnowac ich jak nie widac tego!
-      SoundBank.playSound(SoundsID.blockDamage);
+      if (MapObject.isTileVisible(gx, gy)) {
+        const world = MapObject.tileCenterToWorld({ x: gx, y: gy });
+        const spark = new Spark({ position: world });
+        this.scene.spawnActor(spark);
+        SoundBank.playSound(SoundsID.blockDamage, { position: world });
+      }
     }
 
     this.emitSceneEvent<TileDamagedEvent>("tileDamaged", {
@@ -151,19 +167,86 @@ export default class mapDirector extends PragmaComponent {
       damage,
     });
   }
+
   public destroyTile(
     gx: number,
     gy: number,
     type = MapObject.getTileType(gx, gy),
   ) {
     if (type === BlocksID.air) return;
+    this.despawnTileActor(gx, gy);
+
     MapObject.setTile(gx, gy, BlocksID.air, 0);
 
     if (this.loadedChunks.has(MapObject.chunkIndexOfTile(gx, gy))) {
-      // const world = MapObject.tileCenterToWorld({ x: gx, y: gy });
-      //spawn block destroying
+      if (MapObject.isTileVisible(gx, gy)) {
+        const world = MapObject.tileCenterToWorld({ x: gx, y: gy });
+        const explode = new Explode({ position: world });
+        this.scene.spawnActor(explode); // TODO: nowy komponent na animacje mapy i przeniesc to tam
+        SoundBank.playSound(SoundsID.blockDestroy, { volume: 0.5 });
+      }
     }
     this.emitSceneEvent<TileMinedEvent>("tileMined", { gx, gy, type });
+  }
+  private spawnChunkActors(chunkIndex: number) {
+    const { blocksPerChunk, chunkInTiles, mapInChunks } = MapObject.mapMeta;
+    const data = MapObject.getChunkData(LAYER.solid, chunkIndex);
+
+    const chunkX = chunkIndex % mapInChunks.width;
+    const chunkY = Math.floor(chunkIndex / mapInChunks.width);
+
+    let actors: Map<number, PragmaActor> | undefined;
+
+    for (let local = 0; local < blocksPerChunk; local++) {
+      const type = data[local];
+      if (type === BlocksID.air) continue;
+
+      const spawn = EntitiesObject.getBlock(type).spawn;
+      if (!spawn) continue;
+
+      const builder = SPAWN_REGISTRY[spawn];
+      assert(builder !== undefined, `No builder for spawn: "${spawn}"`);
+
+      const gx = chunkX * chunkInTiles.width + (local % chunkInTiles.width);
+      const gy =
+        chunkY * chunkInTiles.height + Math.floor(local / chunkInTiles.width);
+
+      const actor = builder({ position: { x: gx, y: gy }, type });
+      this.scene.spawnActor(actor);
+
+      if (!actors) {
+        actors = new Map();
+        this.spawnedActors.set(chunkIndex, actors);
+      }
+      actors.set(chunkIndex * blocksPerChunk + local, actor);
+    }
+  }
+
+  private despawnChunkActors(chunkIndex: number) {
+    const actors = this.spawnedActors.get(chunkIndex);
+    if (!actors) return;
+
+    for (const actor of actors.values()) this.scene.deleteActor(actor);
+    this.spawnedActors.delete(chunkIndex);
+  }
+
+  private despawnTileActor(gx: number, gy: number) {
+    const chunkIndex = MapObject.chunkIndexOfTile(gx, gy);
+    const actors = this.spawnedActors.get(chunkIndex);
+    if (!actors) return;
+
+    const { blocksPerChunk, chunkInTiles } = MapObject.mapMeta;
+    const local =
+      (gy % chunkInTiles.height) * chunkInTiles.width +
+      (gx % chunkInTiles.width);
+    const key = chunkIndex * blocksPerChunk + local;
+
+    const actor = actors.get(key);
+    if (!actor) return;
+
+    this.scene.deleteActor(actor);
+    actors.delete(key);
+    if (actors.size === 0) this.spawnedActors.delete(chunkIndex);
   }
 
   private poolChunk(index: number) {
@@ -171,13 +254,15 @@ export default class mapDirector extends PragmaComponent {
     if (pooled) {
       pooled.reuse(index);
       this.loadedChunks.set(index, pooled);
-      return;
+    } else {
+      const fresh = new Chunk({ index });
+      this.scene.spawnActor(fresh);
+      this.loadedChunks.set(index, fresh);
     }
-    const fresh = new Chunk({ index });
-    this.scene.spawnActor(fresh);
-    this.loadedChunks.set(index, fresh);
+    this.spawnChunkActors(index);
   }
   private releaseChunk(index: number, chunk: Chunk) {
+    this.despawnChunkActors(index);
     this.loadedChunks.delete(index);
     chunk.setVisibility(false);
     this.pool.push(chunk);

@@ -4,6 +4,7 @@ import Physics from "../components/physics";
 import Stats from "../components/stats";
 import Sprite from "../components/sprite";
 import EntitiesObject, { DwarfsID } from "../managers/entitiesObject";
+import { RENDER_ORDER, SPRITES } from "../managers/generalData";
 interface DwarfProps {
   position: Position2D;
   velocity: Vec2;
@@ -33,8 +34,8 @@ export default class Dwarf extends PragmaActor {
     });
     this.addComponent(Sprite, {
       crop: data.crop,
-      sprite: EntitiesObject.sprites.dwarfs,
-      zIndex: EntitiesObject.renderOrder.main,
+      sprite: SPRITES.dwarfs,
+      zIndex: RENDER_ORDER.main,
     });
   }
 }

@@ -103,6 +103,20 @@ Mapa ma być bardzo duża — mowa o milionach bloków. Wymaga to systemu chunko
 - Alternatywnie: może samo otwarcie nie następuje od razu przy przelocie kulki, tylko najpierw pojawia się info "znaleziono skrzynię", a otwarcie to osobny krok/akcja.
 - Nieustalone, do przemyślenia później.
 
+### System dni tygodnia
+
+- System dni tygodnia — wydarzenia będą mogły reagować na konkretne dni, np. kupcy przybywają na targowisko w dany dzień tygodnia.
+
+### Wypłaty
+
+- Tygodniówki — trzeba będzie płacić krasnoludom cyklicznie (co tydzień).
+
+### Nowe budynki obozu
+
+- **Mennica** — pozwala przerabiać złoto na monety.
+- **Huta** — przerabianie surowców/materiałów na surowce gotowe.
+- **Biuro prasowe** — miejsce, gdzie wykonuje się misje; spływają tam nowe kontrakty do wykonania, a gotowe dostawy wysyła się właśnie tam.
+
 ### Pomysły na przyszłość (poza obecnym zakresem)
 
 - Proceduralnie generowana mapa (potencjalnie, jako rozwinięcie na przyszłość — obecnie mapa ma być jedna, ręcznie zaprojektowana).
