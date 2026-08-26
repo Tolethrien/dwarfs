@@ -79,7 +79,7 @@ export default class CameraController extends PragmaComponent {
 
   private updateZoom(dt: number) {
     if (InputManager.isMouseScrolled()) {
-      const dir = -Math.sign(InputManager.getMouseScroll());
+      const dir = -Math.sign(InputManager.getMouseScroll().y);
       this.setTargetZoom(this.targetZoom * Math.pow(ZOOM_STEP, dir));
 
       const mouse = InputManager.getMousePos();

@@ -231,8 +231,7 @@ export default class EntitiesObject {
       crop: { x: 0, y: 96, width: 96, height: 96 },
       str: 0.1,
       solid: true,
-      category: "terrain",
-      resource: GameResourcesID.none,
+      category: "construct",
       spawnOnHit: "chest",
     },
   };

@@ -62,7 +62,7 @@ export default class FontGen {
     await font.generator();
     if (font.meta === undefined)
       console.error(
-        `No specific data in Font:  "${props.fontName}" while generating...`
+        `No specific data in Font:  "${props.fontName}" while generating...`,
       );
     return font;
   }
@@ -107,12 +107,12 @@ export default class FontGen {
       const code = char.charCodeAt(0);
       const charData: MsdfChar = chars[code] ?? fontMeta.defaultChar;
       width += charData.xadvance * scale;
+      lastCode = code;
       if (!kernings || lastCode === null) continue;
       const kernRow = kernings.get(lastCode);
       if (!kernRow) continue;
       const kernAmount = kernRow.get(code) || 0;
       width += kernAmount * scale;
-      lastCode = code;
     }
     return { width, height };
   }

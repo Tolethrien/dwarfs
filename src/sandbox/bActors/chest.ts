@@ -6,6 +6,7 @@ import Time from "@/core/engine/time";
 import EntitiesObject, { AnimsID } from "../managers/entitiesObject";
 import SoundBank, { SoundsID } from "../managers/soundbank";
 import { RENDER_ORDER, SPRITES } from "../managers/generalData";
+import Interactive from "../components/interactive";
 
 interface ChestProps {
   position: Position2D;
@@ -33,14 +34,16 @@ export default class Chest extends PragmaActor {
       body: { type: "rect", w: 96, h: 96 },
       isTrigger: true,
     });
-
+    this.addComponent(Interactive, {
+      bodyType: { type: "rect", w: 96, h: 96 },
+    });
     this.events.on("triggerEntered", () => this.ping());
+    this.events.on("interactiveClicked", () => this.open());
     // this.events.on("animationEnd", () => this.selfDestroy());
   }
 
   public onStart(): void {
     super.onStart();
-    this.anim.play(AnimsID.chest);
   }
 
   public open() {

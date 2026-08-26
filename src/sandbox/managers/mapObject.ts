@@ -4,6 +4,7 @@ import Vec2 from "@/core/axiom/vec2";
 import { assert } from "@/utils/utils";
 import EntitiesObject, { BlocksID } from "./entitiesObject";
 import CameraObject from "./cameraObject";
+import InputManager from "@/core/engine/inputManager";
 
 export interface TileHit {
   rect: Rect;
@@ -183,6 +184,10 @@ export default class MapObject {
     const { blocksPerChunk } = this.mapConfig;
     const start = chunkIndex * blocksPerChunk;
     return this.damage.subarray(start, start + blocksPerChunk);
+  }
+  public static mouseToTile(): Position2D {
+    const mouse = InputManager.getMousePos();
+    return this.worldToTile(CameraObject.screenToWorld(mouse));
   }
 
   public static isDiscovered(chunkIndex: number) {

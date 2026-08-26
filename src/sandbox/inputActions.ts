@@ -9,6 +9,9 @@ export const ACTION = {
   zoomIn: "zoomIn",
   zoomOut: "zoomOut",
   shoot: "shoot",
+  changeMode: "changeMode",
+  placeBlock: "placeBlock",
+  interact: "interact",
 } as const;
 
 export function registerInputsBindings() {
@@ -17,10 +20,13 @@ export function registerInputsBindings() {
   InputManager.bindAction({ name: ACTION.cameraLeft, key: KEY.a, mods: [] });
   InputManager.bindAction({ name: ACTION.cameraRight, key: KEY.d, mods: [] });
   InputManager.bindAction({ name: ACTION.zoomIn, key: KEY.arrowUp, mods: [] });
+  InputManager.bindAction({ name: ACTION.changeMode, key: KEY.tab, mods: [] });
   InputManager.bindAction({
     name: ACTION.zoomOut,
     key: KEY.arrowDown,
     mods: [],
   });
-  InputManager.bindAction({ name: ACTION.shoot, mouse: "LEFT", mods: [] });
+  InputManager.bindAction({ name: ACTION.shoot, mouse: "RIGHT", mods: [] });
+  InputManager.bindAction({ name: ACTION.placeBlock, mouse: "LEFT", mods: [] });
+  InputManager.bindAction({ name: ACTION.interact, mouse: "LEFT", mods: [] });
 }

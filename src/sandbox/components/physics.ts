@@ -6,7 +6,7 @@ import { assert } from "@/utils/utils";
 import Transform from "./transform";
 
 type PhysicsBodyType = "static" | "kinetic" | "rigid";
-type ColliderBody =
+export type ColliderBody =
   | { type: "circle"; radius: number }
   | { type: "rect"; w: number; h: number };
 

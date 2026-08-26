@@ -116,6 +116,28 @@ Mapa ma być bardzo duża — mowa o milionach bloków. Wymaga to systemu chunko
 - **Mennica** — pozwala przerabiać złoto na monety.
 - **Huta** — przerabianie surowców/materiałów na surowce gotowe.
 - **Biuro prasowe** — miejsce, gdzie wykonuje się misje; spływają tam nowe kontrakty do wykonania, a gotowe dostawy wysyła się właśnie tam.
+- **Krypta** — magazyn surowców, fizyczny budynek na mapie (plecak typu grid) zamiast listy surowców w rogu ekranu; patrz: [[Krypta — magazyn surowców]].
+
+### System discovery (ukryte eventy w blokach)
+
+- Pod wyglądem nieodstającym od zwykłego otoczenia (np. wygląda jak zwykła skała) mogą się ukrywać różne eventy discovery.
+- Przykłady: rozbicie bloku wyglądającego jak skała spawnuje skrzynię ze skarbem; rozbicie bloku wyglądającego jak ul wypuszcza z niego koboldy.
+- Każdy taki discovery ma swój przypisany event, dzięki czemu można powiadomić gracza o odkryciu.
+- Powiązane pomysły: [[Skrzynie skarbów]], [[Koboldy]].
+
+### Mapa
+
+- Podział u16 (solidType): 12 bitów typu bloku + 4 bity wariacji.
+- Mapa musi dzielić się na layery.
+- Musi być czytana z pliku pod kątem kolizji.
+- Potrzebne coś na wzór stref — zajmują jakiś obszar na ekranie/mapie i jak wleci w nie kulka, wysyłają trigger.
+- Trzeba mieć biomy.
+- Bloki mają mieć standardowe zachowania: dmg, destroy, place.
+- Bloki typu **spawn** — spawnują aktora i despawnują go w zależności od tego, czy kamera na nich jest (czy chunk jest aktywny).
+- Bloki typu **spawnOnHit** — spawnują coś przy trafieniu w nie. Ma być w 2 wersjach:
+  - blok się niszczy po trafieniu,
+  - blok zostaje i dalej spawnuje przy każdym kolejnym trafieniu.
+- Skoro bloki mają stały rozmiar, indeksować teksturę (atlas) zamiast podawać każdemu blokowi osobno `crop`.
 
 ### Pomysły na przyszłość (poza obecnym zakresem)
 
@@ -142,6 +164,27 @@ Mapa ma być bardzo duża — mowa o milionach bloków. Wymaga to systemu chunko
 
 ### Początek gry (intro / pierwszy tutorial flow)
 
+**Wersja rozbudowana (fabularna)**
+
+1. Czarny ekran, rozjaśnia się na miejscu, gdzie będzie obóz — na razie nic tam nie ma.
+2. Zza ekranu wchodzi trójka krasnoludów: kurier, sejsmolog i geodeta. Rozmawiają między sobą: "ooo, a może tu się nada, wygląda obiecująco".
+3. Wchodzą na teren przyszłego obozu, robią rozpoznanie terenu ("łubudubu"), po czym stwierdzają: to dobre miejsce, nadaje się! Trzeba powiadomić firmę — "spisuj list!".
+4. Pojawia się okno "listu do firmy" — to w praktyce ekran nowej gry: nazwa kopalni, seed do generowania świata, wybór wielkości mapy, spis potencjalnych zasobów w okolicy.
+5. Po zatwierdzeniu kurier biegnie zanieść list do firmy. Ekran się zaciemnia, napis "tydzień później", ekran się rozjaśnia.
+6. Na uboczu mapy rozłożony jest namiot i ognisko z trójką rozpoznania. Podchodzi do nich nowy krasnolud — mówi, że dostali list, przedstawia się jako młodszy specjalista od stawiania placówek i marketingu kopalnianego, wysłany, by założyć tu nową placówkę. Od teraz on tu rządzi (to gracz).
+7. Prosi, żeby go wprowadzili na miejsce, rozgląda się, komentuje ("jakieś gówno, ale dobra, nie z takim szajsem pracował i dawał radę"), gwiżdże i woła ekipę budowlaną.
+8. Zza ekranu wbija ekipa do stawiania bazy — przewoźna suwnica na łapach, "Wiertacz 3000" i tego typu sprzęt. Ekran się zaciemnia, mija tydzień, ekran się rozjaśnia.
+9. Widać efekt: postawiony pierwszy szyb, barak do spania i karczma. Koniec intra, gracz dostaje kontrolę.
+10. Zaczyna się tutorial — CEO (gracz-postać z kroku 6) mówi, że możemy zaczynać: "kliknij, debilu, na bombę!".
+11. Gracz klika, bomba spada, robi się wielkie "bum".
+12. Info: idź do karczmy, kopnij w dupę budowlańca, żeby postawił pierwszą platformę.
+13. Gracz to robi, potem kopie w dupsko pierwszą kulkę, wypuszcza ją na platformie — kulka zaczyna kopać.
+14. Dalej to już gra — tipy od CEO w trakcie ("hej, wykopałeś nowy surowiec!", "masz na tyle, żeby coś postawić" itp.).
+
+Otwarte pytanie: czy CEO (postać z intra) zostaje na stałe jako głos tipów/narratora w trakcie gry, czy to jednorazowa persona tylko na wstęp — do ustalenia, choć z opisu wynika, że raczej zostaje.
+
+**Wersja skrócona (poprzednia, do porównania)**
+
 1. Ciemna mapa, rozjaśnia się.
 2. Widać w oddali obóz, zoom na niego.
 3. Na środku obozu jest przygotowana bomba.
@@ -152,6 +195,45 @@ Mapa ma być bardzo duża — mowa o milionach bloków. Wymaga to systemu chunko
 8. Werbuje pierwszą kulkę w karczmie.
 9. Spuszcza ją do tunelu/szybu.
 10. Strzela z platformy.
+
+### Firma — kim jest PIWO i czym jest IPA
+
+- Firma-matka to spółka skarbu państwa Królestwa Krasnoludów: **PIWO** — Państwowy Inspektorat Wydobycia i Obróbki.
+  - "Inspektorat" w nazwie naturalnie tłumaczy mechanikę audytów (patrz: [[Elementy korporacyjne z twistem krasnoludzkim]]) — to ta sama instytucja, która potem przyjeżdża kontrolować jakość piwa, którym płacisz krasnoludom.
+  - Wielki Sztygar (CEO) nie jest właścicielem, tylko nominatem/urzędnikiem królewskim — otwiera to możliwość na króla jako niewidzialną, wyższą instancję (dekrety królewskie jako losowe eventy, zmiana "planu pięcioletniego" itp.) — nieustalone jeszcze, do przemyślenia później.
+- Twoja konkretna placówka (ta, którą prowadzi gracz) to formalnie spółka-córka PIWO: **IPA** — Innowacyjna Placówka Autonomiczna.
+  - Nazwa nawiązuje wprost do intra — to właśnie to, co zakłada "młodszy specjalista od stawiania placówek", patrz: [[Początek gry (intro / pierwszy tutorial flow)]].
+  - Żart z nazw: PIWO i IPA to dwa gatunki piwa — spółka-matka i spółka-córka noszą imiona piwne, spójnie z całą resztą motywu piwa w grze.
+  - "Innowacyjna" = IPA to program pilotażowy: PIWO testuje, czy autonomiczne placówki radzą sobie lepiej niż tradycyjny, scentralizowany model państwowy.
+
+**Konsekwencje fabularne programu pilotażowego**
+
+- KPI-rudy / leaderboard (patrz: [[Elementy korporacyjne z twistem krasnoludzkim]]) przestaje być tylko ozdobnym UI — to dosłownie sens istnienia programu: porównanie wyników IPA z innymi placówkami (pilotażowymi i/lub tradycyjnym modelem PIWO).
+- Audyt zyskuje realną stawkę: to nie rutynowa, zaplanowana kontrola, tylko konsekwencja buntu chłopów-krasnoludów (elementy pańszczyzny, patrz: [[Strajk — brak i jakość piwa (elementy pańszczyzny)]]) — inspektor pojawia się właśnie wtedy, gdy trwa strajk, i to jest decyzja o dalszym istnieniu programu pilotażowego. Wykryty w trakcie buntu = zamknięcie pilotażu, przejęcie placówki przez centralę.
+- To daje naturalny fabularny fail-state: zamiast bezdusznego "koniec gry" — "program pilotażowy zamknięty".
+- Otwiera pole na napięcie/pokusę: opłaca się kombinować z raportami (podkolorowywać liczby przed wysłaniem do centrali), skoro stawką jest przetrwanie całego eksperymentu, nie tylko własnej pensji Sztygara — mechanika do rozważenia później.
+
+### Elementy korporacyjne z twistem krasnoludzkim
+
+Pomysł: wplecenie korpo-sztampy (stanowiska, żargon, procedury) przerobionej na krasnoludzką modłę.
+
+**Stanowiska**
+- CEO → Wielki Sztygar (albo "Kierownik ds. Rozkopu Strategicznego")
+- Junior specjalista (gracz na starcie) → Młodszy Sztygar ds. Ekspansji Kopalnianej
+- HR → Dział Rekrutacji i Piwosfery (rekrutuje kulki, dba o morale/piwo)
+- Marketing → Dział Wizerunku Rudy
+- Księgowość → Kantor Krwawej Rudy / Biuro Rachunku Sztolniowego
+- Prawnik firmowy → Adwokat od Zawaleń (zajmuje się "wypadkami przy pracy")
+- Dział bezpieczeństwa → BHP Podziemne, hasło typu "kask to nie moda, kask to życie"
+
+**Firmowe rytuały/elementy**
+- Cykliczny (np. cotygodniowy) raport wydobycia wysyłany "do centrali" — mechanicznie: cel tygodniowy do wykonania, presja korpo.
+- KPI-rudy — sarkastyczny licznik "wydajności" porównujący do innych (fikcyjnych) placówek firmy.
+- Onboarding nowego krasnoluda — papierkowa broszura "Witaj w rodzinie [Nazwa Firmy]!" zanim dostanie kilof.
+- List motywacyjny/CV pisany przez kulkę przed rekrutacją — flavour text.
+- Program lojalnościowy piwny — im dłużej krasnolud przeżyje, tym lepsze piwo/beneficja (nawiązanie do stażu pracy).
+- Firmowe hasło/motto na banerze w obozie, np. "Kop głębiej. Pij mądrzej." albo "Ruda to przyszłość".
+- Audyt — nie jest osobnym, zaplanowanym eventem sprawdzającym jakość piwa; zamiast tego inspektor państwowy pojawia się właśnie wtedy, gdy trwa bunt/strajk chłopów-krasnoludów (elementy pańszczyzny), i wiesza Cię za jaja za dopuszczenie do buntu poddanych — patrz: [[Strajk — brak i jakość piwa (elementy pańszczyzny)]].
 
 ### Budynki obozu
 
@@ -204,11 +286,12 @@ Mapa ma być bardzo duża — mowa o milionach bloków. Wymaga to systemu chunko
 - Wystrzał z platformy (przeciągnięcie i puszczenie) domyślnie ma losowy offset od zadanego kierunku — czyli gracz nie trafia idealnie tam, gdzie celował.
 - Ulepszenie: zmniejsza ten losowy offset, czyli poprawia celność wystrzału (im wyższy poziom ulepszenia, tym bliżej zadanego kierunku faktycznie leci kulka).
 
-### Strajk — brak i jakość piwa
+### Strajk — brak i jakość piwa (elementy pańszczyzny)
 
 - Piwo można rozcieńczać, żeby wystarczyło go na więcej (przetrwanie w ciężkich czasach, gdy brakuje surowców/produkcji), ale to obniża jego jakość.
-- Ryzyko: im bardziej rozcieńczone piwo (im gorsza jakość), tym większe ryzyko strajku wśród krasnoludów.
-- Szczegóły (jak dokładnie liczony jest strajk, co się dzieje podczas strajku) — nieustalone jeszcze.
+- Ryzyko: im bardziej rozcieńczone piwo (im gorsza jakość), tym większe ryzyko strajku/buntu wśród krasnoludów.
+- Fabularny twist pańszczyźniany: krasnoludy-górnicy traktowane są jak chłopi pańszczyźniani IPA/PIWO — nie ma tu typowego, korpo-poprawnego "audytu jakości" jako osobnego, zaplanowanego wydarzenia. Zamiast tego: jeśli akurat trwa bunt/strajk chłopów-krasnoludów w momencie, gdy pojawia się inspektor państwowy, to on wiesza Cię (Sztygara) za jaja za to, że dopuściłeś do buntu poddanych — czyli event "audytu" jest wywoływany właśnie przez strajk, nie jest niezależnym, osobnym timerem.
+- Szczegóły (jak dokładnie liczony jest strajk, jak dokładnie wygląda kara od inspektora, co się dzieje podczas samego strajku) — nieustalone jeszcze.
 
 ### Losowe eventy na mapie
 
@@ -219,6 +302,12 @@ Mapa ma być bardzo duża — mowa o milionach bloków. Wymaga to systemu chunko
 
 - Pomysł: koboldy jako swego rodzaju "surowiec"/zasób — łapane na mapie, używane potem jako zwierzątka do różnych rzeczy w kopalni.
 - Nieustalone, do przemyślenia później (jakie konkretnie zastosowania, jak się je łapie).
+
+### Krypta — magazyn surowców (zamiast listy w rogu ekranu)
+
+- Zamiast typowej listy surowców w rogu ekranu (jak w wielu innych grach), robimy to bardziej klimatycznie: krypta.
+- Krypta to w zasadzie plecak typu grid, ale fizycznie umiejscowiony na mapie (w obozie).
+- Surowce da się do niej znosić i z niej wyciągać.
 
 ### Ustalone w rozmowie (decyzje, przeniesione też do GDD)
 
@@ -251,13 +340,13 @@ W każdej warstwie 0 znaczy „nic". Powietrze, brak dekoracji, brak tła — ta
 
 ### Warstwy
 
-| warstwa | do czego |
-|---|---|
-| background | tło za wszystkim, rysowane zawsze — także pod blokami, bo blok może być przezroczysty |
-| decoBack | ozdoby za kulkami |
-| solidType | teren i konstrukcje gracza — jeden blok na kafel |
-| solidDamage | postęp zniszczenia bloku (0–65535) |
-| decoFront | ozdoby przed kulkami |
+| warstwa     | do czego                                                                              |
+| ----------- | ------------------------------------------------------------------------------------- |
+| background  | tło za wszystkim, rysowane zawsze — także pod blokami, bo blok może być przezroczysty |
+| decoBack    | ozdoby za kulkami                                                                     |
+| solidType   | teren i konstrukcje gracza — jeden blok na kafel                                      |
+| solidDamage | postęp zniszczenia bloku (0–65535)                                                    |
+| decoFront   | ozdoby przed kulkami                                                                  |
 
 Tory, platformy, szyby i palisady nie mają osobnej warstwy — siedzą w `solidType` razem ze skałą. Dzięki temu fizyka, licznik uszkodzeń i niszczenie działają dla nich bez jednej dodatkowej linijki.
 

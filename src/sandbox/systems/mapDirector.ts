@@ -111,7 +111,7 @@ export default class MapDirector extends PragmaComponent {
       MapObject.setTile(gx, gy, BlocksID.air, 0);
       const world = MapObject.tileCenterToWorld({ x: gx, y: gy });
       this.scene.spawnActor(
-        SPAWN_REGISTRY[block.spawnOnHit]({ position: world, type: 1 }),
+        SPAWN_REGISTRY[block.spawnOnHit]({ position: world, type }),
       );
       this.emitSceneEvent<MapDiscoveryEvent>("discoveryFound", { gx, gy });
       return "bounce";
@@ -210,8 +210,8 @@ export default class MapDirector extends PragmaComponent {
       const gx = chunkX * chunkInTiles.width + (local % chunkInTiles.width);
       const gy =
         chunkY * chunkInTiles.height + Math.floor(local / chunkInTiles.width);
-
-      const actor = builder({ position: { x: gx, y: gy }, type });
+      const world = MapObject.tileCenterToWorld({ x: gx, y: gy });
+      const actor = builder({ position: world, type });
       this.scene.spawnActor(actor);
 
       if (!actors) {

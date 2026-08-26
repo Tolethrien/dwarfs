@@ -36,7 +36,7 @@ export default class SequentialDrawPipeline {
   private static currentClip: Clip = undefined;
   private static viewportBind: PipelineBind;
   private static verticesList = new Float32Array(
-    this.INIT_SIZE * this.VERTEX_STRIDE
+    this.INIT_SIZE * this.VERTEX_STRIDE,
   );
   public static get getStride() {
     return this.VERTEX_STRIDE;
@@ -81,7 +81,7 @@ export default class SequentialDrawPipeline {
       Renderer.getBuffer("viewport"),
       0,
       new Float32Array([Aurora.canvas.width, Aurora.canvas.height]),
-      0
+      0,
     );
     const guiMeta = Renderer.getTexture("gui");
     const guiTexture = guiMeta.texture.createView();
@@ -97,7 +97,7 @@ export default class SequentialDrawPipeline {
         this.vertexBuffer,
         bufferByteOffset,
         this.verticesList,
-        vertexListOffset
+        vertexListOffset,
       );
       bufferByteOffset +=
         batch.counter * this.VERTEX_STRIDE * Float32Array.BYTES_PER_ELEMENT;
@@ -140,11 +140,18 @@ export default class SequentialDrawPipeline {
   private static setScissor(
     clip: Clip,
     encoder: GPURenderPassEncoder,
-    meta: GPUAuroraTexture["meta"]
+    meta: GPUAuroraTexture["meta"],
   ) {
-    if (clip === undefined)
+    if (clip === undefined) {
       encoder.setScissorRect(0, 0, meta.width, meta.height);
-    else encoder.setScissorRect(clip.x, clip.y, clip.w, clip.h);
+      return;
+    }
+    // the caller may be a frame behind a resize — never let it escape the target
+    const x = Math.max(0, Math.min(clip.x, meta.width));
+    const y = Math.max(0, Math.min(clip.y, meta.height));
+    const w = Math.max(0, Math.min(clip.w, meta.width - x));
+    const h = Math.max(0, Math.min(clip.h, meta.height - y));
+    encoder.setScissorRect(x, y, w, h);
   }
   public static clearPipeline() {
     this.batchList = [];
@@ -153,7 +160,7 @@ export default class SequentialDrawPipeline {
   public static setClip(clip: Clip) {
     if (clip !== undefined && this.currentClip !== undefined)
       console.warn(
-        "trying to set new clip without popping last one, this will work but may be not intentional"
+        "trying to set new clip without popping last one, this will work but may be not intentional",
       );
     this.currentClip = clip;
   }
@@ -180,9 +187,9 @@ export default class SequentialDrawPipeline {
       return true;
     }
     return (
-      clip.x !== this.currentClip.x &&
-      clip.y !== this.currentClip.y &&
-      clip.w !== this.currentClip.w &&
+      clip.x !== this.currentClip.x ||
+      clip.y !== this.currentClip.y ||
+      clip.w !== this.currentClip.w ||
       clip.h !== this.currentClip.h
     );
   }
@@ -192,7 +199,7 @@ export default class SequentialDrawPipeline {
   private static validateBufferSize() {
     const drawSize = this.batchList.reduce(
       (prev, batch) => (prev += batch.counter),
-      0
+      0,
     );
     if (this.currentBufferSize >= drawSize) return;
     const newSize = Math.ceil(drawSize * 1.5);
@@ -259,10 +266,10 @@ export default class SequentialDrawPipeline {
   }: PipelineDescriptor): Promise<[GPURenderPipeline, GPUBindGroup[]]> {
     const vertexLayout = this.generateVertexLayout();
     const bindLayoutList = binds.map(
-      (bindName) => Renderer.getBind(bindName)[1]
+      (bindName) => Renderer.getBind(bindName)[1],
     );
     const bindsDataList = binds.map(
-      (bindName) => Renderer.getBind(bindName)[0]
+      (bindName) => Renderer.getBind(bindName)[0],
     );
 
     bindsDataList.push(this.viewportBind[0]);

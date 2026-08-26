@@ -108,7 +108,11 @@ export default class TileLayer extends PragmaComponent {
           const layer = LAYERS[i];
           const type = this.views[i][index];
           if (type === 0) continue;
-
+          if (
+            layer.layer === LAYER.solid &&
+            EntitiesObject.getBlock(type).spawn
+          )
+            continue;
           const crop = layer.defs[type].crop;
 
           let tint: RGBA | undefined;

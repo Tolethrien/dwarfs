@@ -7,6 +7,7 @@ import Dwarf from "@/sandbox/bActors/dwarf";
 import { ACTION } from "@/sandbox/inputActions";
 import CameraObject from "@/sandbox/managers/cameraObject";
 import EntitiesObject, { DwarfsID } from "@/sandbox/managers/entitiesObject";
+import { GameMode } from "../scenes/gameScene";
 export default class PlayerInputsComponent extends PragmaComponent {
   private mouseLocked: boolean = false;
   private mousePos: Position2D = { x: 0, y: 0 };
@@ -14,6 +15,8 @@ export default class PlayerInputsComponent extends PragmaComponent {
     super(internal);
   }
   preUpdate(): void {
+    const gameMode = this.systemSharedData.get<GameMode>("gameMode");
+    if (!gameMode || gameMode.mode === "build") return;
     if (InputManager.isKeyPressed("Digit1")) console.log(1);
     if (InputManager.onActionHold(ACTION.shoot) && !this.mouseLocked)
       this.saveMousePos();

@@ -5,6 +5,7 @@ import Time from "@engine/time";
 import Aurora from "../aurora/core";
 import Renderer from "../aurora/renderer/renderer";
 import Pragma from "../pragma/pragma";
+import Navi from "../navi/navi";
 
 export default class Engine {
   declare private static canvas: HTMLCanvasElement;
@@ -18,6 +19,7 @@ export default class Engine {
     await this.setCanvas();
     InputManager.registerEvents();
     await Aurora.init(this.canvas);
+    Navi.initialize();
     Time.initTimer(performance.now());
     await preload();
     setup();
@@ -27,8 +29,10 @@ export default class Engine {
   private static loop(currentTime: number) {
     Time.update(currentTime);
     InputManager.updateInputs();
+    Navi.updateSystem();
     Renderer.beginBatch();
     Pragma.update();
+    Navi.drawSystem();
     Renderer.endBatch();
     requestAnimationFrame((currentTime) => this.loop(currentTime));
   }
@@ -53,6 +57,7 @@ export default class Engine {
         if (!pendingSize) return;
         canvas.width = pendingSize.width;
         canvas.height = pendingSize.height;
+        Navi.resize();
         pendingSize = null;
         debounceTimer = null;
       }, DEBOUNCE_MS);

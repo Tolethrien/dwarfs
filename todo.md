@@ -9,6 +9,9 @@
 
 - uderzenie w blok i sparki to moze bysmy zrobili tak by sparki w miejscu uderzenia lecialy, a blok przy okazji zrobi jakis efekt swietlny czy moze shake, cokolwiek
 - niech biomy odkrywane nie pojawiaja sie odrazu a od centrum odkrycia niech sie powoli odkryweaja wszystkie tile w kierunku przeciwnym do odkrycia
+- skoro bloki wszystkie maja tkai sam rozmiar, zrob mapowanie index = textura zamiast kazdemu recznie wpisywac crop!
+- input manager by mogl przypisywac akcje do roznych scen a nie globalnie
+- usunac/przerobic na sensowy playerInputComp
 
 ## DOKONCZYC!
 

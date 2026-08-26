@@ -2,12 +2,15 @@ import GameResources, { GameResourcesID } from "../managers/resourcesObject";
 import PragmaComponent from "@/core/pragma/component";
 import { TileMinedEvent } from "./mapDirector";
 import EntitiesObject from "../managers/entitiesObject";
-import Draw from "@/core/aurora/draw";
 import { SPRITES } from "../managers/generalData";
-import Aurora from "@/core/aurora/core";
+import Navi from "@/core/navi/navi";
+import UINode from "@/core/navi/node";
+import { auto, px } from "@/core/navi/units";
+import UIText from "@/core/navi/elements/text";
 const RESOURCE_COUNT =
   Object.keys(GameResourcesID).filter((k) => isNaN(Number(k))).length - 1; // no none - all class need to -1 index
 export default class PlayerResources extends PragmaComponent {
+  private panel!: UINode;
   private resList: number[] = new Array(RESOURCE_COUNT).fill(0);
   constructor(internal: InternalPCProps) {
     super(internal);
@@ -18,7 +21,9 @@ export default class PlayerResources extends PragmaComponent {
     this.onSceneEvent<TileMinedEvent>("tileMined", (event) =>
       this.blockMined(event),
     );
+    this.buildPanel();
   }
+
   public addResource(res: GameResourcesID, value: number) {
     this.resList[res - 1] += value;
   }
@@ -35,44 +40,62 @@ export default class PlayerResources extends PragmaComponent {
     if (!res) return;
     this.addResource(res, 1);
   }
-  render(): void {
-    const PADDING = 8;
-    const ICON_SIZE = 25;
-    const ROW_HEIGHT = 30;
-    const ROW_WIDTH = 70;
-    const MARGIN_RIGHT = 10;
-    const TEXT_COLUMN_WIDTH = 30;
-
-    const panelHeight = PADDING * 2 + this.resList.length * ROW_HEIGHT;
-    const x = Aurora.canvas.width - ROW_WIDTH - MARGIN_RIGHT;
-    const y = 10;
-
-    Draw.guiRect({
-      position: { x, y },
-      size: { width: ROW_WIDTH, height: panelHeight },
-      tint: [0, 0, 0, 200],
-    });
-
+  private buildPanel() {
+    const panel = Navi.append(
+      new UINode({
+        position: { x: px(10), y: px(10) },
+        size: { width: auto(), height: auto() },
+        style: {
+          anchorX: "end",
+          backgroundColor: [0, 0, 0, 200],
+          layout: "stack",
+          direction: "col",
+          gap: 15,
+          padding: { top: 8, right: 8, bottom: 8, left: 8 },
+          alignCross: "stretch",
+        },
+      }),
+    );
+    this.panel = panel;
     for (let slot = 0; slot < this.resList.length; slot++) {
       const res = (slot + 1) as GameResourcesID;
-      const amount = this.resList[slot];
-      const crop = GameResources.resources[res].crop;
-      const rowY = y + PADDING + slot * ROW_HEIGHT;
 
-      Draw.guiText({
-        position: { x: x + PADDING, y: rowY + 3, mode: "pixel" },
-        text: String(amount),
-        font: "lato",
-        fontSize: { size: 14, mode: "pixel" },
-        fontColor: [255, 55, 55, 255],
-      });
+      const row = Navi.append(
+        new UINode({
+          size: { width: auto(), height: auto() },
+          input: "absorb",
+          style: {
+            backgroundColor: [0, 0, 0, 0],
+            layout: "stack",
+            direction: "row",
+            gap: 5,
+            alignMain: "end",
+          },
+        }),
+        panel,
+      );
 
-      Draw.guiRect({
-        position: { x: x + PADDING + TEXT_COLUMN_WIDTH, y: rowY },
-        size: { width: ICON_SIZE, height: ICON_SIZE },
-        background: SPRITES.icons,
-        crop,
-      });
+      Navi.append(
+        new UIText(() => String(this.resList[slot]), {
+          size: { width: auto(), height: auto() },
+          style: {
+            textColor: [255, 55, 55, 255],
+            textSize: 14,
+          },
+        }),
+        row,
+      );
+
+      Navi.append(
+        new UINode({
+          size: { width: px(25), height: px(25) },
+          style: {
+            backgroundImage: SPRITES.icons,
+            backgroundImageCrop: GameResources.resources[res].crop,
+          },
+        }),
+        row,
+      );
     }
   }
 }

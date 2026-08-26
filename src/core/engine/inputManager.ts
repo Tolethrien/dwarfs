@@ -1,9 +1,10 @@
 import { KEY_GROUP, type KeyCode } from "./keys";
+import Time from "./time";
 
 interface MouseEvents {
   mousePos: Position2D;
   buttons: Set<number>;
-  wheel: number;
+  wheel: Position2D;
 }
 
 enum MouseKey {
@@ -25,8 +26,9 @@ type Action = {
   | { key: KeyCode; mouse?: never }
   | { mouse: keyof typeof MouseKey; key?: never }
 );
-
+const WHEEL_GESTURE_GAP = 150;
 export default class InputManager {
+  private static readonly NO_SCROLL: Position2D = { x: 0, y: 0 };
   private static mousePreviousFrame: MouseEvents = this.generateMouseManifold();
   private static mouseCurrentFrame: MouseEvents = this.generateMouseManifold();
   private static mouseInputBuffer: MouseEvents = this.generateMouseManifold();
@@ -34,19 +36,26 @@ export default class InputManager {
   private static keyCurrentFrame = new Set<string>();
   private static keyInputBuffer = new Set<string>();
   private static actionMap: Map<string, Action> = new Map();
+  private static mouseClaimed = false;
+  private static claimSuspended = false;
+  private static claimLatch: Map<number, boolean> = new Map();
+  private static wheelLatch: boolean | undefined;
+  private static lastWheelTime = 0;
 
   public static registerEvents() {
     window.addEventListener("mousedown", (e) => this.mouseEvents(e, "down"));
     window.addEventListener("mouseup", (e) => this.mouseEvents(e, "up"));
     window.addEventListener("mousemove", (e) => this.mouseMove(e));
-    window.addEventListener("wheel", (e) => this.wheelEvent(e));
+    window.addEventListener("wheel", (e) => this.wheelEvent(e), {
+      passive: false,
+    });
     window.addEventListener("keydown", (e) => this.keyEvents(e, "down"));
     window.addEventListener("keyup", (e) => this.keyEvents(e, "up"));
 
-    // alt-tab z wciśniętym klawiszem: keyup poleci do innego okna
     window.addEventListener("blur", () => {
       this.keyInputBuffer.clear();
       this.mouseInputBuffer.buttons.clear();
+      this.claimLatch.clear();
     });
   }
 
@@ -56,19 +65,26 @@ export default class InputManager {
     this.mousePreviousFrame = {
       buttons: new Set(this.mouseCurrentFrame.buttons),
       mousePos: { ...this.mouseCurrentFrame.mousePos },
-      wheel: this.mouseCurrentFrame.wheel,
+      wheel: { ...this.mouseCurrentFrame.wheel },
     };
     this.mouseCurrentFrame = {
       buttons: new Set(this.mouseInputBuffer.buttons),
       mousePos: { ...this.mouseInputBuffer.mousePos },
-      wheel: this.mouseInputBuffer.wheel,
+      wheel: { ...this.mouseInputBuffer.wheel },
     };
-    this.mouseInputBuffer.wheel = 0;
+    this.mouseInputBuffer.wheel.x = 0;
+    this.mouseInputBuffer.wheel.y = 0;
+    for (const btn of this.claimLatch.keys()) {
+      if (this.mouseCurrentFrame.buttons.has(btn)) continue;
+      if (this.mousePreviousFrame.buttons.has(btn)) continue;
+      this.claimLatch.delete(btn);
+    }
   }
 
   //MOUSE
   public static isMouseClicked(button: keyof typeof MouseKey) {
     const btn = MouseKey[button];
+    if (this.isClaimed(btn)) return false;
     return (
       this.mouseCurrentFrame.buttons.has(btn) &&
       !this.mousePreviousFrame.buttons.has(btn)
@@ -76,10 +92,12 @@ export default class InputManager {
   }
   public static isMouseHold(button: keyof typeof MouseKey) {
     const btn = MouseKey[button];
+    if (this.isClaimed(btn)) return false;
     return this.mouseCurrentFrame.buttons.has(btn);
   }
   public static isMouseReleased(button: keyof typeof MouseKey) {
     const btn = MouseKey[button];
+    if (this.isClaimed(btn)) return false;
     return (
       !this.mouseCurrentFrame.buttons.has(btn) &&
       this.mousePreviousFrame.buttons.has(btn)
@@ -93,12 +111,15 @@ export default class InputManager {
     );
   }
   public static isMouseScrolled() {
-    return this.mouseCurrentFrame.wheel !== 0;
+    if (this.isWheelClaimed()) return false;
+    const wheel = this.mouseCurrentFrame.wheel;
+    return wheel.x !== 0 || wheel.y !== 0;
   }
   public static getMousePos() {
     return this.mouseCurrentFrame.mousePos;
   }
   public static getMouseScroll() {
+    if (this.isWheelClaimed()) return this.NO_SCROLL;
     return this.mouseCurrentFrame.wheel;
   }
 
@@ -162,6 +183,7 @@ export default class InputManager {
 
   //helpers
   private static mouseEvents(e: MouseEvent, type: "up" | "down") {
+    e.preventDefault();
     if (type === "down") this.mouseInputBuffer.buttons.add(e.button);
     else this.mouseInputBuffer.buttons.delete(e.button);
   }
@@ -170,9 +192,12 @@ export default class InputManager {
     this.mouseInputBuffer.mousePos.y = e.offsetY;
   }
   private static wheelEvent(e: WheelEvent) {
-    this.mouseInputBuffer.wheel = e.deltaY;
+    e.preventDefault();
+    this.mouseInputBuffer.wheel.x += e.deltaX;
+    this.mouseInputBuffer.wheel.y += e.deltaY;
   }
   private static keyEvents(e: KeyboardEvent, type: "up" | "down") {
+    e.preventDefault();
     if (type === "down") this.keyInputBuffer.add(e.code);
     else this.keyInputBuffer.delete(e.code);
   }
@@ -180,7 +205,7 @@ export default class InputManager {
     return {
       buttons: new Set(),
       mousePos: { x: -1, y: -1 },
-      wheel: 0,
+      wheel: { x: 0, y: 0 },
     };
   }
   private static isModHeld(mod: ModKey) {
@@ -190,5 +215,36 @@ export default class InputManager {
     if (action.mods === "NoMod")
       return !MODS.some((mod) => this.isModHeld(mod));
     return action.mods.every((mod) => this.isModHeld(mod));
+  }
+  //claims (for UI - don't click in game and ui at the same time)
+  public static setMouseClaim(claimed: boolean) {
+    this.claimSuspended = false;
+    this.mouseClaimed = claimed;
+    for (const btn of this.mouseCurrentFrame.buttons) {
+      if (this.mousePreviousFrame.buttons.has(btn)) continue;
+      this.claimLatch.set(btn, claimed);
+    }
+    const now = Time.getTime();
+    const wheel = this.mouseCurrentFrame.wheel;
+    if (wheel.x !== 0 || wheel.y !== 0) {
+      if (this.wheelLatch === undefined) this.wheelLatch = claimed;
+      this.lastWheelTime = now;
+    } else if (now - this.lastWheelTime > WHEEL_GESTURE_GAP) {
+      this.wheelLatch = undefined;
+    }
+  }
+  private static isClaimed(btn: number) {
+    if (this.claimSuspended) return false;
+    const latched = this.claimLatch.get(btn);
+    if (latched !== undefined) return latched;
+    return this.mouseClaimed;
+  }
+  public static suspendClaim() {
+    this.claimSuspended = true;
+  }
+  private static isWheelClaimed() {
+    if (this.claimSuspended) return false;
+    if (this.wheelLatch !== undefined) return this.wheelLatch;
+    return this.mouseClaimed;
   }
 }
