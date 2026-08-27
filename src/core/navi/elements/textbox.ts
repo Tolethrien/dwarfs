@@ -199,7 +199,7 @@ export default class UITextBox extends UINode {
 
     const visual = this.visualScale(box);
     const scale = Navi.getScale * visual.y;
-    const color = this.paintStyle.textColor;
+    const color = this.paintTextColor;
 
     if (this.flowsSideways()) this.drawSideways(box.x, box.y, scale, color);
     else this.drawDownwards(box.x, box.y, scale, color, visual.x);

@@ -17,11 +17,18 @@ interface Transform {
   tx: number;
   ty: number;
 }
+interface PortalEntry {
+  node: UINode;
+  offset: Position2D;
+  transform: Transform;
+  alpha: number;
+}
 const NO_TRANSFORM: Transform = { sx: 1, sy: 1, tx: 0, ty: 0 };
 export default class Navi {
   public static readonly root: UINode = new UINode();
   private static appendQueue: { node: UINode; target: UINode }[] = [];
   private static removeQueue: { node: UINode; target: UINode }[] = [];
+  private static portals: PortalEntry[] = [];
   private static lastMouse: Position2D = { x: 0, y: 0 };
   private static userScale = 1;
   private static scale = 1;
@@ -39,20 +46,42 @@ export default class Navi {
   private static focusedNode: UINode | undefined;
   private static focusPath: UINode[] = [];
   private static styleAnimated: Set<UINode> = new Set();
+  private static pendingDone: (() => void)[] = [];
+  private static scrolledThisFrame = false;
   public static initialize() {
     this.root.tags.add("root");
     this.root.input = "none";
     this.resize();
+  }
+  public static updateSystem() {
+    InputManager.suspendClaim();
+    InputManager.suspendKeyboardClaim();
+    this.scrolledThisFrame = false;
+    this.nodeManipulationPhase();
+    this.contentPhase();
+    this.dragPhase();
+    this.scrollPhase();
+    this.measurePhase();
+    this.arrangePhase();
+    this.reflowPhase();
+    this.portalPhase();
+    this.hitTestPhase();
+    const consumed = this.focusPhase();
+    this.animationPhase();
+    InputManager.setMouseClaim(this.hoveredNode !== undefined);
+    InputManager.setKeyboardClaim(
+      consumed || this.focusedNode?.wantsKeys === true,
+    );
+  }
+
+  public static drawSystem() {
+    this.drawPhase();
   }
 
   public static get getScale() {
     return this.scale;
   }
 
-  public static setUserScale(value: number) {
-    this.userScale = AxiomMath.clamp(value, 0.5, 2);
-    this.resize();
-  }
   public static get getClicked() {
     return this.clickedNode;
   }
@@ -64,6 +93,13 @@ export default class Navi {
   }
   public static get getFocused() {
     return this.focusedNode;
+  }
+  public static get getMousePos() {
+    return InputManager.getMousePos();
+  }
+
+  public static get didScroll() {
+    return this.scrolledThisFrame;
   }
   public static registerAnimated(node: UINode) {
     this.styleAnimated.add(node);
@@ -82,7 +118,13 @@ export default class Navi {
     };
     this.layoutDirty = true;
   }
-
+  public static markScrolled() {
+    this.scrolledThisFrame = true;
+  }
+  public static setUserScale(value: number) {
+    this.userScale = AxiomMath.clamp(value, 0.5, 2);
+    this.resize();
+  }
   public static append(node: UINode, target: UINode = this.root) {
     this.appendQueue.push({ node, target });
     return node;
@@ -93,23 +135,59 @@ export default class Navi {
   public static markLayoutDirty() {
     this.layoutDirty = true;
   }
-
-  public static updateSystem() {
-    InputManager.suspendClaim();
-    this.nodeManipulationPhase();
-    this.contentPhase();
-    this.dragPhase();
-    this.scrollPhase();
-    this.measurePhase();
-    this.arrangePhase();
-    this.reflowPhase();
-    this.hitTestPhase();
-    this.animationPhase();
-    InputManager.setMouseClaim(this.hoveredNode !== undefined);
+  public static blur() {
+    this.setFocus(undefined);
   }
 
-  public static drawSystem() {
-    this.drawPhase();
+  public static focus(node: UINode) {
+    this.setFocus(this.findFocusable(node));
+  }
+  public static find(tag: string, root: UINode = this.root) {
+    const found: UINode[] = [];
+    root.forEachDescendant((node) => {
+      if (node.tags.has(tag)) found.push(node);
+    });
+    return found;
+  }
+
+  public static findFirst(tag: string, root: UINode = this.root) {
+    let found: UINode | undefined;
+    root.forEachDescendant((node) => {
+      if (found === undefined && node.tags.has(tag)) found = node;
+    });
+    return found;
+  }
+  public static releaseInput(node: UINode) {
+    if (this.pointsInto(this.hoveredNode, node)) {
+      this.hoveredNode!.hovered = false;
+      this.hoveredNode = undefined;
+    }
+    if (this.pointsInto(this.pressTarget, node)) {
+      this.pressTarget!.pressed = false;
+      this.pressTarget = undefined;
+    }
+    if (this.pointsInto(this.rightPressTarget, node)) {
+      this.rightPressTarget!.rightPressed = false;
+      this.rightPressTarget = undefined;
+    }
+    if (this.pointsInto(this.lastClickNode, node)) {
+      this.lastClickNode = undefined;
+    }
+    if (this.pointsInto(this.focusedNode, node)) {
+      this.focusedNode!.focused = false;
+      this.focusedNode!.focusLost = true;
+      this.touch(this.focusedNode!);
+      this.focusedNode = undefined;
+      this.applyFocusPath(undefined);
+    }
+  }
+  public static releaseNode(node: UINode) {
+    this.releaseInput(node);
+    node.forEachDescendant((child) => {
+      this.styleAnimated.delete(child);
+      child.stopAllTweens();
+      child.onUnmount();
+    });
   }
 
   //=============================== Phases
@@ -120,6 +198,7 @@ export default class Navi {
     for (const { node, target } of this.appendQueue) {
       target.children.push(node);
       node.parent = target;
+      node.onMount();
     }
     this.appendQueue.length = 0;
 
@@ -139,7 +218,8 @@ export default class Navi {
   }
 
   private static contentPhase() {
-    this.contentTree(this.root);
+    const dt = Time.getRawDeltaTime();
+    this.contentTree(this.root, dt);
   }
 
   private static measurePhase() {
@@ -152,7 +232,6 @@ export default class Navi {
     this.arrangeTree(this.root);
     this.layoutDirty = false;
   }
-  /** wrapped nodes only learn their real extent while being arranged */
   private static reflowPhase() {
     if (!this.reflowRequested) return;
     this.reflowRequested = false;
@@ -163,6 +242,7 @@ export default class Navi {
     this.clearOneFrameFlags();
     this.clickedNode = undefined;
     this.rightClickedNode = undefined;
+
     const mouse = InputManager.getMousePos();
     const screen: Box = {
       x: 0,
@@ -170,10 +250,22 @@ export default class Navi {
       w: Aurora.canvas.width,
       h: Aurora.canvas.height,
     };
-    let target = this.hitTree(this.root, mouse, screen, { x: 0, y: 0 });
+
+    let target: UINode | undefined;
+
+    for (let i = this.portals.length - 1; i >= 0; i--) {
+      const entry = this.portals[i];
+      target = this.hitTree(entry.node, mouse, screen, entry.offset);
+      if (target) break;
+    }
+    if (!target) {
+      target = this.hitTree(this.root, mouse, screen, { x: 0, y: 0 });
+    }
     if (this.pressTarget && target !== this.pressTarget) target = undefined;
-    if (this.rightPressTarget && target !== this.rightPressTarget)
+    if (this.rightPressTarget && target !== this.rightPressTarget) {
       target = undefined;
+    }
+
     this.applyHover(target);
     this.applyFocus(target);
     this.applyLeftButton(target);
@@ -186,7 +278,20 @@ export default class Navi {
       w: Aurora.canvas.width,
       h: Aurora.canvas.height,
     };
-    this.drawTree(this.root, { x: 0, y: 0 }, screen, NO_TRANSFORM);
+
+    this.drawTree(this.root, { x: 0, y: 0 }, screen, NO_TRANSFORM, 1);
+
+    for (let i = 0; i < this.portals.length; i++) {
+      const entry = this.portals[i];
+      this.drawTree(
+        entry.node,
+        entry.offset,
+        screen,
+        entry.transform,
+        entry.alpha,
+      );
+    }
+
     Draw.popClip();
   }
   private static scrollPhase() {
@@ -217,15 +322,52 @@ export default class Navi {
     if (dx === 0 && dy === 0) return;
     this.pressTarget.onDrag({ x: dx, y: dy });
   }
-  private static animationPhase() {
-    const dt = Time.getRawDeltaTime();
-    for (const node of this.styleAnimated) node.tickStyle(dt);
+  private static focusPhase() {
+    const before = this.focusedNode;
+    if (!before?.wantsKeys) return false;
+
+    if (InputManager.isKeyPressed("Escape")) this.blur();
+    else
+      before.onKeys({
+        text: InputManager.getTypedText(),
+        keys: InputManager.getEditKeys(),
+      });
+
+    return this.focusedNode !== before;
   }
 
-  private static contentTree(node: UINode) {
+  private static animationPhase() {
+    const dt = Time.getRawDeltaTime();
+    // onDone jest odroczone poniżej, więc nic nie rusza zbioru w trakcie pętli
+    for (const node of this.styleAnimated) {
+      node.tickStyle(dt);
+      if (node.active) node.tickTweens(dt, this.pendingDone);
+    }
+    if (this.pendingDone.length === 0) return;
+    for (const done of this.pendingDone) done();
+    this.pendingDone.length = 0;
+  }
+  private static portalPhase() {
+    this.portals.length = 0;
+    this.collectPortals(this.root, { x: 0, y: 0 }, NO_TRANSFORM, 1);
+
+    // portals nested inside portals land here too; length is read each round
+    for (let i = 0; i < this.portals.length; i++) {
+      const entry = this.portals[i];
+      this.collectPortals(
+        entry.node,
+        entry.offset,
+        entry.transform,
+        entry.alpha,
+      );
+    }
+  }
+
+  private static contentTree(node: UINode, dt: number) {
     if (!node.active) return;
+    node.tick(dt);
     if (node.contentChanged()) this.layoutDirty = true;
-    for (const child of node.children) this.contentTree(child);
+    for (const child of node.children) this.contentTree(child, dt);
   }
 
   private static measureTree(node: UINode) {
@@ -243,24 +385,25 @@ export default class Navi {
     offset: Position2D,
     clip: Box,
     transform: Transform,
+    alpha: number,
   ) {
     if (!node.active) return;
-
-    // clipping stays on the layout box, so it never disagrees with the hit test
+    const nodeAlpha = alpha * node.renderAlpha;
+    if (nodeAlpha <= 0) return;
+    // clipping stays on the layout box
     const childClip = this.resolveChildClip(node, clip, offset);
     if (childClip === null) return;
 
-    const style = node.paintStyle;
     const uiScale = this.scale;
 
     const laid: Box = {
-      x: node.pixelBox.x + offset.x + style.nudge.x * uiScale,
-      y: node.pixelBox.y + offset.y + style.nudge.y * uiScale,
+      x: node.pixelBox.x + offset.x + node.renderNudgeX * uiScale,
+      y: node.pixelBox.y + offset.y + node.renderNudgeY * uiScale,
       w: node.pixelBox.w,
       h: node.pixelBox.h,
     };
 
-    // layout space → screen space
+    // layout space - screen space
     const outer: Box = {
       x: laid.x * transform.sx + transform.tx,
       y: laid.y * transform.sy + transform.ty,
@@ -268,13 +411,13 @@ export default class Navi {
       h: laid.h * transform.sy,
     };
 
-    const sx = style.scale.x;
-    const sy = style.scale.y;
-    const cx = outer.x + outer.w / 2;
-    const cy = outer.y + outer.h / 2;
+    const sx = node.renderScaleX;
+    const sy = node.renderScaleY;
+    const cx = outer.x + outer.w * node.renderOriginX;
+    const cy = outer.y + outer.h * node.renderOriginY;
     const visual: Box = {
-      x: cx - (outer.w * sx) / 2,
-      y: cy - (outer.h * sy) / 2,
+      x: cx - outer.w * sx * node.renderOriginX,
+      y: cy - outer.h * sy * node.renderOriginY,
       w: outer.w * sx,
       h: outer.h * sy,
     };
@@ -290,10 +433,10 @@ export default class Navi {
         position: { x: x0, y: y0 },
         size: { width: x1 - x0, height: y1 - y0 },
       });
+      node.drawAlpha = nodeAlpha;
       node.draw(visual);
     }
 
-    // scaling about our own centre folds into the map the children get
     const childTransform: Transform =
       sx === 1 && sy === 1
         ? transform
@@ -305,11 +448,12 @@ export default class Navi {
           };
 
     const childOffset = {
-      x: offset.x + node.scrollOffset.x + style.nudge.x * uiScale,
-      y: offset.y + node.scrollOffset.y + style.nudge.y * uiScale,
+      x: offset.x + node.scrollOffset.x + node.renderNudgeX * uiScale,
+      y: offset.y + node.scrollOffset.y + node.renderNudgeY * uiScale,
     };
-    for (const child of node.children) {
-      this.drawTree(child, childOffset, childClip, childTransform);
+    for (const child of this.orderedChildren(node)) {
+      if (child.portal) continue;
+      this.drawTree(child, childOffset, childClip, childTransform, nodeAlpha);
     }
   }
 
@@ -382,10 +526,10 @@ export default class Navi {
       x: offset.x + node.scrollOffset.x,
       y: offset.y + node.scrollOffset.y,
     };
-
-    // last child is drawn on top, so it gets asked first
-    for (let i = node.children.length - 1; i >= 0; i--) {
-      const hit = this.hitTree(node.children[i], mouse, childClip, childOffset);
+    const children = this.orderedChildren(node);
+    for (let i = children.length - 1; i >= 0; i--) {
+      if (children[i].portal) continue;
+      const hit = this.hitTree(children[i], mouse, childClip, childOffset);
       if (hit) return hit;
     }
 
@@ -527,8 +671,10 @@ export default class Navi {
   }
   private static applyFocus(target: UINode | undefined) {
     if (!InputManager.isMouseClicked("LEFT")) return;
+    this.setFocus(this.findFocusable(target));
+  }
 
-    const next = this.findFocusable(target);
+  private static setFocus(next: UINode | undefined) {
     if (next === this.focusedNode) return;
 
     if (this.focusedNode) {
@@ -584,40 +730,13 @@ export default class Navi {
     if (ref === root) return true;
     return ref.isDescendantOf(root);
   }
-  public static releaseNode(node: UINode) {
-    this.styleAnimated.delete(node);
-    if (this.pointsInto(this.hoveredNode, node)) {
-      this.hoveredNode!.hovered = false;
-      this.hoveredNode = undefined;
-    }
 
-    if (this.pointsInto(this.pressTarget, node)) {
-      this.pressTarget!.pressed = false;
-      this.pressTarget = undefined;
-    }
-
-    if (this.pointsInto(this.rightPressTarget, node)) {
-      this.rightPressTarget!.rightPressed = false;
-      this.rightPressTarget = undefined;
-    }
-
-    if (this.pointsInto(this.lastClickNode, node)) {
-      this.lastClickNode = undefined;
-    }
-
-    if (this.pointsInto(this.focusedNode, node)) {
-      this.focusedNode!.focused = false;
-      this.focusedNode!.focusLost = true;
-      this.touch(this.focusedNode!);
-      this.focusedNode = undefined;
-      this.applyFocusPath(undefined);
-    }
-  }
   private static findScrollable(node: UINode | undefined, axis: "x" | "y") {
     let walk = node;
     while (walk) {
       if (axis === "y" && walk.style.overflowY === "scroll") return walk;
       if (axis === "x" && walk.style.overflowX === "scroll") return walk;
+      if (walk.portal) return undefined; // detached from its parent's scrolling
       walk = walk.parent;
     }
     return undefined;
@@ -640,6 +759,7 @@ export default class Navi {
     if (max === 0) return;
 
     const offset = target.scrollOffset;
+    this.markScrolled();
     const current = axis === "y" ? offset.y : offset.x;
     const next = AxiomMath.clamp(
       current - amount * SCROLL_FACTOR * this.scale,
@@ -651,5 +771,106 @@ export default class Navi {
     if (axis === "y") offset.y = next;
     else offset.x = next;
     this.markLayoutDirty();
+  }
+  private static orderedChildren(node: UINode): UINode[] {
+    let needsOrder = false;
+    for (const child of node.children) {
+      if (child.paintStyle.zIndex !== 0) {
+        needsOrder = true;
+        break;
+      }
+    }
+    if (!needsOrder) return node.children;
+
+    // sort is stable, so equal zIndex keeps tree order
+    return [...node.children].sort(
+      (a, b) => a.paintStyle.zIndex - b.paintStyle.zIndex,
+    );
+  }
+  private static collectPortals(
+    node: UINode,
+    offset: Position2D,
+    transform: Transform,
+    alpha: number,
+  ) {
+    if (!node.active) return;
+    const nodeAlpha = alpha * node.renderAlpha;
+    const uiScale = this.scale;
+
+    const laid: Box = {
+      x: node.pixelBox.x + offset.x + node.renderNudgeX * uiScale,
+      y: node.pixelBox.y + offset.y + node.renderNudgeY * uiScale,
+      w: node.pixelBox.w,
+      h: node.pixelBox.h,
+    };
+    const outer: Box = {
+      x: laid.x * transform.sx + transform.tx,
+      y: laid.y * transform.sy + transform.ty,
+      w: laid.w * transform.sx,
+      h: laid.h * transform.sy,
+    };
+
+    const sx = node.renderScaleX;
+    const sy = node.renderScaleY;
+    const origin = node.paintStyle.origin;
+    const cx = outer.x + outer.w * node.renderOriginX;
+    const cy = outer.y + outer.h * node.renderOriginY;
+
+    const childTransform: Transform =
+      sx === 1 && sy === 1
+        ? transform
+        : {
+            sx: transform.sx * sx,
+            sy: transform.sy * sy,
+            tx: (transform.tx - cx) * sx + cx,
+            ty: (transform.ty - cy) * sy + cy,
+          };
+
+    const childOffset = {
+      x: offset.x + node.scrollOffset.x + node.renderNudgeX * uiScale,
+      y: offset.y + node.scrollOffset.y + node.renderNudgeY * uiScale,
+    };
+
+    for (const child of this.orderedChildren(node)) {
+      if (child.portal) {
+        this.portals.push({
+          node: child,
+          offset: this.fitPortal(child, childOffset, childTransform),
+          transform: childTransform,
+          alpha: nodeAlpha,
+        });
+        continue;
+      }
+      this.collectPortals(child, childOffset, childTransform, nodeAlpha);
+    }
+  }
+  private static fitPortal(
+    node: UINode,
+    offset: Position2D,
+    transform: Transform,
+  ): Position2D {
+    const x = (node.pixelBox.x + offset.x) * transform.sx + transform.tx;
+    const y = (node.pixelBox.y + offset.y) * transform.sy + transform.ty;
+    const w = node.pixelBox.w * transform.sx;
+    const h = node.pixelBox.h * transform.sy;
+    const screenW = Aurora.canvas.width;
+    const screenH = Aurora.canvas.height;
+
+    // odbicie tylko wtedy, gdy po drugiej stronie faktycznie jest miejsce
+    node.flippedX = x + w > screenW && x - w >= 0;
+    node.flippedY = y + h > screenH && y - h >= 0;
+
+    let dx = node.flippedX ? -w : 0;
+    let dy = node.flippedY ? -h : 0;
+
+    // dosunięcie, gdy odbicie nie wystarczyło albo nie było na nie miejsca
+    if (x + dx + w > screenW) dx = screenW - x - w;
+    if (x + dx < 0) dx = -x;
+    if (y + dy + h > screenH) dy = screenH - y - h;
+    if (y + dy < 0) dy = -y;
+
+    if (dx === 0 && dy === 0) return offset;
+    // własny obiekt — childOffset jest współdzielony przez rodzeństwo portali
+    return { x: offset.x + dx / transform.sx, y: offset.y + dy / transform.sy };
   }
 }

@@ -35,12 +35,19 @@ export default class InputManager {
   private static keyPreviousFrame = new Set<string>();
   private static keyCurrentFrame = new Set<string>();
   private static keyInputBuffer = new Set<string>();
+  private static textBuffer = "";
+  private static textFrame = "";
+  private static editBuffer: string[] = [];
+  private static editFrame: string[] = [];
   private static actionMap: Map<string, Action> = new Map();
+  private static lastWheelTime = 0;
   private static mouseClaimed = false;
   private static claimSuspended = false;
   private static claimLatch: Map<number, boolean> = new Map();
   private static wheelLatch: boolean | undefined;
-  private static lastWheelTime = 0;
+  private static keyboardClaimed = false;
+  private static keyboardClaimSuspended = false;
+  private static keyClaimLatch: Map<string, boolean> = new Map();
 
   public static registerEvents() {
     window.addEventListener("mousedown", (e) => this.mouseEvents(e, "down"));
@@ -56,6 +63,9 @@ export default class InputManager {
       this.keyInputBuffer.clear();
       this.mouseInputBuffer.buttons.clear();
       this.claimLatch.clear();
+      this.keyClaimLatch.clear();
+      this.textBuffer = "";
+      this.editBuffer.length = 0;
     });
   }
 
@@ -79,6 +89,12 @@ export default class InputManager {
       if (this.mousePreviousFrame.buttons.has(btn)) continue;
       this.claimLatch.delete(btn);
     }
+    this.textFrame = this.textBuffer;
+    this.textBuffer = "";
+    const swap = this.editFrame;
+    this.editFrame = this.editBuffer;
+    this.editBuffer = swap;
+    this.editBuffer.length = 0;
   }
 
   //MOUSE
@@ -125,16 +141,21 @@ export default class InputManager {
 
   //KEYBOARD
   public static isKeyPressed(key: KeyCode) {
+    if (this.isKeyClaimed(key)) return false;
     return this.keyCurrentFrame.has(key) && !this.keyPreviousFrame.has(key);
   }
   public static isKeyHold(key: KeyCode) {
+    if (this.isKeyClaimed(key)) return false;
     return this.keyCurrentFrame.has(key);
   }
   public static isKeyRelease(key: KeyCode) {
+    if (this.isKeyClaimed(key)) return false;
     return !this.keyCurrentFrame.has(key) && this.keyPreviousFrame.has(key);
   }
   public static isAnyKeyHold(keys: readonly KeyCode[]) {
-    return keys.some((key) => this.keyCurrentFrame.has(key));
+    return keys.some(
+      (key) => !this.isKeyClaimed(key) && this.keyCurrentFrame.has(key),
+    );
   }
 
   //ACTIONS
@@ -198,8 +219,19 @@ export default class InputManager {
   }
   private static keyEvents(e: KeyboardEvent, type: "up" | "down") {
     e.preventDefault();
-    if (type === "down") this.keyInputBuffer.add(e.code);
-    else this.keyInputBuffer.delete(e.code);
+    if (type !== "down") {
+      this.keyInputBuffer.delete(e.code);
+      return;
+    }
+    this.keyInputBuffer.add(e.code);
+
+    // AltGr - Windows ctrl+alt — ąę and shit
+    const altGr = e.ctrlKey && e.altKey;
+    if (e.key.length === 1) {
+      if (altGr || (!e.ctrlKey && !e.metaKey)) this.textBuffer += e.key;
+    } else {
+      this.editBuffer.push(e.key);
+    }
   }
   private static generateMouseManifold(): MouseEvents {
     return {
@@ -239,6 +271,25 @@ export default class InputManager {
     if (latched !== undefined) return latched;
     return this.mouseClaimed;
   }
+  public static setKeyboardClaim(claimed: boolean) {
+    this.keyboardClaimSuspended = false;
+    this.keyboardClaimed = claimed;
+    for (const key of this.keyCurrentFrame) {
+      if (this.keyPreviousFrame.has(key)) continue; // tylko świeżo wciśnięte
+      this.keyClaimLatch.set(key, claimed);
+    }
+  }
+
+  public static suspendKeyboardClaim() {
+    this.keyboardClaimSuspended = true;
+  }
+
+  private static isKeyClaimed(key: string) {
+    if (this.keyboardClaimSuspended) return false;
+    const latched = this.keyClaimLatch.get(key);
+    if (latched !== undefined) return latched;
+    return this.keyboardClaimed;
+  }
   public static suspendClaim() {
     this.claimSuspended = true;
   }
@@ -246,5 +297,11 @@ export default class InputManager {
     if (this.claimSuspended) return false;
     if (this.wheelLatch !== undefined) return this.wheelLatch;
     return this.mouseClaimed;
+  }
+  public static getTypedText() {
+    return this.textFrame;
+  }
+  public static getEditKeys(): readonly string[] {
+    return this.editFrame;
   }
 }

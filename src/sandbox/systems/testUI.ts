@@ -5,48 +5,105 @@ import UIText from "@/core/navi/elements/text";
 import UITextBox from "@/core/navi/elements/textbox";
 import UIScrollBar from "@/core/navi/elements/scrollbar";
 import { auto, ph, pw, px } from "@/core/navi/units";
-
+import SlotNode, { MENU_ITEMS } from "@/core/navi/elements/slot";
+import { Tween, Tweens } from "@/core/navi/tween";
+import Easing from "@/core/axiom/easing";
+import Time from "@/core/engine/time";
+import UIInput from "@/core/navi/elements/input";
 const LABEL = { textColor: [150, 150, 175, 255] as RGBA, textSize: 12 };
 const SLOT_HOVER = {
   hovered: { backgroundColor: [230, 180, 70, 255] as RGBA },
 };
 
 export default class TestUI extends PragmaComponent {
-  private scrollSlots: UINode[] = [];
+  private openSlot: SlotNode | undefined;
+  private catcher!: UINode;
+  private actions: Map<UINode, () => void> = new Map();
+  private pulseTween: Tween | undefined;
+  private spawnCount = 0;
   private lastClick = "kliknij slot";
+  private bars: UINode[] = [];
+  private barFill = 0;
+  private barTime = 0;
   constructor(internal: InternalPCProps) {
     super(internal);
   }
 
   awake(): void {
-    this.buildStates(40, 40);
-    this.buildAutoBox(40, 200);
-    this.buildMinMax(40, 380);
-    this.buildGrid(500, 200);
-    this.buildTextBox(500, 500);
-    this.buildScrollY(980, 200);
-    this.buildScrollX(980, 560);
-    this.buildScroll2D(1380, 200);
-    this.buildBarLooks(1380, 560);
-    this.buildTransitions(40, 560);
-    this.buildTransform(500, 740);
+    // pas górny — stany i przejścia
+    this.buildStates(10, 10);
+    this.buildTransitions(690, 10);
+    this.buildTransform(1020, 10);
+
+    // layout
+    this.buildAutoBox(20, 135);
+    this.buildMinMax(20, 535);
+    this.buildTextBox(20, 300);
+    this.buildGrid(20, 705);
+
+    // przewijanie
+    this.buildScrollX(1510, 900);
+    this.buildScroll2D(1510, 610);
+    this.buildScrollY(1510, 20);
+    this.buildBarLooks(1510, 340);
+
+    // animacje
+    this.buildTweens(470, 130);
+    this.buildSpawn(470, 460);
+
+    //bars
+    this.buildBars(470, 700);
+    this.buildInput(470, 920);
+    this.buildCatcher();
   }
   update(): void {
-    const left = Navi.getClicked;
-    if (left) {
-      const i = this.scrollSlots.indexOf(left);
-      if (i !== -1) {
-        this.lastClick = left.doubleClicked
-          ? `DWUKLIK w slot ${i}`
-          : `klik w slot ${i}`;
-      }
+    if (Navi.didScroll) {
+      this.closeMenu();
+      return;
+    }
+    if (this.bars.length > 0) {
+      this.barTime += Time.getRawDeltaTime();
+      this.barFill = (Math.sin(this.barTime * 1.4) + 1) / 2;
+      for (const fill of this.bars) fill.motion.scale.x = this.barFill;
+    }
+    const right = Navi.getRightClicked;
+    if (right instanceof SlotNode) {
+      this.closeMenu();
+      right.openMenu();
+      this.catcher.setActive(true);
+      this.openSlot = right;
+      this.lastClick = `menu na slocie ${right.index}`;
+      return;
     }
 
-    const right = Navi.getRightClicked;
-    if (right) {
-      const i = this.scrollSlots.indexOf(right);
-      if (i !== -1) this.lastClick = `prawy w slot ${i}`;
+    const left = Navi.getClicked;
+    if (!left) return;
+    const action = this.actions.get(left);
+    if (action) {
+      action();
+      return;
     }
+    // while the menu is open, any click closes it — on an item it acts first
+    if (this.openSlot?.menu) {
+      if (left.parent === this.openSlot.menu) {
+        this.lastClick = `${MENU_ITEMS[left.indexInParent]} → slot ${this.openSlot.index}`;
+        console.log(this.lastClick);
+      }
+      this.closeMenu();
+      return;
+    }
+
+    if (left instanceof SlotNode) {
+      this.lastClick = left.doubleClicked
+        ? `DWUKLIK slot ${left.index}`
+        : `klik slot ${left.index}`;
+      console.log(this.lastClick);
+    }
+  }
+  private closeMenu() {
+    this.openSlot?.closeMenu();
+    this.catcher.setActive(false);
+    this.openSlot = undefined;
   }
 
   /** titled container every test hangs itself in */
@@ -91,7 +148,21 @@ export default class TestUI extends PragmaComponent {
       parent,
     );
   }
+  private togglePulse(node: UINode) {
+    if (this.pulseTween) {
+      node.stopTween(this.pulseTween);
+      this.pulseTween = undefined;
+      return;
+    }
+    this.pulseTween = node.play(Tweens.pulse(0.12, 700));
+  }
 
+  /** onDone przekazuje pałeczkę dalej — schodkowy start bez pola `delay` */
+  private cascade(nodes: UINode[]) {
+    for (let i = 0; i < nodes.length; i++) {
+      nodes[i].play(Tweens.after(i * 60, Tweens.hop(14, 220)));
+    }
+  }
   //=============================== stany
 
   private buildStates(x: number, y: number) {
@@ -145,9 +216,11 @@ export default class TestUI extends PragmaComponent {
       new UINode({
         size: { ...SIZE },
         focusable: true,
+        wantsKeys: true,
         style: { backgroundColor: [70, 85, 95, 255], rounded: 0.3 },
         states: { focused: { backgroundColor: [200, 160, 60, 255] } },
       }),
+
       row,
     );
 
@@ -352,6 +425,7 @@ export default class TestUI extends PragmaComponent {
         style: {
           backgroundColor: [25, 25, 35, 255],
           padding: { top: 8, right: 8, bottom: 8, left: 8 },
+          textAlign: "end",
         },
       }),
       row,
@@ -435,17 +509,17 @@ export default class TestUI extends PragmaComponent {
 
     for (let i = 0; i < 50; i++) {
       const slot = Navi.append(
-        new UINode({
+        new SlotNode(i, {
           size: { width: px(54), height: px(54) },
           style: {
             backgroundColor:
               i % 2 === 0 ? [55, 55, 80, 255] : [75, 55, 55, 255],
+            transitionMs: 90,
           },
           states: SLOT_HOVER,
         }),
         grid,
       );
-      this.scrollSlots.push(slot);
     }
 
     Navi.append(
@@ -748,7 +822,7 @@ export default class TestUI extends PragmaComponent {
           size: { width: auto(), height: auto() },
           input: "absorb",
           style: {
-            backgroundColor: [55, 50, 75, 255],
+            backgroundColor: [Math.random() * 150, 50, 75, 255],
             rounded: 0.1,
             transitionMs: ms,
             layout: "stack",
@@ -778,6 +852,7 @@ export default class TestUI extends PragmaComponent {
         rounded: 0.5,
         scale: { x: 1.18, y: 1.18 },
         nudge: { x: 0, y: -8 },
+        zIndex: 1,
       },
       pressed: {
         backgroundColor: [120, 80, 30, 255],
@@ -791,6 +866,7 @@ export default class TestUI extends PragmaComponent {
       hovered: {
         backgroundColor: [90, 190, 150, 255],
         scale: { x: 1.6, y: 1 },
+        zIndex: 1,
       },
     });
 
@@ -805,5 +881,361 @@ export default class TestUI extends PragmaComponent {
         transitionMs: 70,
       },
     });
+  }
+  private buildCatcher() {
+    this.catcher = Navi.append(
+      new UINode({
+        style: {
+          anchorX: "stretch",
+          anchorY: "stretch",
+          backgroundColor: [0, 0, 0, 0],
+          zIndex: 500,
+        },
+      }),
+    );
+    this.catcher.setActive(false);
+  }
+  private buildTweens(x: number, y: number) {
+    const root = this.section("tweeny — kliknij, żeby odpalić", x, y);
+
+    // clip na scenie pokazuje, że wjazd idzie naprawdę zza krawędzi
+    const stage = Navi.append(
+      new UINode({
+        size: { width: px(300), height: px(90) },
+        style: {
+          backgroundColor: [18, 18, 26, 255],
+          overflowX: "clip",
+          overflowY: "clip",
+          layout: "stack",
+          alignMain: "center",
+          alignCross: "center",
+        },
+      }),
+      root,
+    );
+
+    const puck = Navi.append(
+      new UINode({
+        size: { width: px(90), height: px(50) },
+        style: { backgroundColor: [225, 175, 70, 255], rounded: 0.25 },
+      }),
+      stage,
+    );
+
+    const strip = this.stack(root, "row", 4);
+    const pucks: UINode[] = [];
+    for (let i = 0; i < 6; i++) {
+      pucks.push(
+        Navi.append(
+          new UINode({
+            size: { width: px(26), height: px(26) },
+            style: { backgroundColor: [90, 190, 150, 255], rounded: 0.2 },
+          }),
+          strip,
+        ),
+      );
+    }
+
+    const pad = Navi.append(
+      new UINode({
+        size: { width: auto(), height: auto() },
+        style: {
+          backgroundColor: [0, 0, 0, 0],
+          layout: "grid",
+          direction: "row",
+          gridCount: 4,
+          gap: 4,
+          gapCross: 4,
+          cellAlignX: "stretch",
+          cellAlignY: "stretch",
+        },
+      }),
+      root,
+    );
+
+    const button = (label: string, action: () => void) => {
+      const node = Navi.append(
+        new UINode({
+          size: { width: auto(), height: auto() },
+          input: "absorb",
+          style: {
+            backgroundColor: [55, 55, 75, 255],
+            rounded: 0.25,
+            transitionMs: 90,
+            layout: "stack",
+            alignMain: "center",
+            alignCross: "center",
+            padding: { top: 7, right: 10, bottom: 7, left: 10 },
+          },
+          states: {
+            hovered: { backgroundColor: [95, 95, 130, 255] },
+            pressed: { backgroundColor: [40, 40, 55, 255], transitionMs: 0 },
+          },
+        }),
+        pad,
+      );
+
+      Navi.append(
+        new UIText(() => label, {
+          size: { width: auto(), height: auto() },
+          inheritState: true,
+          style: { textColor: [205, 205, 225, 255], textSize: 12 },
+          states: { hovered: { textColor: [255, 255, 255, 255] } },
+        }),
+        node,
+      );
+
+      this.actions.set(node, action);
+    };
+
+    button("z lewej", () => puck.play(Tweens.slideIn({ x: -220, y: 0 }, 2100)));
+    button("z góry", () => puck.play(Tweens.slideIn({ x: 0, y: -90 }, 2100)));
+    button("podskok", () => puck.play(Tweens.hop(18, 300)));
+    button("trzęsienie", () => puck.play(Tweens.shake(10, 4, 380)));
+
+    button("trzęsienie Y", () => puck.play(Tweens.shakeY(8, 4, 380)));
+    button("pop in", () => puck.play(Tweens.popIn(220)));
+    // onDone jest tu obowiązkowe: popOut kończy na skali zero, więc bez
+    // następnego tweena krążek zostałby niewidzialny na zawsze
+    button("znika i wraca", () =>
+      puck.play(
+        Tweens.popOut(140, undefined, () => puck.play(Tweens.popIn(240))),
+      ),
+    );
+    button("puls", () => this.togglePulse(puck));
+
+    // trzy naraz: skale się mnożą, przesunięcia dodają
+    button("wszystko naraz", () => {
+      puck.play(Tweens.slideIn({ x: -220, y: 0 }, 420));
+      puck.play(Tweens.shakeY(6, 6, 420));
+      puck.play(Tweens.popIn(420));
+    });
+    button("kaskada", () => this.cascade(pucks));
+    button("stop", () => {
+      puck.stopAllTweens();
+      this.pulseTween = undefined;
+    });
+
+    Navi.append(
+      new UIText(() => (puck.isTweening ? "tween leci" : "spoczynek"), {
+        size: { width: auto(), height: auto() },
+        style: LABEL,
+      }),
+      root,
+    );
+  }
+  private spawnFlyer(stage: UINode) {
+    const colors: RGBA[] = [
+      [235, 190, 80, 255],
+      [90, 190, 150, 255],
+      [210, 90, 130, 255],
+    ];
+    const lane = this.spawnCount++ % 3;
+
+    const flyer = Navi.append(
+      new UINode({
+        position: { x: px(12), y: px(16 + lane * 22) },
+        size: { width: px(22), height: px(22) },
+        style: { backgroundColor: colors[lane], rounded: 0.5 },
+      }),
+      stage,
+    );
+
+    // trzy tweeny naraz, ale onDone wisi na DOKŁADNIE jednym — dwa zdjęcia
+    // tego samego węzła to ostrzeżenie z nodeManipulationPhase
+    flyer.play(Tweens.slideOut({ x: 250, y: -12 }, 850, Easing.easeOutCubic));
+    flyer.play(Tweens.scaleTo(2.6, 850));
+    flyer.play(
+      Tweens.fadeOut(850, Easing.easeInQuad, () => Navi.remove(flyer, stage)),
+    );
+  }
+  private buildSpawn(x: number, y: number) {
+    const root = this.section("spawn i despawn — leci, rośnie, gaśnie", x, y);
+
+    const stage = Navi.append(
+      new UINode({
+        size: { width: px(300), height: px(90) },
+        style: {
+          backgroundColor: [14, 16, 22, 255],
+          overflowX: "clip",
+          overflowY: "clip",
+        },
+      }),
+      root,
+    );
+
+    const pad = Navi.append(
+      new UINode({
+        size: { width: auto(), height: auto() },
+        style: {
+          backgroundColor: [0, 0, 0, 0],
+          layout: "grid",
+          direction: "row",
+          gridCount: 3,
+          gap: 4,
+          gapCross: 4,
+          cellAlignX: "stretch",
+          cellAlignY: "stretch",
+        },
+      }),
+      root,
+    );
+
+    const button = (label: string, action: () => void) => {
+      const node = Navi.append(
+        new UINode({
+          size: { width: auto(), height: auto() },
+          input: "absorb",
+          style: {
+            backgroundColor: [55, 55, 75, 255],
+            rounded: 0.25,
+            transitionMs: 90,
+            layout: "stack",
+            alignMain: "center",
+            alignCross: "center",
+            padding: { top: 7, right: 10, bottom: 7, left: 10 },
+          },
+          states: {
+            hovered: { backgroundColor: [95, 95, 130, 255] },
+            pressed: { backgroundColor: [40, 40, 55, 255], transitionMs: 0 },
+          },
+        }),
+        pad,
+      );
+
+      Navi.append(
+        new UIText(() => label, {
+          size: { width: auto(), height: auto() },
+          inheritState: true,
+          style: { textColor: [205, 205, 225, 255], textSize: 12 },
+          states: { hovered: { textColor: [255, 255, 255, 255] } },
+        }),
+        node,
+      );
+
+      this.actions.set(node, action);
+    };
+
+    button("spawn", () => this.spawnFlyer(stage));
+    button("wachlarz", () => {
+      for (let i = 0; i < 6; i++) this.spawnFlyer(stage);
+    });
+
+    // sekwencja przez onDone — bez pola `delay` inaczej się nie da
+    button("wjazd, potem zejście", () => {
+      const box = Navi.append(
+        new UINode({
+          position: { x: px(120), y: px(32) },
+          size: { width: px(60), height: px(28) },
+          style: { backgroundColor: [120, 160, 240, 255], rounded: 0.2 },
+        }),
+        stage,
+      );
+
+      box.play(Tweens.fadeIn(300));
+      box.play(
+        Tweens.slideIn({ x: -170, y: 0 }, 400, Easing.easeOutCubic, () => {
+          box.play(Tweens.fadeOut(320));
+          box.play(
+            Tweens.popOut(320, undefined, () => Navi.remove(box, stage)),
+          );
+        }),
+      );
+    });
+
+    Navi.append(
+      new UIText(() => `w scenie: ${stage.children.length}`, {
+        size: { width: auto(), height: auto() },
+        style: LABEL,
+      }),
+      root,
+    );
+  }
+  private buildBars(x: number, y: number) {
+    const root = this.section(
+      "paski postępu — origin decyduje o kierunku",
+      x,
+      y,
+    );
+
+    const make = (label: string, ox: number, tint: RGBA) => {
+      const group = this.stack(root, "col", 3);
+
+      Navi.append(
+        new UIText(() => label, {
+          size: { width: auto(), height: auto() },
+          style: LABEL,
+        }),
+        group,
+      );
+
+      const track = Navi.append(
+        new UINode({
+          size: { width: px(400), height: px(18) },
+          style: { backgroundColor: [22, 22, 30, 255], rounded: 0.5 },
+        }),
+        group,
+      );
+
+      const fill = Navi.append(
+        new UINode({
+          size: { width: pw(100), height: ph(100) },
+          style: {
+            backgroundColor: tint,
+            rounded: 0.5,
+            origin: { x: ox, y: 0.5 },
+          },
+        }),
+        track,
+      );
+
+      this.bars.push(fill);
+    };
+
+    make("do przodu — origin.x = 0", 0, [90, 200, 160, 255]);
+    make("do tyłu — origin.x = 1", 1, [225, 175, 70, 255]);
+    make("od środka — origin.x = 0.5", 0.5, [200, 120, 200, 255]);
+
+    Navi.append(
+      new UIText(() => `wypełnienie: ${Math.round(this.barFill * 100)}%`, {
+        size: { width: auto(), height: auto() },
+        style: LABEL,
+      }),
+      root,
+    );
+  }
+  private buildInput(x: number, y: number) {
+    const root = this.section(
+      "pole tekstowe — Enter zatwierdza, Esc anuluje",
+      x,
+      y,
+    );
+
+    const input = Navi.append(
+      new UIInput({
+        size: { width: px(260), height: px(30) },
+        placeholder: "wpisz imię krasnoluda",
+        maxLength: 24,
+        style: {
+          backgroundColor: [24, 24, 32, 255],
+          rounded: 0.15,
+          textColor: [235, 225, 205, 255],
+          textSize: 14,
+          transitionMs: 120,
+          padding: { top: 6, right: 8, bottom: 6, left: 8 },
+        },
+        states: { focused: { backgroundColor: [36, 42, 58, 255] } },
+        onSubmit: (v) => console.log("zatwierdzono:", v),
+      }),
+      root,
+    );
+
+    Navi.append(
+      new UIText(() => `wartość: ${(input as UIInput).value || "—"}`, {
+        size: { width: auto(), height: auto() },
+        style: LABEL,
+      }),
+      root,
+    );
   }
 }

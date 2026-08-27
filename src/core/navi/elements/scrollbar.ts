@@ -1,7 +1,6 @@
 import AxiomMath from "@/core/axiom/math";
 import Navi from "../navi";
 import UINode, { NodeProps } from "../node";
-import { Style } from "../style";
 
 export interface ScrollBarProps extends NodeProps {
   thumb?: NodeProps;
@@ -64,6 +63,7 @@ export default class UIScrollBar extends UINode {
     if (this.vertical) this.target.scrollOffset.y = clamped;
     else this.target.scrollOffset.x = clamped;
     Navi.markLayoutDirty();
+    Navi.markScrolled();
   }
 
   /** clicking the track drops the thumb under the cursor and keeps dragging from there */

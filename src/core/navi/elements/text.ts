@@ -51,16 +51,25 @@ export default class UIText extends UINode {
   public draw(box: Box) {
     super.draw(box);
     const scale = this.visualScale(box);
+    const fontSize = this.style.textSize * Navi.getScale * scale.y;
+
+    let x = box.x;
+    if (this.style.textAlign !== "start") {
+      const width = FontGen.measureText({
+        fontName: this.style.textFont,
+        fontSize: fontSize + AURORA_PIXEL_OFFSET,
+        text: this.lastText,
+      }).width;
+      const free = box.w - width;
+      x += this.style.textAlign === "center" ? free / 2 : free;
+    }
 
     Draw.guiText({
-      position: { x: box.x, y: box.y, mode: "pixel" },
+      position: { x, y: box.y, mode: "pixel" },
       text: this.lastText,
       font: this.style.textFont,
-      fontSize: {
-        size: this.style.textSize * Navi.getScale * scale.y,
-        mode: "pixel",
-      },
-      fontColor: this.paintStyle.textColor,
+      fontSize: { size: fontSize, mode: "pixel" },
+      fontColor: this.paintTextColor,
     });
   }
 }

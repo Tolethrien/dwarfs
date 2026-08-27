@@ -4,6 +4,7 @@ export type AlignMain = "start" | "center" | "end" | "between";
 export type AlignCross = "start" | "center" | "end" | "stretch";
 export type Anchor = "start" | "center" | "end" | "stretch";
 export type Overflow = "visible" | "clip" | "scroll";
+export type TextAlign = "start" | "center" | "end";
 export interface Padding {
   top: number;
   right: number;
@@ -11,7 +12,6 @@ export interface Padding {
   left: number;
 }
 export interface Style {
-  // wygląd
   backgroundColor: RGBA;
   rounded: number;
   backgroundImage: string | undefined;
@@ -19,9 +19,9 @@ export interface Style {
   textColor: RGBA;
   textSize: number;
   textFont: string;
-  // layout
   layout: "none" | "stack" | "grid";
   direction: Direction;
+  zIndex: number;
   gap: number;
   gapCross: number;
   padding: Padding;
@@ -40,6 +40,8 @@ export interface Style {
   transitionMs: number;
   scale: Position2D;
   nudge: Position2D;
+  origin: Position2D;
+  textAlign: TextAlign;
 }
 
 export const BASE_STYLE: Style = {
@@ -50,9 +52,9 @@ export const BASE_STYLE: Style = {
   textColor: [255, 255, 255, 255],
   textSize: 14,
   textFont: "lato",
-
   layout: "none",
   direction: "col",
+  zIndex: 0,
   gap: 0,
   gapCross: 0,
   padding: { top: 0, right: 0, bottom: 0, left: 0 },
@@ -70,7 +72,9 @@ export const BASE_STYLE: Style = {
   lineGap: 0,
   transitionMs: 0,
   scale: { x: 1, y: 1 },
-  nudge: { x: 1, y: 1 },
+  nudge: { x: 0, y: 0 },
+  origin: { x: 0.5, y: 0.5 },
+  textAlign: "start",
 };
 
 export function createStyle(o?: DeepPartial<Style>): Style {

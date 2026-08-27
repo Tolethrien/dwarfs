@@ -4,18 +4,30 @@ import { px, toPx, Unit, UnitPosition2D, Units, UnitSize2D } from "./units";
 import Navi from "./navi";
 import { deepMerge } from "@/utils/utils";
 import AxiomMath from "../axiom/math";
+import { Tween } from "./tween";
 type Axis = "x" | "y";
 export type InputMode = "normal" | "none" | "absorb" | "disabled";
+export interface KeyInput {
+  text: string;
+  keys: readonly string[];
+}
 export interface NodeProps {
   position?: Partial<UnitPosition2D>;
   size?: Partial<UnitSize2D>;
   minSize?: Partial<UnitSize2D>;
   maxSize?: Partial<UnitSize2D>;
   input?: InputMode;
+  wantsKeys?: boolean;
   focusable?: boolean;
   style?: DeepPartial<Style>;
   states?: NodeStates;
   inheritState?: boolean;
+  portal?: boolean;
+}
+export interface MotionProps {
+  scale: Position2D;
+  offset: Position2D;
+  alpha: number;
 }
 export interface NodeStates {
   hovered?: DeepPartial<Style>;
@@ -27,13 +39,12 @@ export default class UINode {
   public parent: UINode | undefined;
   public children: UINode[] = [];
   public style: Style;
+  public portal: boolean;
   private hoveredStyle: Style | undefined;
   private pressedStyle: Style | undefined;
   private focusedStyle: Style | undefined;
   private disabledStyle: Style | undefined;
   public inheritState: boolean;
-  public zIndex = 0;
-  public visible = true;
   public tags: Set<string> = new Set();
   public position: UnitPosition2D;
   public size: UnitSize2D;
@@ -45,6 +56,8 @@ export default class UINode {
   public pixelBox: Box = { x: 0, y: 0, w: 0, h: 0 };
   public measured: Size2D = { width: 0, height: 0 };
   public input: InputMode;
+  public wantsKeys: boolean;
+  public drawAlpha = 1;
   public active = true;
   public hovered = false;
   public hoveredWithin = false;
@@ -65,12 +78,21 @@ export default class UINode {
   public focusedWithin = false;
   public focusGained = false;
   public focusLost = false;
-  //anims
-  private painted: Style | undefined; // scratch shown while blending
-  private blendFrom: Style | undefined; // the look we left
-  private blendTo: Style | undefined; // the look we head for
+  private painted: Style | undefined; // render while blending
+  private blendFrom: Style | undefined;
+  private blendTo: Style | undefined; // target
   private blend = 1;
+  public flippedX = false;
+  public flippedY = false;
+  public motion: MotionProps = {
+    scale: { x: 1, y: 1 },
+    offset: { x: 0, y: 0 },
+    alpha: 1,
+  };
+  private tweens: Tween[] = [];
   constructor(props: NodeProps = {}) {
+    this.portal = props.portal ?? false;
+    this.wantsKeys = props.wantsKeys ?? false;
     this.position = {
       x: props.position?.x ?? px(0),
       y: props.position?.y ?? px(0),
@@ -102,25 +124,32 @@ export default class UINode {
       this.focusedStyle = mergeStyle(this.style, states.focused);
     if (states?.disabled)
       this.disabledStyle = mergeStyle(this.style, states.disabled);
+
     if (this.wantsStyleAnimation()) Navi.registerAnimated(this);
   }
+  //overrides
   protected styleDefaults(): DeepPartial<Style> {
-    return {};
+    return {}; //change styles
   }
-  public onDrag(delta: Position2D) {} //to override by scroll node
-  public onPress(mouse: Position2D) {}
+  public onMount() {}
+  public onUnmount() {}
+  public onDrag(delta: Position2D) {} //scroll
+  public onPress(mouse: Position2D) {} // input
+  public onKeys(input: KeyInput) {} // keyboard
+  public tick(dt: number) {} // well... tick xD
+  public contentChanged() {
+    // actual content passed to node from game
 
+    return false;
+  }
+
+  //main draw for basic node - can be super or override
   public draw(box: Box) {
     const style = this.paintStyle;
     const position = { x: box.x, y: box.y };
     const size = { width: box.w, height: box.h };
-    const {
-      backgroundColor: tint,
-      rounded,
-      backgroundImage,
-      backgroundImageCrop,
-    } = style;
-
+    const { rounded, backgroundImage, backgroundImageCrop } = style;
+    const tint = this.fade(style.backgroundColor);
     if (backgroundImage) {
       Draw.guiRect({
         position,
@@ -134,12 +163,14 @@ export default class UINode {
       Draw.guiRect({ position, size, tint, rounded });
     }
   }
+
   public setActive(value: boolean) {
     if (this.active === value) return;
     this.active = value;
     if (value) Navi.markLayoutDirty();
-    else Navi.releaseNode(this);
+    else Navi.releaseInput(this);
   }
+
   public get activeStyle(): Style {
     const from = this.stateSource;
     if (from.input === "disabled" && this.disabledStyle)
@@ -157,6 +188,40 @@ export default class UINode {
     if (this.blend < 1 && this.painted) return this.painted;
     return this.activeStyle;
   }
+  public get renderAlpha() {
+    return this.motion.alpha;
+  }
+  public get renderNudgeX() {
+    return this.paintStyle.nudge.x + this.motion.offset.x;
+  }
+  public get renderNudgeY() {
+    return this.paintStyle.nudge.y + this.motion.offset.y;
+  }
+  public get renderScaleX() {
+    return this.paintStyle.scale.x * this.motion.scale.x;
+  }
+  public get renderScaleY() {
+    return this.paintStyle.scale.y * this.motion.scale.y;
+  }
+  public get renderOriginX() {
+    const origin = this.paintStyle.origin.x;
+    return this.flippedX ? 1 - origin : origin;
+  }
+  public get renderOriginY() {
+    const origin = this.paintStyle.origin.y;
+    return this.flippedY ? 1 - origin : origin;
+  }
+  public get isTweening() {
+    return this.tweens.length > 0;
+  }
+  public get indexInParent() {
+    if (!this.parent) return -1;
+    return this.parent.children.indexOf(this);
+  }
+  protected get paintTextColor(): RGBA {
+    return this.fade(this.paintStyle.textColor);
+  }
+
   public measureSelf(scale: number) {
     const padding = this.style.padding;
     const padX = (padding.left + padding.right) * scale;
@@ -188,10 +253,7 @@ export default class UINode {
     this.pixelBox.w = w;
     this.pixelBox.h = h;
   }
-  public get indexInParent() {
-    if (!this.parent) return -1;
-    return this.parent.children.indexOf(this);
-  }
+  /**to do something for all children if we need */
   public forEachDescendant(action: (node: UINode) => void) {
     action(this);
     for (const child of this.children) child.forEachDescendant(action);
@@ -208,15 +270,13 @@ export default class UINode {
     if (this.children.length === 0) return;
 
     const padding = this.style.padding;
-    const padLeft = padding.left * scale;
-    const padRight = padding.right * scale;
-    const padTop = padding.top * scale;
-    const padBottom = padding.bottom * scale;
 
-    const innerX = this.pixelBox.x + padLeft;
-    const innerY = this.pixelBox.y + padTop;
-    const innerW = this.pixelBox.w - padLeft - padRight;
-    const innerH = this.pixelBox.h - padTop - padBottom;
+    const innerX = this.pixelBox.x + padding.left * scale;
+    const innerY = this.pixelBox.y + padding.top * scale;
+    const innerW =
+      this.pixelBox.w - padding.left * scale - padding.right * scale;
+    const innerH =
+      this.pixelBox.h - padding.top * scale - padding.bottom * scale;
 
     switch (this.style.layout) {
       case "stack":
@@ -229,6 +289,155 @@ export default class UINode {
         this.layoutFree(innerX, innerY, innerW, innerH, scale);
         break;
     }
+  }
+
+  public play(tween: Tween) {
+    tween.elapsed = 0;
+    this.tweens.push(tween);
+    Navi.registerAnimated(this);
+    return tween;
+  }
+
+  public stopTween(tween: Tween) {
+    const i = this.tweens.indexOf(tween);
+    if (i === -1) return;
+    this.tweens.splice(i, 1);
+    if (this.tweens.length === 0) this.resetMotion();
+  }
+
+  public stopAllTweens() {
+    if (this.tweens.length === 0) return;
+    this.tweens.length = 0;
+    this.resetMotion();
+  }
+  public tickTweens(dt: number, done: (() => void)[]) {
+    if (this.tweens.length === 0) return;
+
+    let sx = 1;
+    let sy = 1;
+    let ox = 0;
+    let oy = 0;
+    let a = 1;
+    for (let i = this.tweens.length - 1; i >= 0; i--) {
+      const tween = this.tweens[i];
+      tween.elapsed += dt * 1000;
+      const live = tween.elapsed - tween.delay;
+
+      let t: number;
+      if (live <= 0) t = 0;
+      else if (tween.ms <= 0) t = 1;
+      else if (live >= tween.ms)
+        t = tween.loop ? (live % tween.ms) / tween.ms : 1;
+      else t = live / tween.ms;
+
+      const s = tween.sample(t);
+      sx *= s.scaleX ?? 1;
+      sy *= s.scaleY ?? 1;
+      ox += s.x ?? 0;
+      oy += s.y ?? 0;
+      a *= s.alpha ?? 1;
+
+      if (!tween.loop && live >= tween.ms) {
+        this.tweens.splice(i, 1);
+        if (tween.onDone) done.push(tween.onDone);
+      }
+    }
+    this.motion.scale.x = sx;
+    this.motion.scale.y = sy;
+    this.motion.offset.x = ox;
+    this.motion.offset.y = oy;
+    this.motion.alpha = a;
+  }
+  public maxScroll(axis: Axis) {
+    if (axis === "x")
+      return Math.max(0, this.contentSize.width - this.pixelBox.w);
+    return Math.max(0, this.contentSize.height - this.pixelBox.h);
+  }
+  public tickStyle(dt: number) {
+    const target = this.activeStyle;
+
+    if (target !== this.blendTo) {
+      const previous =
+        this.blend < 1 && this.painted ? this.painted : this.blendTo;
+
+      if (target.transitionMs <= 0 || previous === undefined) {
+        this.blendTo = target;
+        this.blend = 1;
+        return;
+      }
+
+      this.blendFrom = structuredClone(previous);
+      this.painted = structuredClone(target);
+      this.blendTo = target;
+      this.blend = 0;
+    }
+
+    if (this.blend >= 1) return;
+    if (!this.painted || !this.blendFrom || !this.blendTo) return;
+
+    this.blend = Math.min(
+      1,
+      this.blend + (dt * 1000) / this.blendTo.transitionMs,
+    );
+    const t = this.blend;
+
+    this.painted.backgroundColor = AxiomMath.lerpRGBA(
+      this.blendFrom.backgroundColor,
+      this.blendTo.backgroundColor,
+      t,
+    );
+    this.painted.textColor = AxiomMath.lerpRGBA(
+      this.blendFrom.textColor,
+      this.blendTo.textColor,
+      t,
+    );
+    this.painted.rounded = AxiomMath.lerp(
+      this.blendFrom.rounded,
+      this.blendTo.rounded,
+      t,
+    );
+    this.painted.scale = AxiomMath.lerpPos2D(
+      this.blendFrom.scale,
+      this.blendTo.scale,
+      t,
+    );
+    this.painted.nudge = AxiomMath.lerpPos2D(
+      this.blendFrom.nudge,
+      this.blendTo.nudge,
+      t,
+    );
+  }
+  protected fade(color: RGBA): RGBA {
+    if (this.drawAlpha >= 1) return color;
+    return [color[0], color[1], color[2], color[3] * this.drawAlpha];
+  }
+  protected clampAxis(
+    value: number,
+    axis: Axis,
+    parentW: number,
+    parentH: number,
+    scale: number,
+    allowPercent: boolean,
+  ) {
+    const min = axis === "x" ? this.minSize.width : this.minSize.height;
+    const max = axis === "x" ? this.maxSize.width : this.maxSize.height;
+    let result = value;
+
+    if (max !== undefined) {
+      const limit = this.limitToPx(max, parentW, parentH, scale, allowPercent);
+      if (limit !== undefined && result > limit) result = limit;
+    }
+    if (min !== undefined) {
+      const limit = this.limitToPx(min, parentW, parentH, scale, allowPercent);
+      if (limit !== undefined && result < limit) result = limit;
+    }
+    return result;
+  }
+  protected visualScale(box: Box): Position2D {
+    return {
+      x: this.pixelBox.w > 0 ? box.w / this.pixelBox.w : 1,
+      y: this.pixelBox.h > 0 ? box.h / this.pixelBox.h : 1,
+    };
   }
 
   private layoutFree(
@@ -449,30 +658,7 @@ export default class UINode {
       );
     }
   }
-  private resolveSize(
-    unit: Unit,
-    innerW: number,
-    innerH: number,
-    scale: number,
-    axis: Axis,
-  ) {
-    let value = 0;
-    switch (unit.unit) {
-      case Units.px:
-        value = unit.value * scale;
-        break;
-      case Units.pw:
-        value = unit.value * (innerW / 100);
-        break;
-      case Units.ph:
-        value = unit.value * (innerH / 100);
-        break;
-      case Units.auto:
-        value = axis === "x" ? this.measured.width : this.measured.height;
-        break;
-    }
-    return this.clampAxis(value, axis, innerW, innerH, scale, true);
-  }
+
   private isMainAxis(axis: Axis) {
     if (this.style.layout !== "stack") return false;
     if (this.style.direction === "row") return axis === "x";
@@ -533,60 +719,6 @@ export default class UINode {
     }
     return furthest;
   }
-
-  public contentChanged() {
-    return false;
-  }
-  private anchorOffset(
-    anchor: Anchor,
-    space: number,
-    size: number,
-    offset: number,
-  ) {
-    switch (anchor) {
-      case "end":
-        return space - size - offset;
-      case "center":
-        return (space - size) / 2 + offset;
-      default:
-        return offset;
-    }
-  }
-  protected clampAxis(
-    value: number,
-    axis: Axis,
-    parentW: number,
-    parentH: number,
-    scale: number,
-    allowPercent: boolean,
-  ) {
-    const min = axis === "x" ? this.minSize.width : this.minSize.height;
-    const max = axis === "x" ? this.maxSize.width : this.maxSize.height;
-    let result = value;
-
-    if (max !== undefined) {
-      const limit = this.limitToPx(max, parentW, parentH, scale, allowPercent);
-      if (limit !== undefined && result > limit) result = limit;
-    }
-    if (min !== undefined) {
-      const limit = this.limitToPx(min, parentW, parentH, scale, allowPercent);
-      if (limit !== undefined && result < limit) result = limit;
-    }
-    return result;
-  }
-  private limitToPx(
-    unit: Unit,
-    parentW: number,
-    parentH: number,
-    scale: number,
-    allowPercent: boolean,
-  ) {
-    if (unit.unit === Units.px) return unit.value * scale;
-    if (!allowPercent) return undefined;
-    if (unit.unit === Units.pw) return unit.value * (parentW / 100);
-    if (unit.unit === Units.ph) return unit.value * (parentH / 100);
-    return undefined;
-  }
   private measureGridAxis(axis: Axis, scale: number) {
     const perLine = Math.max(1, this.style.gridCount);
     const lines = Math.ceil(this.children.length / perLine);
@@ -606,66 +738,61 @@ export default class UINode {
 
     return count * cell + gap * scale * (count - 1);
   }
-  public maxScroll(axis: Axis) {
-    if (axis === "x")
-      return Math.max(0, this.contentSize.width - this.pixelBox.w);
-    return Math.max(0, this.contentSize.height - this.pixelBox.h);
-  }
-  public tickStyle(dt: number) {
-    const target = this.activeStyle;
 
-    if (target !== this.blendTo) {
-      // where we are coming from: mid-blend value, or the style we settled on
-      const previous =
-        this.blend < 1 && this.painted ? this.painted : this.blendTo;
-
-      if (target.transitionMs <= 0 || previous === undefined) {
-        this.blendTo = target;
-        this.blend = 1;
-        return;
-      }
-
-      this.blendFrom = structuredClone(previous);
-      this.painted = structuredClone(target);
-      this.blendTo = target;
-      this.blend = 0;
+  private anchorOffset(
+    anchor: Anchor,
+    space: number,
+    size: number,
+    offset: number,
+  ) {
+    switch (anchor) {
+      case "end":
+        return space - size - offset;
+      case "center":
+        return (space - size) / 2 + offset;
+      default:
+        return offset;
     }
-
-    if (this.blend >= 1) return;
-    if (!this.painted || !this.blendFrom || !this.blendTo) return;
-
-    this.blend = Math.min(
-      1,
-      this.blend + (dt * 1000) / this.blendTo.transitionMs,
-    );
-    const t = this.blend;
-
-    this.painted.backgroundColor = AxiomMath.lerpRGBA(
-      this.blendFrom.backgroundColor,
-      this.blendTo.backgroundColor,
-      t,
-    );
-    this.painted.textColor = AxiomMath.lerpRGBA(
-      this.blendFrom.textColor,
-      this.blendTo.textColor,
-      t,
-    );
-    this.painted.rounded = AxiomMath.lerp(
-      this.blendFrom.rounded,
-      this.blendTo.rounded,
-      t,
-    );
-    this.painted.scale = AxiomMath.lerpPos2D(
-      this.blendFrom.scale,
-      this.blendTo.scale,
-      t,
-    );
-    this.painted.nudge = AxiomMath.lerpPos2D(
-      this.blendFrom.nudge,
-      this.blendTo.nudge,
-      t,
-    );
   }
+
+  private limitToPx(
+    unit: Unit,
+    parentW: number,
+    parentH: number,
+    scale: number,
+    allowPercent: boolean,
+  ) {
+    if (unit.unit === Units.px) return unit.value * scale;
+    if (!allowPercent) return undefined;
+    if (unit.unit === Units.pw) return unit.value * (parentW / 100);
+    if (unit.unit === Units.ph) return unit.value * (parentH / 100);
+    return undefined;
+  }
+  private resolveSize(
+    unit: Unit,
+    innerW: number,
+    innerH: number,
+    scale: number,
+    axis: Axis,
+  ) {
+    let value = 0;
+    switch (unit.unit) {
+      case Units.px:
+        value = unit.value * scale;
+        break;
+      case Units.pw:
+        value = unit.value * (innerW / 100);
+        break;
+      case Units.ph:
+        value = unit.value * (innerH / 100);
+        break;
+      case Units.auto:
+        value = axis === "x" ? this.measured.width : this.measured.height;
+        break;
+    }
+    return this.clampAxis(value, axis, innerW, innerH, scale, true);
+  }
+
   private wantsStyleAnimation() {
     const states = [
       this.hoveredStyle,
@@ -682,13 +809,14 @@ export default class UINode {
     }
     if (!hasState) return false;
 
-    // every state may snap while the way back to base still fades
     return this.style.transitionMs > 0;
   }
-  protected visualScale(box: Box): Position2D {
-    return {
-      x: this.pixelBox.w > 0 ? box.w / this.pixelBox.w : 1,
-      y: this.pixelBox.h > 0 ? box.h / this.pixelBox.h : 1,
-    };
+
+  private resetMotion() {
+    this.motion.scale.x = 1;
+    this.motion.scale.y = 1;
+    this.motion.offset.x = 0;
+    this.motion.offset.y = 0;
+    this.motion.alpha = 1;
   }
 }
