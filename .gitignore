@@ -86,7 +86,7 @@ typings/
 
 # Vite
 .vite/
-scripts/
+*.dbw
 
 # Electron-Forge
 out/
