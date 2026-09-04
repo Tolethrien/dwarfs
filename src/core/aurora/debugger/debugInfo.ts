@@ -1,8 +1,8 @@
 import Aurora from "../core";
-import { AuroraConfig } from "../renderer/config";
+import { AuroraConfig, Profiler } from "../renderer/config";
 import Renderer from "../renderer/renderer";
 import appendDebugMenu from "./debugMenu";
-
+import { debug } from "@debug";
 export const TEXTURES_TO_SHOW = [
   "canvas",
   "offscreenCanvas",
@@ -105,7 +105,7 @@ const TIMING_DEPENDENCIES = {
   screen: { start: TIMESTAMPS["screenStart"], end: TIMESTAMPS["totalEnd"] },
 };
 export default class AuroraDebugInfo {
-  private static isGathering = false;
+  private static level: Profiler = "none";
   private static data: DebugData = structuredClone(DATA_INIT);
   private static query: GPUQuerySet;
   private static writeBuffer: GPUBuffer;
@@ -120,10 +120,11 @@ export default class AuroraDebugInfo {
     pipes: 0,
   };
   public static get isWorking() {
-    return this.isGathering;
+    return this.level !== "none";
   }
-  public static setWorking(val: boolean) {
-    this.isGathering = val;
+  public static setWorking(level: Profiler) {
+    this.level = level;
+    if (level === "none") return;
     this.query = Aurora.createQuerySet({
       type: "timestamp",
       count: Object.keys(TIMESTAMPS).length / 2,
@@ -137,6 +138,7 @@ export default class AuroraDebugInfo {
       count: Object.keys(TIMESTAMPS).length / 2,
       mode: "read",
     });
+    if (level === "minimal") return;
     document.addEventListener("keypress", (e) => {
       if (e.key === "`") this.setMenuVisible(this.menuVisible);
     });
@@ -155,19 +157,18 @@ export default class AuroraDebugInfo {
   }
   public static setParam<T extends keyof DebugData>(
     data: T,
-    value: DebugData[T]
+    value: DebugData[T],
   ) {
-    if (!this.isGathering) return;
+    if (!this.isWorking) return;
     this.data[data] = value;
   }
   public static accumulate<T extends keyof DebugData>(
     data: T,
-    value: DebugData[T]
+    value: DebugData[T],
   ) {
-    if (!this.isGathering) return;
+    if (!this.isWorking) return;
 
     const last = this.data[data];
-
     if (typeof last === "string")
       console.warn(`you cannot accumulate string value for ${data}`);
     else if (typeof last === "number" && typeof value === "number")
@@ -205,10 +206,10 @@ export default class AuroraDebugInfo {
     console.group("Debug Data");
     console.log(
       "adapter:",
-      `${Aurora.device.adapterInfo.vendor}:${Aurora.device.adapterInfo.architecture}`
+      `${Aurora.device.adapterInfo.vendor}:${Aurora.device.adapterInfo.architecture}`,
     );
     console.log("FPS:", this.data.fps);
-    if (this.isGathering) {
+    if (this.isWorking) {
       console.log("CPU Time:", `${this.data.CPUTime} ms`);
       console.log("GPU Time:", `${this.data.GPUTime} ms`);
       for (const [name, val] of Object.entries(this.data)) {
@@ -235,7 +236,7 @@ export default class AuroraDebugInfo {
   }
   public static setTimestamp(
     begin?: keyof typeof TIMESTAMPS,
-    end?: keyof typeof TIMESTAMPS
+    end?: keyof typeof TIMESTAMPS,
   ): GPURenderPassTimestampWrites | undefined {
     if (!this.isWorking) return;
     const beginBufferIndex = begin ? TIMESTAMPS[begin] : undefined;
@@ -272,7 +273,7 @@ export default class AuroraDebugInfo {
     };
   }
   public static startCount(timestamp: number) {
-    if (this.isGathering) this.clearData();
+    if (this.isWorking) this.clearData();
     timestamp *= 0.001;
     const deltaTime = timestamp - this.lastFrameTime;
     this.data["fps"] = Number((1 / deltaTime).toFixed(1));
@@ -282,13 +283,14 @@ export default class AuroraDebugInfo {
     this.timeAccumulator.pipes += deltaTime;
   }
   public static endCount() {
-    if (!this.isGathering) return;
+    if (!this.isWorking) return;
     const time = performance.now() - this.frameTimeStart;
     this.data["CPUTime"] = Number(time.toFixed(1));
+    debug.aurora.reportGPUData(this.data);
   }
   private static shouldTrigger(
     what: keyof typeof this.timeAccumulator,
-    seconds: number
+    seconds: number,
   ): boolean {
     if (this.timeAccumulator[what] >= seconds) {
       this.timeAccumulator[what] -= seconds;
@@ -300,7 +302,7 @@ export default class AuroraDebugInfo {
     const menu = document.getElementById("debugMenu");
     if (!menu) {
       console.warn(
-        "trying to set visibility of a debug menu, but menu is not append to body.\nMake sure you turn on debugger in auroraConfig"
+        "trying to set visibility of a debug menu, but menu is not append to body.\nMake sure you turn on debugger in auroraConfig",
       );
       return;
     }

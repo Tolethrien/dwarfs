@@ -7,7 +7,7 @@ import {
   generateInternalTextures,
 } from "./generators";
 import { AuroraConfig, ChangeableRenderConfig, RenderRes } from "./config";
-import { assert } from "../../../utils/utils";
+import { assert } from "@axiom/utils";
 import Aurora from "../core";
 import FontGen from "./fontGen";
 import SequentialDrawPipeline from "../pipelines/sequentialDraw";
@@ -23,6 +23,7 @@ import GuiPipeline from "../pipelines/gui";
 import ScreenPipeline from "../pipelines/screenPipeline";
 import PostProcessLDR, { PostLDR } from "../pipelines/postProcessLDR";
 import dummyTexture from "../assets/dummy.png";
+import FPSOverlay from "@engine/fpsOverlay";
 
 interface PipelineStaticClass {
   usePipeline(): void;
@@ -53,8 +54,10 @@ export default class Renderer {
   public static async initialize(config: AuroraConfig) {
     this.auroraConfig = config;
 
-    if (this.auroraConfig.debugger !== "none") AuroraDebugInfo.setWorking(true);
-
+    AuroraDebugInfo.setWorking(this.auroraConfig.debugger);
+    FPSOverlay.setGpuTimeSource(() =>
+      AuroraDebugInfo.isWorking ? AuroraDebugInfo.getSpecific("GPUTime") : null,
+    );
     this.buffers = generateInternalBuffers();
     this.generateGlobalBindGroups();
     this.currentRes = this.getCurrentResolution();
@@ -73,8 +76,8 @@ export default class Renderer {
     await this.createPipelines();
   }
   public static closeRenderer() {
-    if (this.auroraConfig.debugger !== "none")
-      AuroraDebugInfo.setWorking(false);
+    AuroraDebugInfo.setWorking("none");
+    FPSOverlay.setGpuTimeSource(null);
     this.clearPipelines();
     this.buffers.clear();
     this.textures.clear();

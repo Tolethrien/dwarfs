@@ -57,6 +57,7 @@ export default class TestUI extends PragmaComponent {
     this.buildCatcher();
   }
   update(): void {
+    console.log("sruuu");
     if (Navi.didScroll) {
       this.closeMenu();
       return;

@@ -1,7 +1,7 @@
 import Draw from "@/core/aurora/draw";
 import AxiomMath from "@/core/axiom/math";
 import Vec2 from "@/core/axiom/vec2";
-import InputManager from "@/core/engine/inputManager";
+import InputManager from "@engine/inputManager";
 import PragmaComponent from "@/core/pragma/component";
 import Dwarf from "@/sandbox/bActors/dwarf";
 import { ACTION } from "@/sandbox/inputActions";
@@ -16,8 +16,8 @@ export default class PlayerInputsComponent extends PragmaComponent {
   }
   preUpdate(): void {
     const gameMode = this.systemSharedData.get<GameMode>("gameMode");
+    if (InputManager.isKeyPressed("KeyC")) console.log(1);
     if (!gameMode || gameMode.mode === "build") return;
-    if (InputManager.isKeyPressed("Digit1")) console.log(1);
     if (InputManager.onActionHold(ACTION.shoot) && !this.mouseLocked)
       this.saveMousePos();
     if (InputManager.onActionReleased(ACTION.shoot) && this.mouseLocked)

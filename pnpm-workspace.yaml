@@ -7,3 +7,4 @@ onlyBuiltDependencies:
   - electron-winstaller
   - esbuild
 nodeLinker: hoisted
+blockExoticSubdeps: false

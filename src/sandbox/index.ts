@@ -31,7 +31,7 @@ async function preload() {
       bloom: false,
       lighting: false,
     },
-    debugger: "none",
+    debugger: "minimal",
     camera: { builtInCameraInputs: false, speed: 0 },
     rendering: {
       sortOrder: "y+x+z",

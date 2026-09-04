@@ -1,0 +1,15 @@
+<!doctype html>
+<html>
+  <head>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';"
+    />
+    <meta charset="UTF-8" />
+    <title>Misa Engine Profiler</title>
+  </head>
+  <body class="h-screen w-full overflow-hidden bg-window font-mono">
+    <div id="app" class="flex h-full w-full flex-col p-1.5"></div>
+    <script type="module" src="src/profiler/index.tsx"></script>
+  </body>
+</html>

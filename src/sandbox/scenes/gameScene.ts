@@ -3,6 +3,7 @@ import WorldPhysics from "../bActors/worldPhysics";
 import MineMap from "../bActors/mineMap";
 import Player from "../bActors/player";
 import CameraObject from "../managers/cameraObject";
+import SoundBank, { SoundsID } from "../managers/soundbank";
 export type GameMode = { mode: "game" | "build" };
 export default class GameScene {
   constructor() {

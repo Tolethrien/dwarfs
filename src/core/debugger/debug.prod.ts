@@ -1,3 +1,9 @@
 import { IDebug } from "./interfaces";
-
-export const debug: IDebug = {};
+import { prodAurora } from "./modules/gpu";
+import { prodLogger } from "./modules/log";
+import { prodPerformance } from "./modules/performance";
+export const debug: IDebug = {
+  performance: prodPerformance,
+  aurora: prodAurora,
+  log: prodLogger,
+};

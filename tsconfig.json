@@ -1,24 +1,29 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "module": "nodenext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "allowJs": true,
     "strict": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "noImplicitAny": true,
     "sourceMap": true,
-    "outDir": "dist",
     "paths": {
       "@/*": ["./src/*"],
       "@sandbox/*": ["./src/sandbox/*"],
       "@engine/*": ["./src/core/engine/*"],
       "@dogma/*": ["./src/core/dogma/*"],
-      "@debug": ["./src/core/debugger/debug.ts"],
-      "@utils/*": ["./src/utils/*"]
+      "@pragma/*": ["./src/core/pragma/*"],
+      "@aurora/*": ["./src/core/aurora/*"],
+      "@cello/*": ["./src/core/cello/*"],
+      "@navi/*": ["./src/core/navi/*"],
+      "@axiom/*": ["./src/core/axiom/*"],
+      "@debug": ["./src/core/debugger/debug.ts"]
     },
-    "moduleResolution": "nodenext",
     "resolveJsonModule": true,
-    "types": ["@webgpu/types"]
+    "types": ["@webgpu/types"],
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js"
   }
 }

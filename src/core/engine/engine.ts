@@ -1,12 +1,15 @@
 import "@/css/index.css";
-import { assert } from "@utils/utils";
-import InputManager from "@engine/inputManager";
-import Time from "@engine/time";
-import Aurora from "../aurora/core";
-import Renderer from "../aurora/renderer/renderer";
-import Pragma from "../pragma/pragma";
+import { assert } from "@axiom/utils";
+import Time from "./time";
+import Pragma from "@pragma/pragma";
+import { debug } from "@debug";
+import Aurora from "@aurora/core";
+import Renderer from "@aurora/renderer/renderer";
+import AuroraDebugInfo from "@aurora/debugger/debugInfo";
+import Draw from "@aurora/draw";
+import FPSOverlay from "./fpsOverlay";
+import InputManager from "./inputManager";
 import Navi from "../navi/navi";
-
 export default class Engine {
   declare private static canvas: HTMLCanvasElement;
   public static async initialize({
@@ -28,12 +31,22 @@ export default class Engine {
 
   private static loop(currentTime: number) {
     Time.update(currentTime);
+    AuroraDebugInfo.startCount(currentTime);
     InputManager.updateInputs();
     Navi.updateSystem();
+
     Renderer.beginBatch();
+
     Pragma.update();
     Navi.drawSystem();
+
     Renderer.endBatch();
+    AuroraDebugInfo.endCount();
+    debug.aurora.reportGPUData(AuroraDebugInfo.getAllData);
+    Time.endFrame();
+    FPSOverlay.update();
+    debug.performance.endFrame(Time.getFrameTime());
+
     requestAnimationFrame((currentTime) => this.loop(currentTime));
   }
 

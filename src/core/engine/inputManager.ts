@@ -275,7 +275,7 @@ export default class InputManager {
     this.keyboardClaimSuspended = false;
     this.keyboardClaimed = claimed;
     for (const key of this.keyCurrentFrame) {
-      if (this.keyPreviousFrame.has(key)) continue; // tylko świeżo wciśnięte
+      if (this.keyPreviousFrame.has(key)) continue;
       this.keyClaimLatch.set(key, claimed);
     }
   }

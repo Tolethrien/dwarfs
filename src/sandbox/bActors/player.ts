@@ -4,6 +4,7 @@ import PlayerInputsComponent from "../systems/playerInputComp";
 import PlayerResources from "../systems/resources";
 import InteractiveElements from "../systems/interactiveEvents";
 import TestUI from "../systems/testUI";
+import TestShop from "../systems/testShop";
 export default class Player extends PragmaActor {
   constructor() {
     super();
@@ -12,5 +13,6 @@ export default class Player extends PragmaActor {
     this.addComponent(PlayerResources);
     this.addComponent(InteractiveElements);
     this.addComponent(TestUI);
+    // this.addComponent(TestShop);
   }
 }
