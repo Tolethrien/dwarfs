@@ -10,6 +10,8 @@ import { AuroraUsage } from "@aurora/utils/usage";
 import DrawWorldShader from "../shaders/drawWorldShader.wgsl?raw";
 import { worldDraw } from "../draw/drawWorld";
 import { WORLD_LAYOUT, WorldWriter } from "../draw/drawInternal";
+import type DrawBatch from "../draw/drawBatch";
+import WorldView from "../../worldView";
 import { DEFAULT_MATERIAL } from "../draw/materials";
 import Material from "../../material";
 import type { PixelSnap, SortProps } from "../urp";
@@ -64,6 +66,8 @@ export default class WorldPass extends RenderPass {
   // both indexed by material id
   declare private pipelines: MaterialPipelines[];
   declare private opaqueBatches: (OpaqueBatch | null)[];
+  // retained DrawBatch submitted this frame, not to confuse with opaqueBatches
+  private drawBatches: DrawBatch[] = [];
   private writer = WORLD_LAYOUT.createWriter(this.vertexBuffer);
   declare private sorter: SortProps & SorterFrameProps;
   private readonly pixelSnap: PixelSnap;
@@ -105,6 +109,20 @@ export default class WorldPass extends RenderPass {
     this.writer.at(this.vertexBuffer.push());
     return this.writer;
   }
+  public acceptsOpaque(material: Material) {
+    return this.opaqueBatches[material.id] != null;
+  }
+  public submitBatch(batch: DrawBatch) {
+    const bounds = batch.getBounds;
+    if (bounds.minX > bounds.maxX) return;
+    this.drawBatches.push(batch);
+    this.trackSortPoint(bounds.minX, bounds.minY);
+    this.trackSortPoint(bounds.maxX, bounds.maxY);
+    const transparent = batch.getTransparent;
+    if (transparent && transparent.getCount > 0) {
+      this.vertexBuffer.append(transparent.getUints, transparent.getCount);
+    }
+  }
   stats() {
     const stats = this.frameStats;
     const sorting = this.sorter.sortAxes.length > 0;
@@ -119,6 +137,10 @@ export default class WorldPass extends RenderPass {
       stats.opaque += batch.buffer.getCount;
       stats.instanceBytes += batch.buffer.getGpuBytes;
       stats.uploadedBytes += batch.buffer.getUsedBytes;
+    }
+    for (const batch of this.drawBatches) {
+      stats.opaque += batch.getOpaqueCount;
+      stats.instanceBytes += batch.getGpuBytes;
     }
     stats.transparent = this.vertexBuffer.getCount;
     return stats;
@@ -218,6 +240,7 @@ export default class WorldPass extends RenderPass {
     this.vertexBuffer.clear();
     this.sorted.clear();
     for (const batch of this.opaqueBatches) batch?.buffer.clear();
+    this.drawBatches.length = 0;
     this.clips.reset();
     worldDraw.clearFrame();
     this.sorter.frameMinX = Infinity;
@@ -246,6 +269,7 @@ export default class WorldPass extends RenderPass {
       encoder.setPipeline(this.pipelines[id].opaque!);
       encoder.draw(6, batch.buffer.getCount);
     }
+    this.drawRetained(encoder);
 
     if (this.vertexBuffer.getCount === 0) return;
     const buffer = sorting ? this.sortInstances() : this.vertexBuffer;
@@ -266,6 +290,41 @@ export default class WorldPass extends RenderPass {
       encoder.setPipeline(pipelines.transparent);
       encoder.draw(6, end - first, 0, first);
       first = end;
+    }
+  }
+  // nearest first: depth test drops what they cover before shading it
+  private drawRetained(encoder: GPURenderPassEncoder) {
+    if (this.drawBatches.length === 0) return;
+    this.drawBatches.sort((a, b) => b.getFront - a.getFront);
+    const view = WorldView.getBounds;
+    let current: GPURenderPipeline | null = null;
+    for (const batch of this.drawBatches) {
+      batch.upload();
+      const cells = batch.getCells;
+      let bound = false;
+      for (const range of batch.getRanges) {
+        const cell = cells[range.cell];
+        if (
+          cell.maxX < view.min.x ||
+          cell.maxY < view.min.y ||
+          cell.minX > view.max.x ||
+          cell.minY > view.max.y
+        )
+          continue;
+        if (!bound) {
+          encoder.setVertexBuffer(0, batch.getBuffer);
+          bound = true;
+        }
+        const pipelines =
+          this.pipelines[range.material] ?? this.pipelines[DEFAULT_MATERIAL.id];
+        // opaque pipeline is gone when sorting was switched off after recording
+        const pipeline = pipelines.opaque ?? pipelines.transparent;
+        if (pipeline !== current) {
+          encoder.setPipeline(pipeline);
+          current = pipeline;
+        }
+        encoder.draw(6, range.count, 0, range.first);
+      }
     }
   }
   private async createPipelines(

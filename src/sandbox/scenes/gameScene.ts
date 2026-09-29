@@ -23,13 +23,15 @@ export default class GameScene {
     Camera.setMode("free");
     Camera.setFree({ speed: 500, acceleration: 33, deceleration: 11 });
     Camera.setZoomLimits(0.05, 4);
+    // only zooms where a tile is whole pixels, the grid never goes uneven at rest
+    Camera.setZoomLevels({ grid: MapObject.mapMeta.tileInPixels.width });
     Camera.setZoomSmoothing(8);
     Camera.setWheelZoom({ enabled: true, at: "cursor", step: 0.2, pull: 0 });
     Camera.setBounds({
       min: { x: bounds.x, y: bounds.y },
       max: { x: bounds.x + bounds.w, y: bounds.y + bounds.h },
     });
-    Camera.setZoom(0.05);
+    Camera.setZoom(0.5);
     Camera.teleport({ x: 9216, y: 1500 });
   }
 }

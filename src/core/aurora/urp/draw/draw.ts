@@ -35,7 +35,7 @@ type PostCommand =
 
 // the same instances the passes drive, narrowed to what a game may call;
 // prop types live in ./drawTypes
-export const Draw: Pick<WorldDraw, DrawCommand> = worldDraw;
+export const Draw: Pick<WorldDraw, DrawCommand | "batch"> = worldDraw;
 export const DrawGui: Pick<GuiDraw, DrawCommand> = guiDraw;
 export const Light: Pick<LightDraw, LightCommand> = lightDraw;
 export const Post: Pick<PostDraw, PostCommand> = postDraw;

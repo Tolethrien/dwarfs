@@ -25,30 +25,17 @@ export default class WorldView {
     scale: 1,
     rotation: 0,
   };
-  private static readonly snap = { enabled: false, resting: false };
+  private static snapEnabled = false;
 
   public static setSnap(enabled: boolean) {
-    this.snap.enabled = enabled;
+    this.snapEnabled = enabled;
   }
-  public static setCamera(
-    { center, zoom, rotation }: Partial<CameraData>,
-    still?: boolean,
-  ) {
+  public static setCamera({ center, zoom, rotation }: Partial<CameraData>) {
     const camera = this.camera;
-    const x = center?.x ?? camera.center.x;
-    const y = center?.y ?? camera.center.y;
-    const nextZoom = zoom ?? camera.zoom;
-    const nextRotation = rotation ?? camera.rotation;
-    this.snap.resting =
-      still ??
-      (x === camera.center.x &&
-        y === camera.center.y &&
-        nextZoom === camera.zoom &&
-        nextRotation === camera.rotation);
-    camera.center.x = x;
-    camera.center.y = y;
-    camera.zoom = nextZoom;
-    camera.rotation = nextRotation;
+    camera.center.x = center?.x ?? camera.center.x;
+    camera.center.y = center?.y ?? camera.center.y;
+    camera.zoom = zoom ?? camera.zoom;
+    camera.rotation = rotation ?? camera.rotation;
   }
   public static get getCamera(): CameraData {
     const { center, zoom, rotation } = this.camera;
@@ -59,8 +46,9 @@ export default class WorldView {
     const transform = this.transform;
     transform.x = center.x;
     transform.y = center.y;
-    if (this.snap.enabled && this.snap.resting && rotation === 0)
-      this.snapCenter(transform, zoom);
+    // every frame, not only at rest: a sub-pixel center blurs pixel art in motion and makes it
+    // pulse on diagonals (x and y fractions beat), and the rest snap jumped up to half a pixel back
+    if (this.snapEnabled && rotation === 0) this.snapCenter(transform, zoom);
     transform.scale = zoom * Aurora.getRenderScale;
     transform.rotation = rotation;
     return transform;

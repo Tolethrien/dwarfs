@@ -2,6 +2,7 @@ import Aurora from "@aurora/core";
 import WorldView from "@aurora/worldView";
 import AxiomMath from "@axiom/math";
 import { Signal } from "@axiom/events";
+import { assert } from "@axiom/utils";
 import Spring from "@axiom/spring";
 import { debug } from "@debug";
 import type { CameraDebugData, CameraView } from "@/core/debugger/interfaces";
@@ -76,8 +77,9 @@ export interface CameraState {
   position: Position2D;
   zoom: number;
 }
-// "pixel" = zoom × renderScale whole (n) or a whole fraction (1 / n), pixel art stays sharp
-export type ZoomLevels = number[] | "pixel" | null;
+// "pixel" = zoom × renderScale whole (n) or a whole fraction (1 / n), pixel art stays sharp;
+// { grid } = "pixel" levels where a grid of that many texels (a map tile) also lands on whole pixels
+export type ZoomLevels = number[] | "pixel" | { grid: number } | null;
 // step in octaves per wheel notch; at "cursor" takes the point under the cursor on every notch
 export interface WheelZoomSettings {
   enabled: boolean;
@@ -179,8 +181,6 @@ export default class GameCamera {
   private static readonly effects = new CameraEffects();
   // shown plus the effects, what goes to the renderer; shown stays clean for the next claim
   private static readonly view = { center: { x: 0, y: 0 }, zoom: 1, rotation: 0 };
-  // shown the frame before: unchanged = the camera rests, whatever the effects do over it
-  private static readonly shownBefore = { center: { x: NaN, y: NaN }, zoom: NaN };
   private static readonly noTargetWarning = debug.log.scope("camera").once();
   private static readonly followAnchorWarning = debug.log.scope("camera").once();
   private static readonly followPositionWarning = debug.log
@@ -268,6 +268,12 @@ export default class GameCamera {
   // only zoomBy and the wheel, setZoom stays exact
   public static setZoomLevels(levels: ZoomLevels) {
     this.zoomLevels = Array.isArray(levels) ? [...levels].sort((a, b) => a - b) : levels;
+    if (levels !== null && !Array.isArray(levels) && levels !== "pixel") {
+      assert(
+        Number.isInteger(levels.grid) && levels.grid > 0,
+        `Camera.setZoomLevels: grid must be a whole number of texels, got ${levels.grid}`,
+      );
+    }
   }
   public static setZoomLimits(min: number, max: number) {
     this.zoomLimits.min = min;
@@ -440,8 +446,8 @@ export default class GameCamera {
     this.updateShown();
     // the profiler's free cam, the game camera keeps running under it
     const shown = debug.camera.override(this.shown);
-    const affected = this.updateView(shown);
-    WorldView.setCamera(this.view, this.isStill(shown) && !affected);
+    this.updateView(shown);
+    WorldView.setCamera(this.view);
   }
 
   private static updateShown() {
@@ -480,19 +486,7 @@ export default class GameCamera {
     view.zoom = shown.zoom;
     view.rotation = 0;
     this.effects.update(Time.getDeltaTime());
-    return this.effects.apply(view);
-  }
-  // effects snap on their own; the frame one ends the view is already on the resting texel
-  private static isStill(shown: Readonly<CameraView>) {
-    const shownBefore = this.shownBefore;
-    const still =
-      shown.center.x === shownBefore.center.x &&
-      shown.center.y === shownBefore.center.y &&
-      shown.zoom === shownBefore.zoom;
-    shownBefore.center.x = shown.center.x;
-    shownBefore.center.y = shown.center.y;
-    shownBefore.zoom = shown.zoom;
-    return still;
+    this.effects.apply(view);
   }
 
   // in octaves, so zooming out feels as fast as zooming in; the floor is measured at the view
@@ -538,15 +532,16 @@ export default class GameCamera {
     const levels = this.zoomLevels;
     if (levels === null) return null;
     const { min, max } = this.zoomLimits;
-    if (levels !== "pixel") {
+    if (Array.isArray(levels)) {
       const inside = levels.filter((level) => level >= min && level <= max);
       return inside.length > 0 ? inside : null;
     }
     // recomputed per call, the render scale can change in game
     const scale = Aurora.getRenderScale;
+    const grid = levels === "pixel" ? null : levels.grid;
     const pixel: number[] = [];
     for (let parts = Math.floor(1 / (min * scale)); parts >= 2; parts--)
-      pixel.push(1 / (parts * scale));
+      if (grid === null || grid % parts === 0) pixel.push(1 / (parts * scale));
     for (let texels = 1; texels / scale <= max; texels++)
       if (texels / scale >= min) pixel.push(texels / scale);
     return pixel.length > 0 ? pixel : null;

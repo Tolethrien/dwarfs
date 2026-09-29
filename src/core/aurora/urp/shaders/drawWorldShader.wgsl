@@ -57,7 +57,7 @@ override depthSort: bool = false;
 // opaque pipeline: writes depth, so a pixel is either fully kept or dropped
 override opaquePass: bool = false;
 // URPProps.pixelSnap == "world": shape anchors on whole world units; the camera snaps on the
-// CPU (WorldView, only at rest), so every pass reads the same transform
+// CPU (WorldView, every frame), so every pass reads the same transform
 override pixelSnap: bool = true;
 // an alpha tested edge thins out in the mips, averaged alpha drops under the cut;
 // raised per level so zoomed out tiles still meet and leaves keep their mass
@@ -337,8 +337,9 @@ fn vertexMain(@builtin(vertex_index) index: u32, instance: InstanceIn) -> Vertex
     out.quadD = d - a;
   } else {
     let halfSize = instance.size * 0.5;
-    // one render texel of margin, so the antialiased edge is not cut by the quad
-    let pad = 1.0 / camera.scale;
+    // one render texel of margin, so the antialiased edge is not cut by the quad;
+    // opaque has no soft edge, its quad is the exact shape (see the fill rule in fragmentMain)
+    let pad = select(1.0 / camera.scale, 0.0, opaquePass);
     let local = corner * (halfSize + pad);
     let c = cos(instance.rotation);
     let s = sin(instance.rotation);
@@ -477,8 +478,13 @@ fn fragmentMain(in: VertexOut) -> FragmentOut {
   }
   let color = material(input);
   if (opaquePass) {
+    // a square box leaves its edge to the rasterizer fill rule: two boxes sharing an edge get
+    // each pixel exactly once. Cutting at coverage 0.5 drops both when the edge runs through
+    // pixel centers (rounding puts both at 0.4999), a black seam across a whole row of tiles
+    let squareBox = in.shape == SHAPE_BOX && all(boxCorners(in.shapeData) == vec4f(0.0));
+    let edge = select(coverage, 1.0, squareBox);
     // a mostly empty pixel must not write depth, or it hides what lies behind its soft edge
-    if (coverage * min(color.a * (1.0 + lod * MIP_ALPHA_SCALE), 1.0) < 0.5) {
+    if (edge * min(color.a * (1.0 + lod * MIP_ALPHA_SCALE), 1.0) < 0.5) {
       discard;
     }
     // color is premultiplied, undo it: opaque writes full alpha, not a darkened edge

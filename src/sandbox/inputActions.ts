@@ -8,6 +8,7 @@ export const ACTION = {
   cameraRight: "cameraRight",
   zoomIn: "zoomIn",
   zoomOut: "zoomOut",
+  zoomReset: "zoomReset",
   shoot: "shoot",
   changeMode: "changeMode",
   placeBlock: "placeBlock",
@@ -21,6 +22,7 @@ export function registerInputsBindings() {
   InputManager.bindAction({ name: ACTION.cameraRight, key: KEY.d, mods: [] });
   InputManager.bindAction({ name: ACTION.zoomIn, key: KEY.arrowUp, mods: [] });
   InputManager.bindAction({ name: ACTION.changeMode, key: KEY.tab, mods: [] });
+  InputManager.bindAction({ name: ACTION.zoomReset, key: KEY.p, mods: [] });
   InputManager.bindAction({
     name: ACTION.zoomOut,
     key: KEY.arrowDown,

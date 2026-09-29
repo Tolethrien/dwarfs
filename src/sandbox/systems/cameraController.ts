@@ -2,12 +2,12 @@ import { Camera } from "@engine/camera/camera";
 import AxiomMath from "@axiom/math";
 import Cello from "@cello/cello";
 import InputManager from "@engine/inputManager";
-import Time from "@engine/time";
 import PragmaComponent from "@pragma/component";
 import { ACTION } from "@sandbox/inputActions";
 
 const ZOOM = {
-  keyOctavesPerSecond: Math.log2(1.8),
+  keyOctaves: 0.25,
+  reset: 0.5,
   silent: 0.15,
   audible: 0.42,
 };
@@ -35,11 +35,13 @@ export default class CameraController extends PragmaComponent {
   }
 
   private updateZoomKeys() {
+    if (InputManager.onActionPressed(ACTION.zoomReset)) Camera.setZoom(ZOOM.reset);
+    // with zoom levels every zoomBy moves at least one level, so one press is one level
     const keyDir =
-      (InputManager.onActionHold(ACTION.zoomIn) ? 1 : 0) -
-      (InputManager.onActionHold(ACTION.zoomOut) ? 1 : 0);
+      (InputManager.onActionPressed(ACTION.zoomIn) ? 1 : 0) -
+      (InputManager.onActionPressed(ACTION.zoomOut) ? 1 : 0);
     if (keyDir === 0) return;
-    Camera.zoomBy(keyDir * ZOOM.keyOctavesPerSecond * Time.getRawDeltaTime());
+    Camera.zoomBy(keyDir * ZOOM.keyOctaves);
   }
 
   private updateZoomVolume() {

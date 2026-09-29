@@ -206,9 +206,11 @@ export default class MapObject {
     const index = this.tileIndex(gx, gy);
     if (index === -1) return;
 
+    // the version marks a type change only, damage alone is patched in place (tileDamaged)
+    if (this.layers[LAYER.solid][index] !== type)
+      this.chunkVersions[this.chunkIndexOfTile(gx, gy)]++;
     this.layers[LAYER.solid][index] = type;
     this.damage[index] = damage;
-    this.chunkVersions[this.chunkIndexOfTile(gx, gy)]++;
   }
 
   public static setDiscovered(chunkIndex: number) {

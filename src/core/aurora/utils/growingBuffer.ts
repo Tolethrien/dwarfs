@@ -81,6 +81,16 @@ export default class GrowingBuffer {
     return this.count++;
   }
 
+  public append(words: Uint32Array, count: number) {
+    const total = this.count + count;
+    if (total > this.capacity) this.resize(2 ** Math.ceil(Math.log2(total)));
+    this.uints.set(
+      words.subarray(0, count * this.stride),
+      this.count * this.stride,
+    );
+    this.count = total;
+  }
+
   public clear() {
     this.fitCapacity();
     this.count = 0;
@@ -99,6 +109,21 @@ export default class GrowingBuffer {
       this.floats.buffer,
       0,
       this.count * this.stride * WORD,
+    );
+  }
+
+  public uploadRange(first: number, count: number) {
+    if (this.gpuCapacity !== this.capacity) {
+      this.upload();
+      return;
+    }
+    const offset = first * this.stride * WORD;
+    Aurora.device.queue.writeBuffer(
+      this.buffer,
+      offset,
+      this.floats.buffer,
+      offset,
+      count * this.stride * WORD,
     );
   }
 

@@ -62,7 +62,7 @@ export default abstract class BaseDraw<Writer extends InstanceWriter> {
     rotation: 0,
     rounded: 0,
   };
-  private readonly clips: ClipStack;
+  protected readonly clips: ClipStack;
   // per instance: World and Gui share the scope, so the same key must not silence the other one
   protected readonly warnings = debug.log.scope("auroraURP").once();
   private readonly textScratch = {
@@ -559,7 +559,7 @@ export default abstract class BaseDraw<Writer extends InstanceWriter> {
     return view;
   }
 
-  private warnNoTarget() {
+  protected warnNoTarget() {
     this.warnings.once("target").warn(
       `${this.name}: nothing to draw into yet, call it after URP.init and Aurora.build`,
     );

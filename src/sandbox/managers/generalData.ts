@@ -1,10 +1,14 @@
+// map tiles get their own slots: on an equal z the later drawn material wins the depth test
 export const RENDER_ORDER = {
   bg: 0,
-  decoBack: 1,
-  main: 2,
-  decoFront: 3,
-  overlay: 4,
-  debug: 5,
+  decoBackTiles: 1,
+  decoBack: 2,
+  solidTiles: 3,
+  main: 4,
+  decoFrontTiles: 5,
+  decoFront: 6,
+  overlay: 7,
+  debug: 8,
 };
 export const SPRITES = {
   dwarfs: "chars",
