@@ -3,7 +3,7 @@ import DogmaComponent, { InternalDCProps } from "./component";
 import { assert, randomUUID } from "@axiom/utils";
 
 export default abstract class DogmaEntity {
-  declare public readonly ID: Symbol;
+  declare public readonly ID: symbol;
   private readonly tags: Set<string> = new Set();
   private marker: [string];
   private components = new Map<string, DogmaComponent>();

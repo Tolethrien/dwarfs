@@ -1,15 +1,15 @@
-import PragmaComponent from "@/core/pragma/component";
-import Navi from "@/core/navi/navi";
-import UINode, { NodeStates } from "@/core/navi/node";
-import UIText from "@/core/navi/elements/text";
-import UITextBox from "@/core/navi/elements/textbox";
-import UIScrollBar from "@/core/navi/elements/scrollbar";
-import { auto, ph, pw, px } from "@/core/navi/units";
-import SlotNode, { MENU_ITEMS } from "@/core/navi/elements/slot";
-import { Tween, Tweens } from "@/core/navi/tween";
-import Easing from "@/core/axiom/easing";
-import Time from "@/core/engine/time";
-import UIInput from "@/core/navi/elements/input";
+import PragmaComponent from "@pragma/component";
+import Navi from "@navi/navi";
+import UINode, { NodeStates } from "@navi/node";
+import UIText from "@navi/elements/text";
+import UITextBox from "@navi/elements/textbox";
+import UIScrollBar from "@navi/elements/scrollbar";
+import { auto, ph, pw, px } from "@navi/units";
+import SlotNode, { MENU_ITEMS } from "@navi/elements/slot";
+import { Tween, Tweens } from "@navi/tween";
+import Easing from "@axiom/easing";
+import Time from "@engine/time";
+import UIInput from "@navi/elements/input";
 const LABEL = { textColor: [150, 150, 175, 255] as RGBA, textSize: 12 };
 const SLOT_HOVER = {
   hovered: { backgroundColor: [230, 180, 70, 255] as RGBA },

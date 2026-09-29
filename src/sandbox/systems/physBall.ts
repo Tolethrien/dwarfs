@@ -1,14 +1,14 @@
-import Vec2 from "@/core/axiom/vec2";
-import PragmaComponent from "@/core/pragma/component";
-import SpatialGrid from "@/core/axiom/SpatialGrid";
-import Collision from "@/core/axiom/collision";
-import Physics from "@/sandbox/components/physics";
-import Time from "@/core/engine/time";
-import Stats from "@/sandbox/components/stats";
-import MapObject from "@/sandbox/managers/mapObject";
+import Vec2 from "@axiom/vec2";
+import PragmaComponent from "@pragma/component";
+import SpatialGrid from "@axiom/SpatialGrid";
+import Collision from "@axiom/collision";
+import Physics from "@sandbox/components/physics";
+import Time from "@engine/time";
+import Stats from "@sandbox/components/stats";
+import MapObject from "@sandbox/managers/mapObject";
 import MapDirector from "./mapDirector";
-import { BlocksID } from "@/sandbox/managers/entitiesObject";
-import { assert } from "@/utils/utils";
+import { BlocksID } from "@sandbox/managers/entitiesObject";
+import { assert } from "@axiom/utils";
 
 type Hit =
   | { kind: "entity"; physics: Physics; distance: number; normal: Vec2 }

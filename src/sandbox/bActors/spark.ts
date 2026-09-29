@@ -1,4 +1,4 @@
-import PragmaActor from "@/core/pragma/actor";
+import PragmaActor from "@pragma/actor";
 import Animator from "../components/animator";
 import Sprite from "../components/sprite";
 import EntitiesObject, { AnimsID } from "../managers/entitiesObject";

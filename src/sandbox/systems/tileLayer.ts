@@ -1,8 +1,8 @@
-import PragmaComponent from "@/core/pragma/component";
-import MapObject, { LAYER, MAX_DAMAGE } from "@/sandbox/managers/mapObject";
-import Draw from "@/core/aurora/draw";
-import CameraObject from "@/sandbox/managers/cameraObject";
-import EntitiesObject from "@/sandbox/managers/entitiesObject";
+import PragmaComponent from "@pragma/component";
+import MapObject, { LAYER, MAX_DAMAGE } from "@sandbox/managers/mapObject";
+import { Draw } from "@aurora/urp/draw/draw";
+import { Camera } from "@engine/camera/camera";
+import EntitiesObject from "@sandbox/managers/entitiesObject";
 import { BG_SHADES } from "@/mapFormat";
 import { RENDER_ORDER, SPRITES } from "../managers/generalData";
 type TileDefs = Record<number, { crop: Crop }>;
@@ -72,14 +72,14 @@ export default class TileLayer extends PragmaComponent {
   }
 
   render(): void {
-    const view = CameraObject.getViewBox();
+    const view = Camera.getViewBounds;
     const origin = this.actor.transform.getRenderPosition();
 
     if (
-      origin.x + this.chunkSize.width < view.x ||
-      origin.y + this.chunkSize.height < view.y ||
-      origin.x > view.x + view.w ||
-      origin.y > view.y + view.h
+      origin.x + this.chunkSize.width < view.min.x ||
+      origin.y + this.chunkSize.height < view.min.y ||
+      origin.x > view.max.x ||
+      origin.y > view.max.y
     )
       return;
 
@@ -87,15 +87,15 @@ export default class TileLayer extends PragmaComponent {
     const TH = this.tileSize.height;
 
     // zakres przycięty do chunka — inaczej index wyjdzie poza tablicę
-    const minLX = Math.max(0, Math.floor((view.x - origin.x) / TW));
-    const minLY = Math.max(0, Math.floor((view.y - origin.y) / TH));
+    const minLX = Math.max(0, Math.floor((view.min.x - origin.x) / TW));
+    const minLY = Math.max(0, Math.floor((view.min.y - origin.y) / TH));
     const maxLX = Math.min(
       this.tilesW - 1,
-      Math.floor((view.x + view.w - origin.x) / TW),
+      Math.floor((view.max.x - origin.x) / TW),
     );
     const maxLY = Math.min(
       this.tilesH - 1,
-      Math.floor((view.y + view.h - origin.y) / TH),
+      Math.floor((view.max.y - origin.y) / TH),
     );
 
     for (let ly = minLY; ly <= maxLY; ly++) {
@@ -128,7 +128,7 @@ export default class TileLayer extends PragmaComponent {
           Draw.sprite({
             position: { x, y, z: layer.z },
             crop,
-            textureToUse: layer.texture,
+            texture: layer.texture,
             size: { width: crop.width, height: crop.height },
             tint,
           });

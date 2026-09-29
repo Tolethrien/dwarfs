@@ -1,0 +1,22 @@
+export const LOG_SCOPE = {
+  aurora: "Aurora: core",
+  auroraAssets: "Aurora: assets",
+  auroraURP: "URP",
+  camera: "Camera",
+  coroutine: "Coroutine",
+  // sandbox tests
+  sandbox: "Sandbox",
+  consoleTest: "ConsoleTest",
+  captureTest: "CaptureTest",
+  watchTest: "WatchTest",
+  commandTest: "CommandTest",
+  watchLiveTest: "WatchLiveTest",
+  stream: "Stream",
+  navi: "Navi",
+  demoGpu: "GPU",
+  demoAudio: "Audio",
+  demoAi: "AI",
+  demoSave: "Save",
+} as const;
+
+export type LogScopeKey = keyof typeof LOG_SCOPE;

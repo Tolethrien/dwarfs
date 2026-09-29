@@ -1,4 +1,4 @@
-import PragmaComponent from "@/core/pragma/component";
+import PragmaComponent from "@pragma/component";
 import { InteractiveActor } from "../systems/interactiveEvents";
 import { ColliderBody } from "./physics";
 

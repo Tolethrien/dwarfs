@@ -1,7 +1,8 @@
 import Aurora from "@aurora/core";
-import Draw from "@aurora/draw";
+import { DrawGui as Draw } from "@aurora/urp/draw/draw";
 import AABB from "@axiom/AABB";
 import AxiomMath from "@axiom/math";
+import Engine from "@engine/engine";
 import InputManager from "@engine/inputManager";
 import { KEY_GROUP } from "@engine/keys";
 import Time from "@engine/time";
@@ -52,6 +53,7 @@ export default class Navi {
     this.root.tags.add("root");
     this.root.input = "none";
     this.resize();
+    Engine.events.windowResize.connect(() => this.resize());
   }
   public static updateSystem() {
     InputManager.suspendClaim();
@@ -291,8 +293,6 @@ export default class Navi {
         entry.alpha,
       );
     }
-
-    Draw.popClip();
   }
   private static scrollPhase() {
     const wheel = InputManager.getMouseScroll();
@@ -423,18 +423,23 @@ export default class Navi {
     };
 
     if (node.parent && AABB.overlaps(visual, clip)) {
-      const x0 = Math.round(clip.x);
-      const y0 = Math.round(clip.y);
-      const x1 = Math.round(clip.x + clip.w);
-      const y1 = Math.round(clip.y + clip.h);
-
-      Draw.popClip();
-      Draw.clip({
-        position: { x: x0, y: y0 },
-        size: { width: x1 - x0, height: y1 - y0 },
-      });
       node.drawAlpha = nodeAlpha;
       node.draw(visual);
+    }
+
+    // a node only pushes when it actually narrows the clip for its children —
+    // ancestors already did their part, so most nodes push nothing at all
+    const clipsChildren = childClip !== clip;
+    if (clipsChildren) {
+      const x0 = Math.round(childClip.x);
+      const y0 = Math.round(childClip.y);
+      const x1 = Math.round(childClip.x + childClip.w);
+      const y1 = Math.round(childClip.y + childClip.h);
+      Draw.pushClip({
+        position: { x: x0, y: y0 },
+        size: { width: x1 - x0, height: y1 - y0 },
+        rounded: node.style.rounded,
+      });
     }
 
     const childTransform: Transform =
@@ -455,6 +460,8 @@ export default class Navi {
       if (child.portal) continue;
       this.drawTree(child, childOffset, childClip, childTransform, nodeAlpha);
     }
+
+    if (clipsChildren) Draw.popClip();
   }
 
   private static resolveChildClip(

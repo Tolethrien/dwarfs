@@ -1,6 +1,6 @@
-import PragmaActor from "@/core/pragma/actor";
+import PragmaActor from "@pragma/actor";
 import MapObject from "../managers/mapObject";
-import TileLayer from "@/sandbox/systems/tileLayer";
+import TileLayer from "@sandbox/systems/tileLayer";
 
 interface ChunkProps {
   index: number;
@@ -28,6 +28,6 @@ export default class Chunk extends PragmaActor {
 
   private placeAt(index: number) {
     const pos = MapObject.chunkToWorld(index);
-    this.transform.setPosition(pos.x, pos.y);
+    this.transform.teleport(pos.x, pos.y);
   }
 }

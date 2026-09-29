@@ -1,4 +1,4 @@
-import PragmaActor from "@/core/pragma/actor";
+import PragmaActor from "@pragma/actor";
 import mapDirector from "../systems/mapDirector";
 import MapDiscovery from "../systems/mapDiscovery";
 import MapBuilder from "../systems/mapBuilder";

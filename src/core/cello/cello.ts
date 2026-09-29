@@ -14,6 +14,11 @@ interface EffectStrategy {
 interface EffectNode {
   input: AudioNode;
   output: AudioNode;
+  dispose?: () => void;
+}
+interface AudioLink {
+  from: AudioNode;
+  to: AudioNode;
 }
 interface CelloConfig {
   masterVolume: number;
@@ -131,17 +136,23 @@ export default class Cello {
 
     //effects loop
     let current: AudioNode = instanceGain;
-    const perInstanceNodes: AudioNode[] = [];
+    let currentIsShared = false;
+    const perInstanceEffects: EffectNode[] = [];
+    // disconnect() only cuts outgoing edges, so shared → per-instance edges must be cut from the shared side
+    const sharedLinks: AudioLink[] = [];
     if (props.effects) {
       for (const eff of props.effects) {
         const strat = this.effectRegistry.get(eff);
         const effect = this.buildEffect(eff, { position: props.position });
         if (!effect || !strat) continue;
-        if (strat.scope === "perInstance") {
-          perInstanceNodes.push(effect.input, effect.output);
+        const isShared = strat.scope === "shared";
+        if (!isShared) perInstanceEffects.push(effect);
+        if (currentIsShared && !isShared) {
+          sharedLinks.push({ from: current, to: effect.input });
         }
         current.connect(effect.input);
         current = effect.output;
+        currentIsShared = isShared;
       }
     }
 
@@ -157,7 +168,13 @@ export default class Cello {
 
     source.onended = () => {
       source.disconnect();
-      perInstanceNodes.forEach((node) => node.disconnect());
+      instanceGain.disconnect();
+      for (const link of sharedLinks) link.from.disconnect(link.to);
+      for (const effect of perInstanceEffects) {
+        effect.input.disconnect();
+        effect.output.disconnect();
+        effect.dispose?.();
+      }
       if (props.maxConcurrent !== undefined)
         this.activeCounts.set(name, (this.activeCounts.get(name) ?? 1) - 1);
     };

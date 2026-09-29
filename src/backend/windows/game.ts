@@ -1,6 +1,10 @@
-import { BrowserWindow } from "electron";
+import { BrowserWindow, app } from "electron";
 import path from "path";
 import { registerWindowEventsIPC } from "../IPC/gameWindow";
+import { resetLogSession, watchGameWindow } from "../IPC/log";
+import { resetWatchSession } from "../IPC/watch";
+import { resetCommandSession } from "../IPC/command";
+import { resetTweakSession } from "../IPC/tweak";
 import { loadRenderer } from "./loader";
 import { sendToProfiler } from "./profiler";
 import { registerGameStreamingEventsIPC } from "../IPC/streaming";
@@ -23,6 +27,7 @@ export function createGameWindow() {
 
   registerWindowEventsIPC();
   registerGameStreamingEventsIPC();
+  if (!app.isPackaged) watchGameWindow(gameWindow);
   loadRenderer(gameWindow, {
     devServerUrl: MAIN_WINDOW_VITE_DEV_SERVER_URL,
     viteName: MAIN_WINDOW_VITE_NAME,
@@ -36,18 +41,28 @@ export function createGameWindow() {
   });
 }
 function onDevServer() {
-  gameWindow.maximize();
-  gameWindow.webContents.on("before-input-event", (_event, input) => {
+  // gameWindow.maximize();
+  gameWindow.on("closed", () => app.quit());
+  gameWindow.webContents.on("before-input-event", (event, input) => {
     if (input.control && input.key.toLowerCase() === "r") gameWindow.reload();
     if (input.control && input.shift && input.key.toLowerCase() === "i")
       gameWindow.webContents.toggleDevTools();
+    // the event fires for keyUp and auto-repeat too, which toggled fullscreen back and forth
+    if (input.key === "F10" && input.type === "keyDown" && !input.isAutoRepeat) {
+      event.preventDefault();
+      gameWindow.setFullScreen(!gameWindow.isFullScreen());
+    }
   });
   gameWindow.webContents.openDevTools({
     mode: "detach",
     activate: false,
     title: "Misa Devtools",
   });
-  gameWindow.webContents.on("did-start-loading", () =>
-    sendToProfiler("debug:gameReloaded"),
-  );
+  gameWindow.webContents.on("did-start-loading", () => {
+    sendToProfiler("debug:gameReloaded");
+    resetLogSession();
+    resetWatchSession();
+    resetCommandSession();
+    resetTweakSession();
+  });
 }

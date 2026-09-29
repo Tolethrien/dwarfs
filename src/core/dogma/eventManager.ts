@@ -4,7 +4,7 @@ import DogmaSystem from "./system";
 export type EventData = Record<string, unknown>;
 interface Subscriber {
   callback: (data: EventData) => void;
-  ID: Symbol;
+  ID: symbol;
 }
 interface DeferredSubscriber {
   eventName: string;
@@ -37,7 +37,7 @@ interface IntervalProps {
 }
 export default class EventManager {
   private parentScene: DogmaScene;
-  private immediateEvents: Map<string, Map<Symbol, Subscriber>> = new Map();
+  private immediateEvents: Map<string, Map<symbol, Subscriber>> = new Map();
   private deferredEvents: Map<string, EventData[]> = new Map();
   private cascadeEvents: Map<string, EventData[]> = new Map();
   private timeEvents: TimeEvent[] = [];
@@ -66,7 +66,7 @@ export default class EventManager {
     subscribers.set(ID, { callback, ID });
     return ID;
   }
-  public unsubscribeFromImmediate(eventName: string, ID: Symbol) {
+  public unsubscribeFromImmediate(eventName: string, ID: symbol) {
     const subscribers = this.immediateEvents.get(eventName);
     if (!subscribers) return;
     subscribers.delete(ID);

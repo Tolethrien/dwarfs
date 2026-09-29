@@ -1,9 +1,10 @@
-import Draw from "@/core/aurora/draw";
-import Collision from "@/core/axiom/collision";
-import Vec2 from "@/core/axiom/vec2";
-import PragmaComponent from "@/core/pragma/component";
-import { assert } from "@/utils/utils";
-import Transform from "./transform";
+import { Draw } from "@aurora/urp/draw/draw";
+import Collision from "@axiom/collision";
+import Vec2 from "@axiom/vec2";
+import PragmaComponent from "@pragma/component";
+import { assert } from "@axiom/utils";
+import Transform from "@pragma/transform";
+import { RENDER_ORDER } from "@sandbox/managers/generalData";
 
 type PhysicsBodyType = "static" | "kinetic" | "rigid";
 export type ColliderBody =
@@ -56,25 +57,20 @@ export default class Physics extends PragmaComponent {
     else if (this.type === "kinetic") tint = [50, 150, 250, 255];
 
     if (this.body.type === "circle") {
-      const d = this.body.radius * 2;
       Draw.circle({
-        position: {
-          x: pos.x - this.body.radius,
-          y: pos.y - this.body.radius,
-          z: 1,
-        },
-        size: { width: d, height: d },
-        tint,
+        position: { x: pos.x, y: pos.y, z: RENDER_ORDER.debug },
+        radius: this.body.radius,
+        color: tint,
       });
     } else {
       Draw.rect({
         position: {
           x: pos.x - this.body.w / 2,
           y: pos.y - this.body.h / 2,
-          z: 1,
+          z: RENDER_ORDER.debug,
         },
         size: { width: this.body.w, height: this.body.h },
-        tint,
+        color: tint,
       });
     }
   }

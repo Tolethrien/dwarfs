@@ -53,52 +53,47 @@ export default class Dogma {
 
     this.sceneSorted.forEach((scene) => {
       if (!scene.getFlags().isActive) return;
-      scene
-        .getPhaseSubscribers("preUpdate")
-        .forEach((entry) => entry.sysRef.isActive() && entry.callback());
+      this.runPhase(scene, "preUpdate");
     });
     while (Time.requestFixedUpdate()) {
       this.sceneSorted.forEach((scene) => {
         if (!scene.getFlags().isActive) return;
-        scene
-          .getPhaseSubscribers("fixedUpdate")
-          .forEach((entry) => entry.sysRef.isActive() && entry.callback());
+        this.runPhase(scene, "fixedUpdate");
       });
     }
-    Time.switchToUpdateContext();
 
-    const frameDtMs = Time.getDeltaTime();
+    // event timers count in ms, the delta is in seconds
+    const frameDtMs = Time.getDeltaTime() * 1000;
     this.sceneSorted.forEach(
       (scene) =>
         scene.getFlags().isActive && scene.eventManager.updateTimers(frameDtMs),
     );
     this.sceneSorted.forEach((scene) => {
       if (!scene.getFlags().isActive) return;
-      scene
-        .getPhaseSubscribers("update")
-        .forEach((entry) => entry.sysRef.isActive() && entry.callback());
+      this.runPhase(scene, "update");
     });
     this.sceneSorted.forEach((scene) => {
       if (!scene.getFlags().isActive) return;
-      scene
-        .getPhaseSubscribers("postUpdate")
-        .forEach((entry) => entry.sysRef.isActive() && entry.callback());
+      this.runPhase(scene, "postUpdate");
     });
     Time.updateAlpha();
 
     this.sceneSorted.forEach((scene) => {
-      scene
-        .getPhaseSubscribers("eventsDeferred")
-        .forEach((entry) => entry.sysRef.isActive() && entry.callback());
+      this.runPhase(scene, "eventsDeferred");
       scene.eventManager.flush();
     });
 
     this.sceneSorted.forEach((scene) => {
       if (!scene.getFlags().isRendered) return;
-      scene
-        .getPhaseSubscribers("render")
-        .forEach((entry) => entry.sysRef.isActive() && entry.callback());
+      this.runPhase(scene, "render");
     });
+  }
+  // the phase's systems, then the scene's coroutines of that phase
+  private static runPhase(scene: DogmaScene, phase: DogmaPhase) {
+    scene
+      .getPhaseSubscribers(phase)
+      .forEach((entry) => entry.sysRef.isActive() && entry.callback());
+    scene.coroutines.step(phase);
   }
   private static sceneDispatcher() {
     let needSorting = false;
@@ -112,7 +107,10 @@ export default class Dogma {
 
     if (this.scenesToRemoved.size !== 0) {
       needSorting = true;
-      this.scenesToRemoved.forEach((name) => this.scenes.delete(name));
+      this.scenesToRemoved.forEach((name) => {
+        this.scenes.get(name)?.destroy();
+        this.scenes.delete(name);
+      });
       this.scenesToRemoved.clear();
     }
     if (needSorting) {

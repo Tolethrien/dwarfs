@@ -1,5 +1,5 @@
-import Vec2 from "@/core/axiom/vec2";
-import PragmaActor from "@/core/pragma/actor";
+import Vec2 from "@axiom/vec2";
+import PragmaActor from "@pragma/actor";
 import Physics from "../components/physics";
 import Stats from "../components/stats";
 import Sprite from "../components/sprite";

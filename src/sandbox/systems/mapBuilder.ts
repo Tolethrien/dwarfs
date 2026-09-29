@@ -1,5 +1,5 @@
-import InputManager from "@/core/engine/inputManager";
-import PragmaComponent from "@/core/pragma/component";
+import InputManager from "@engine/inputManager";
+import PragmaComponent from "@pragma/component";
 import { ACTION } from "../inputActions";
 import { GameMode } from "../scenes/gameScene";
 import MapObject, { LAYER } from "../managers/mapObject";

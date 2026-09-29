@@ -24,12 +24,19 @@ export const ITERATED_PHASES = [
   "postUpdate",
   "render",
 ] as const satisfies readonly IteratedPragmaPhases[];
+// run several times a frame, coroutines there use fixed time and step per step
+export const FIXED_PHASES: ReadonlySet<IteratedPragmaPhases> = new Set([
+  "preFixedUpdate",
+  "fixedUpdate",
+]);
 
 export default class Pragma {
   private static sceneList: Map<string, PragmaScene> = new Map();
   public static readonly events = new EventBus();
 
   public static addScene(sceneName: string, active?: boolean) {
+    // replaced scene goes like deleteScene, its place in the order stays
+    this.sceneList.get(sceneName)?.destroy();
     const scene = new PragmaScene({ sceneName, active });
     this.sceneList.set(sceneName, scene);
     return scene;
@@ -40,7 +47,7 @@ export default class Pragma {
       console.warn(`There is no scene with name: ${sceneName} to remove`);
       return;
     }
-    scene.getAllActors.forEach((actor) => actor.onDestroy());
+    scene.destroy();
     this.sceneList.delete(sceneName);
   }
   public static getScene(sceneName: string) {
@@ -52,7 +59,6 @@ export default class Pragma {
     while (Time.requestFixedUpdate()) {
       this.sceneList.forEach((scene) => scene.active && scene.fixedPhase());
     }
-    Time.switchToUpdateContext();
     Time.updateAlpha();
     this.sceneList.forEach((scene) => scene.active && scene.postPhase());
   }
@@ -60,7 +66,7 @@ export default class Pragma {
     const scene = this.sceneList.get(sceneName);
     if (!scene) {
       console.warn(
-        `There is no scene with name ${sceneName}. Trying add actor: ${actor.ID}`,
+        `There is no scene with name ${sceneName}. Trying add actor: ${actor.ID.description}`,
       );
       return;
     }
@@ -70,7 +76,7 @@ export default class Pragma {
     const scene = this.sceneList.get(sceneName);
     if (!scene) {
       console.warn(
-        `There is no scene with name ${sceneName}. Trying to remove actor: ${actor.ID}`,
+        `There is no scene with name ${sceneName}. Trying to remove actor: ${actor.ID.description}`,
       );
       return;
     }

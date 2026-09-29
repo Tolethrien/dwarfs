@@ -1,8 +1,8 @@
-import PragmaActor from "@/core/pragma/actor";
+import PragmaActor from "@pragma/actor";
 import Animator from "../components/animator";
 import Sprite from "../components/sprite";
 import Physics from "../components/physics";
-import Time from "@/core/engine/time";
+import Time from "@engine/time";
 import EntitiesObject, { AnimsID } from "../managers/entitiesObject";
 import SoundBank, { SoundsID } from "../managers/soundbank";
 import { RENDER_ORDER, SPRITES } from "../managers/generalData";

@@ -95,3 +95,13 @@ dist/
 progress/
 planImple.md
 *.dwb
+# debugger log dumps
+.MisaLogs/
+
+# module todos
+.todo/
+
+# claude
+CLAUDE.md
+.claude/
+plans/

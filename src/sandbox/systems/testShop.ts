@@ -1,10 +1,10 @@
-import PragmaComponent from "@/core/pragma/component";
-import Navi from "@/core/navi/navi";
-import UINode from "@/core/navi/node";
-import UIText from "@/core/navi/elements/text";
-import UIScrollBar from "@/core/navi/elements/scrollbar";
-import { auto, px } from "@/core/navi/units";
-import { Tweens } from "@/core/navi/tween";
+import PragmaComponent from "@pragma/component";
+import Navi from "@navi/navi";
+import UINode from "@navi/node";
+import UIText from "@navi/elements/text";
+import UIScrollBar from "@navi/elements/scrollbar";
+import { auto, px } from "@navi/units";
+import { Tweens } from "@navi/tween";
 import GameResources, { GameResourcesID } from "../managers/resourcesObject";
 import { SPRITES } from "../managers/generalData";
 

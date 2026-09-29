@@ -1,3 +1,4 @@
+export type EasingName = Exclude<keyof typeof Easing, "prototype">;
 export default class Easing {
   private constructor() {}
 

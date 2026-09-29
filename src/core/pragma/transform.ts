@@ -1,16 +1,18 @@
 import Mat2 from "@axiom/mat2";
+import AxiomMath from "@axiom/math";
+import { assert } from "@axiom/utils";
 import Vec2 from "@axiom/vec2";
 import Time from "@engine/time";
 import PragmaComponent from "./component";
-import Pragma from "./pragma";
 
 export default class Transform extends PragmaComponent {
   private position: Vec2 = Vec2.Zero;
   private previousPosition: Vec2 = Vec2.Zero;
   private z: number = 0;
   private rotation: number = 0; // radian
+  private previousRotation: number = 0;
   private scale: Vec2 = Vec2.One;
-
+  private interpolating: boolean = false;
   private parent: Transform | null = null;
   private readonly children: Set<Transform> = new Set();
 
@@ -22,6 +24,8 @@ export default class Transform extends PragmaComponent {
 
   fixedUpdate(): void {
     this.previousPosition.copy(this.position);
+    this.previousRotation = this.rotation;
+    this.interpolating = true;
   }
 
   /**DO NOT MUTATE THIS */
@@ -46,22 +50,55 @@ export default class Transform extends PragmaComponent {
   }
   /**Interpolate to render! do not use in phys or anything else */
   public getRenderPosition(): Vec2 {
+    if (!this.parent) {
+      return Vec2.lerp(this.previousPosition, this.position, Time.getAlpha());
+    }
+    return this.getRenderMatrix().getPosition();
+  }
+  /**Interpolate to render! do not use in phys or anything else */
+  public getRenderRotation(): number {
+    if (!this.parent) {
+      return AxiomMath.lerpAngle(
+        this.previousRotation,
+        this.rotation,
+        Time.getAlpha(),
+      );
+    }
+    return this.getRenderMatrix().getRotation();
+  }
+  private getRenderMatrix(): Mat2 {
+    const alpha = Time.getAlpha();
     const localRenderPos = Vec2.lerp(
       this.previousPosition,
       this.position,
-      Time.getAlpha(),
+      alpha,
     );
-    if (!this.parent) return localRenderPos;
-    const local = Mat2.fromTRS(localRenderPos, this.rotation, this.scale);
-    return this.parent.getWorldMatrix().clone().multiply(local).getPosition();
+    const localRenderRotation = AxiomMath.lerpAngle(
+      this.previousRotation,
+      this.rotation,
+      alpha,
+    );
+    const local = Mat2.fromTRS(localRenderPos, localRenderRotation, this.scale);
+    if (!this.parent) return local;
+    return this.parent.getRenderMatrix().multiply(local);
   }
   public setPosition(x: number, y: number) {
     this.position.set(x, y);
-    this.previousPosition.set(x, y);
+    if (!this.interpolating) this.previousPosition.set(x, y);
     this.markDirty();
+  }
+  public teleport(x: number, y: number) {
+    this.position.set(x, y);
+    this.snap();
+    this.markDirty();
+  }
+  public snap() {
+    this.previousPosition.copy(this.position);
+    this.previousRotation = this.rotation;
   }
   public translate(dx: number, dy: number) {
     this.position.add(dx, dy);
+    if (!this.interpolating) this.previousPosition.copy(this.position);
     this.markDirty();
   }
   public setZ(z: number) {
@@ -70,10 +107,12 @@ export default class Transform extends PragmaComponent {
   }
   public setRotation(radians: number) {
     this.rotation = radians;
+    if (!this.interpolating) this.previousRotation = radians;
     this.markDirty();
   }
   public rotateBy(deltaRadians: number) {
     this.rotation += deltaRadians;
+    if (!this.interpolating) this.previousRotation = this.rotation;
     this.markDirty();
   }
   public setScale(x: number, y: number) {
@@ -82,6 +121,18 @@ export default class Transform extends PragmaComponent {
   }
 
   public setParent(parent: Transform | null) {
+    for (let ancestor = parent; ancestor !== null; ancestor = ancestor.parent) {
+      assert(
+        ancestor !== this,
+        `Transform of ${this.actor.constructor.name} can't be parented to itself or its own descendant`,
+      );
+    }
+    const scene = this.actor.scene;
+    const parentScene = parent?.actor.scene;
+    assert(
+      scene === undefined || parentScene === undefined || scene === parentScene,
+      `Transform of ${this.actor.constructor.name} (scene ${scene?.getName}) can't get a parent from scene ${parentScene?.getName}`,
+    );
     this.parent?.children.delete(this);
     this.parent = parent;
     parent?.children.add(this);
@@ -128,21 +179,16 @@ export default class Transform extends PragmaComponent {
   }
 
   destroy() {
-    for (const child of this.children) {
-      Pragma.deleteActor(child.actor, child.actor.scene.getName);
-    }
+    for (const child of this.children)
+      child.actor.scene?.deleteActor(child.actor);
     this.parent?.children.delete(this);
   }
   cascadeActorEnabled(enable: boolean) {
     this.actor.setEnabled(enable);
-    for (const child of this.children) {
-      child.actor.setEnabled(enable);
-    }
+    for (const child of this.children) child.cascadeActorEnabled(enable);
   }
   cascadeActorVisible(enable: boolean) {
     this.actor.setVisibility(enable);
-    for (const child of this.children) {
-      child.actor.setVisibility(enable);
-    }
+    for (const child of this.children) child.cascadeActorVisible(enable);
   }
 }

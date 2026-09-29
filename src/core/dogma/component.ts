@@ -1,11 +1,11 @@
 export interface InternalDCProps {
-  ID: Symbol;
+  ID: symbol;
   tags: Set<string>;
   componentName: DogmaComponentRegistryKeys;
   marker: [string];
 }
 export default abstract class DogmaComponent {
-  private readonly entityID: Symbol;
+  private readonly entityID: symbol;
   public readonly componentName: DogmaComponentRegistryKeys;
   private readonly entityTags: Set<string> = new Set();
   private readonly entityMarker: [string];

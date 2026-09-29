@@ -1,150 +1,58 @@
-import AuroraCamera from "@/core/aurora/camera";
-import AxiomMath from "@/core/axiom/math";
-import Vec2 from "@/core/axiom/vec2";
-import Cello from "@/core/cello/cello";
-import InputManager from "@/core/engine/inputManager";
-import Time from "@/core/engine/time";
-import PragmaComponent from "@/core/pragma/component";
-import { ACTION } from "@/sandbox/inputActions";
-import CameraObject from "@/sandbox/managers/cameraObject";
-import MapObject from "@/sandbox/managers/mapObject";
+import { Camera } from "@engine/camera/camera";
+import AxiomMath from "@axiom/math";
+import Cello from "@cello/cello";
+import InputManager from "@engine/inputManager";
+import Time from "@engine/time";
+import PragmaComponent from "@pragma/component";
+import { ACTION } from "@sandbox/inputActions";
 
-const MOVE_SPEED = 500;
-const ACCEL_SMOOTH = 0.03;
-const DECEL_SMOOTH = 0.09;
-
-const ZOOM_STEP = 1.15;
-const ZOOM_KEY_RATE = 1.8;
-const ZOOM_SMOOTH = 0.12;
-const ZOOM_MIN = 0.05;
-const ZOOM_MAX = 4;
-const SILENT_ZOOM = 0.15;
-const AUDIBLE_ZOOM = 0.42;
+const ZOOM = {
+  keyOctavesPerSecond: Math.log2(1.8),
+  silent: 0.15,
+  audible: 0.42,
+};
 export default class CameraController extends PragmaComponent {
-  private velocity: Vec2 = Vec2.Zero;
-  private moveTarget: Vec2 = Vec2.Zero;
-  private targetZoom: number = 1;
-  private anchorScreen: Position2D | null = null;
-  private anchorWorld: Position2D | null = null;
-  private bounds: Box | null = null;
+  private lastZoom: number = -1;
 
   constructor(internal: InternalPCProps) {
     super(internal);
   }
-  awake(): void {
-    this.systemSharedData.add("camera", this);
-  }
-  start(): void {
-    this.targetZoom = CameraObject.getZoom;
-    this.setBounds(MapObject.getWorldBounds());
-  }
 
   preUpdate(): void {
-    const dt = Time.getDeltaTime();
-    if (dt === 0) return;
-
-    this.updateZoom(dt);
-    this.updateMove(dt);
-    this.clampToBounds();
-
-    AuroraCamera.setMatrix(CameraObject.getProjectionViewMatrix());
+    this.updatePan();
+    this.updateZoomKeys();
+    this.updateZoomVolume();
   }
 
-  public setBounds(bounds: Box | null) {
-    this.bounds = bounds;
-  }
-
-  private updateMove(dt: number) {
+  private updatePan() {
     const dirX =
       (InputManager.onActionHold(ACTION.cameraRight) ? 1 : 0) -
       (InputManager.onActionHold(ACTION.cameraLeft) ? 1 : 0);
     const dirY =
       (InputManager.onActionHold(ACTION.cameraDown) ? 1 : 0) -
       (InputManager.onActionHold(ACTION.cameraUp) ? 1 : 0);
-    const moving = dirX !== 0 || dirY !== 0;
-
-    this.moveTarget.set(dirX, dirY);
-    if (moving)
-      this.moveTarget.normalize().scale(MOVE_SPEED / CameraObject.getZoom);
-
-    const smooth = moving ? ACCEL_SMOOTH : DECEL_SMOOTH;
-    this.velocity.lerp(this.moveTarget, 1 - Math.exp(-dt / smooth));
-
-    const pos = CameraObject.getPosition;
-    CameraObject.setPosition(
-      pos.x + this.velocity.x * dt,
-      pos.y + this.velocity.y * dt,
-    );
+    if (dirX !== 0 || dirY !== 0) Camera.pan({ x: dirX, y: dirY });
   }
 
-  private updateZoom(dt: number) {
-    if (InputManager.isMouseScrolled()) {
-      const dir = -Math.sign(InputManager.getMouseScroll().y);
-      this.setTargetZoom(this.targetZoom * Math.pow(ZOOM_STEP, dir));
-
-      const mouse = InputManager.getMousePos();
-      this.anchorScreen = { x: mouse.x, y: mouse.y };
-      this.anchorWorld = CameraObject.screenToWorld(mouse);
-    }
-
+  private updateZoomKeys() {
     const keyDir =
       (InputManager.onActionHold(ACTION.zoomIn) ? 1 : 0) -
       (InputManager.onActionHold(ACTION.zoomOut) ? 1 : 0);
-    if (keyDir !== 0) {
-      this.setTargetZoom(
-        this.targetZoom * Math.pow(ZOOM_KEY_RATE, keyDir * dt),
-      );
-      this.anchorScreen = null;
-      this.anchorWorld = null;
-    }
-
-    const current = CameraObject.getZoom;
-    if (Math.abs(this.targetZoom - current) < 0.00001) {
-      this.anchorScreen = null;
-      this.anchorWorld = null;
-      return;
-    }
-
-    const t = 1 - Math.exp(-dt / ZOOM_SMOOTH);
-    CameraObject.setZoom(current + (this.targetZoom - current) * t);
-    this.updateZoomVolume();
-    if (this.anchorScreen && this.anchorWorld) {
-      const drifted = CameraObject.screenToWorld(this.anchorScreen);
-      const pos = CameraObject.getPosition;
-      CameraObject.setPosition(
-        pos.x + (this.anchorWorld.x - drifted.x),
-        pos.y + (this.anchorWorld.y - drifted.y),
-      );
-    }
+    if (keyDir === 0) return;
+    Camera.zoomBy(keyDir * ZOOM.keyOctavesPerSecond * Time.getRawDeltaTime());
   }
 
-  private setTargetZoom(zoom: number) {
-    this.targetZoom = AxiomMath.clamp(zoom, ZOOM_MIN, ZOOM_MAX);
-  }
-
-  private clampToBounds() {
-    if (!this.bounds) return;
-    const view = CameraObject.getViewBox();
-    const pos = CameraObject.getPosition;
-    const b = this.bounds;
-
-    const x =
-      view.w >= b.w
-        ? b.x + b.w / 2
-        : AxiomMath.clamp(pos.x, b.x + view.w / 2, b.x + b.w - view.w / 2);
-    const y =
-      view.h >= b.h
-        ? b.y + b.h / 2
-        : AxiomMath.clamp(pos.y, b.y + view.h / 2, b.y + b.h - view.h / 2);
-
-    CameraObject.setPosition(x, y);
-  }
   private updateZoomVolume() {
+    const zoom = Camera.getZoom;
+    if (zoom === this.lastZoom) return;
+    this.lastZoom = zoom;
     const effect = Cello.getEffectNode("zoomVolume");
     if (!effect) return;
     const gainNode = effect.output as GainNode;
-    const raw =
-      (CameraObject.getZoom - SILENT_ZOOM) / (AUDIBLE_ZOOM - SILENT_ZOOM);
-    gainNode.gain.value = Math.min(1, Math.max(0, raw));
+    gainNode.gain.value = AxiomMath.clamp(
+      AxiomMath.inverseLerp(ZOOM.silent, ZOOM.audible, zoom),
+      0,
+      1,
+    );
   }
 }

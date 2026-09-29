@@ -1,5 +1,5 @@
-import InputManager from "@/core/engine/inputManager";
-import { KEY } from "@/core/engine/keys";
+import InputManager from "@engine/inputManager";
+import { KEY } from "@engine/keys";
 
 export const ACTION = {
   cameraUp: "cameraUp",

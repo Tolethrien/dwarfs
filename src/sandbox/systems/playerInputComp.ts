@@ -1,12 +1,13 @@
-import Draw from "@/core/aurora/draw";
-import AxiomMath from "@/core/axiom/math";
-import Vec2 from "@/core/axiom/vec2";
+import { Draw } from "@aurora/urp/draw/draw";
+import AxiomMath from "@axiom/math";
+import Vec2 from "@axiom/vec2";
 import InputManager from "@engine/inputManager";
-import PragmaComponent from "@/core/pragma/component";
-import Dwarf from "@/sandbox/bActors/dwarf";
-import { ACTION } from "@/sandbox/inputActions";
-import CameraObject from "@/sandbox/managers/cameraObject";
-import EntitiesObject, { DwarfsID } from "@/sandbox/managers/entitiesObject";
+import PragmaComponent from "@pragma/component";
+import Dwarf from "@sandbox/bActors/dwarf";
+import { ACTION } from "@sandbox/inputActions";
+import { Camera } from "@engine/camera/camera";
+import EntitiesObject, { DwarfsID } from "@sandbox/managers/entitiesObject";
+import { RENDER_ORDER } from "@sandbox/managers/generalData";
 import { GameMode } from "../scenes/gameScene";
 export default class PlayerInputsComponent extends PragmaComponent {
   private mouseLocked: boolean = false;
@@ -26,12 +27,12 @@ export default class PlayerInputsComponent extends PragmaComponent {
   private saveMousePos() {
     this.mouseLocked = true;
     const pos = InputManager.getMousePos();
-    const worldPos = CameraObject.screenToWorld(pos);
+    const worldPos = Camera.screenToWorld(pos);
     this.mousePos = worldPos;
   }
   private async shootDwarf() {
     const pos = InputManager.getMousePos();
-    const worldPos = CameraObject.screenToWorld(pos);
+    const worldPos = Camera.screenToWorld(pos);
 
     const delta = Vec2.sub(
       Vec2.create(this.mousePos.x, this.mousePos.y),
@@ -54,8 +55,12 @@ export default class PlayerInputsComponent extends PragmaComponent {
   render(): void {
     if (!this.mouseLocked) return;
     Draw.circle({
-      position: { x: this.mousePos.x, y: this.mousePos.y, z: 1 },
-      size: { width: 10, height: 10 },
+      position: {
+        x: this.mousePos.x,
+        y: this.mousePos.y,
+        z: RENDER_ORDER.debug,
+      },
+      radius: 5,
     });
   }
 }

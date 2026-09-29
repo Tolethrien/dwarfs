@@ -1,4 +1,4 @@
-import PragmaActor from "@/core/pragma/actor";
+import PragmaActor from "@pragma/actor";
 import { BlocksID } from "./entitiesObject";
 import Chest from "../bActors/chest";
 

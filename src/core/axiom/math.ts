@@ -18,6 +18,9 @@ export default class AxiomMath {
   static lerp(a: number, b: number, t: number) {
     return a + (b - a) * t;
   }
+  static damp(rate: number, delta: number) {
+    return rate <= 0 ? 1 : 1 - Math.exp(-rate * delta);
+  }
   static lerpInt(a: number, b: number, t: number) {
     return Math.round(AxiomMath.lerp(a, b, t));
   }

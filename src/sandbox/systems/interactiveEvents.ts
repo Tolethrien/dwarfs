@@ -1,11 +1,11 @@
-import PragmaActor from "@/core/pragma/actor";
-import PragmaComponent from "@/core/pragma/component";
+import PragmaActor from "@pragma/actor";
+import PragmaComponent from "@pragma/component";
 import Interactive from "../components/interactive";
 import { GameMode } from "../scenes/gameScene";
-import InputManager from "@/core/engine/inputManager";
+import InputManager from "@engine/inputManager";
 import { ACTION } from "../inputActions";
-import Collision from "@/core/axiom/collision";
-import CameraObject from "../managers/cameraObject";
+import Collision from "@axiom/collision";
+import { Camera } from "@engine/camera/camera";
 
 export interface InteractiveActor {
   component: Interactive;
@@ -30,7 +30,7 @@ export default class InteractiveElements extends PragmaComponent {
     if (!gameMode || gameMode.mode === "build") return;
     if (InputManager.onActionPressed(ACTION.interact)) {
       const mousePos = InputManager.getMousePos();
-      const worldPos = CameraObject.screenToWorld(mousePos);
+      const worldPos = Camera.screenToWorld(mousePos);
       for (const register of this.registered) {
         const hit = this.containsPoint(worldPos, register);
         if (!hit) continue;

@@ -5,6 +5,9 @@ import { assert } from "@axiom/utils";
 import DogmaEntity from "./entity";
 import { SharedData } from "./dogma";
 import EventManager from "./eventManager";
+import type Coroutine from "@engine/coroutines/coroutine";
+import type { CoroutineScript } from "@engine/coroutines/coroutine";
+import CoroutineGroup, { type CoroutineStartOptions } from "@engine/coroutines/coroutineGroup";
 export interface DogmaSceneFlags {
   isActive: boolean;
   isRendered: boolean;
@@ -28,8 +31,14 @@ interface PhaseRemoveEntry {
   systemName: DogmaSystemRegistryKeys;
 }
 export type PartialDSFlags = Partial<DogmaSceneFlags>;
+export type DogmaCoroutineOptions = Partial<
+  Pick<CoroutineStartOptions<DogmaPhase>, "phase" | "key" | "time" | "name"> & {
+    // owned by this entity: keys per entity, stopped when it's removed
+    entity: symbol;
+  }
+>;
 export default class DogmaScene {
-  private readonly components: Map<string, Map<Symbol, DogmaComponent>> =
+  private readonly components: Map<string, Map<symbol, DogmaComponent>> =
     new Map();
   private readonly systems: Map<string, DogmaSystem> = new Map();
   public readonly entityToDispatch: Set<DogmaEntity> = new Set();
@@ -41,19 +50,21 @@ export default class DogmaScene {
   private readonly sceneName: string;
   public readonly sceneSharedData: Map<string, SharedData> = new Map();
   public readonly eventManager: EventManager;
+  // stepped after each phase's systems; owners are systems or entities
+  public readonly coroutines: CoroutineGroup<DogmaPhase>;
 
-  private readonly queries: Map<string, Set<Symbol>> = new Map();
+  private readonly queries: Map<string, Set<symbol>> = new Map();
   private readonly queryFilters: Map<string, DogmaComponentRegistryKeys[]> =
     new Map();
-  private readonly markerQuery: Map<string, Symbol> = new Map();
-  private readonly markerMap: Map<Symbol, string> = new Map();
-  private readonly tagsQuery: Map<string, Set<Symbol>> = new Map();
+  private readonly markerQuery: Map<string, symbol> = new Map();
+  private readonly markerMap: Map<symbol, string> = new Map();
+  private readonly tagsQuery: Map<string, Set<symbol>> = new Map();
   private readonly tagsQueryFilter: Map<string, Set<string>> = new Map();
 
   public readonly entitiesInFrame = {
-    addedToFrame: new Set<Symbol>(),
-    removedFromFrame: new Set<Symbol>(),
-    inFrame: new Set<Symbol>(),
+    addedToFrame: new Set<symbol>(),
+    removedFromFrame: new Set<symbol>(),
+    inFrame: new Set<symbol>(),
   };
 
   private sceneFlags: DogmaSceneFlags = {
@@ -73,6 +84,14 @@ export default class DogmaScene {
     this.sceneName = name;
     this.sceneFlags = { ...this.sceneFlags, ...flags };
     this.eventManager = new EventManager(this);
+    this.coroutines = new CoroutineGroup("update", {
+      name: `Dogma ${name}`,
+      stepPhases: ["fixedUpdate"],
+    });
+  }
+  // the marker when it has one, for the profiler
+  public entityName(ID: symbol) {
+    return this.markerMap.get(ID) ?? `entity ${ID.description?.slice(0, 4)}`;
   }
   public getName() {
     return this.sceneName;
@@ -105,14 +124,14 @@ export default class DogmaScene {
     return this.markerQuery.get(marker);
   }
   public createQuery(key: string, list: DogmaComponentRegistryKeys[]) {
-    const results = new Set<Symbol>();
+    const results = new Set<symbol>();
 
     this.queries.set(key, results);
     this.queryFilters.set(key, list);
 
     if (list.length === 0) return results;
 
-    const componentMaps: Map<Symbol, DogmaComponent>[] = [];
+    const componentMaps: Map<symbol, DogmaComponent>[] = [];
     for (const name of list) {
       const ComponentList = this.components.get(name);
       if (!ComponentList) return results;
@@ -142,7 +161,7 @@ export default class DogmaScene {
     tags: string[],
     component: DogmaComponentRegistryKeys,
   ) {
-    const results = new Set<Symbol>();
+    const results = new Set<symbol>();
     const tagsSet = new Set(tags);
     this.tagsQuery.set(key, results);
     tags.forEach((tag) => {
@@ -175,6 +194,22 @@ export default class DogmaScene {
     });
   }
 
+  // fixedUpdate defaults to fixed time, the rest to game time
+  public startCoroutine<Result>(
+    script: CoroutineScript<Result>,
+    options?: Partial<CoroutineStartOptions<DogmaPhase>>,
+  ): Coroutine<Result> {
+    const phase = options?.phase ?? "update";
+    const time = options?.time ?? (phase === "fixedUpdate" ? "fixed" : "game");
+    return this.coroutines.start(script, { ...options, phase, time });
+  }
+  public destroy() {
+    for (const system of this.systems.values()) {
+      system.stopAllCoroutines();
+      system.onDestroy();
+    }
+    this.coroutines.stopAll();
+  }
   public addSystem<T extends DogmaSystemRegistryKeys>(name: T) {
     assert(
       !this.systems.has(name) && !this.systemsToDispatch.has(name),
@@ -258,6 +293,7 @@ export default class DogmaScene {
   }
   private removeEntities() {
     this.entityToRemove.forEach((ID) => {
+      this.coroutines.stopOwner(ID);
       this.entitiesInFrame.removedFromFrame.add(ID);
       this.entitiesInFrame.inFrame.delete(ID);
       const marker = this.markerMap.get(ID);
@@ -313,6 +349,7 @@ export default class DogmaScene {
       this.systemsToRemove.forEach((name) => {
         const system = this.systems.get(name);
         if (!system) return;
+        system.stopAllCoroutines();
         system.onDestroy();
         (Object.keys(this.phaseManager) as DogmaPhase[]).forEach((phase) => {
           const subscribers = this.phaseManager[phase];

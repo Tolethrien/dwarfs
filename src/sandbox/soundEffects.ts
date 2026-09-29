@@ -1,5 +1,5 @@
-import Cello from "@/core/cello/cello";
-import CameraObject from "./managers/cameraObject";
+import Cello from "@cello/cello";
+import { Camera } from "@engine/camera/camera";
 
 export function registerSoundEffects() {
   Cello.registerEffect("zoomVolume", {
@@ -20,7 +20,7 @@ export function registerSoundEffects() {
         const CLOSE_DISTANCE = 500; // od tego dystansu (i bliżej) — pełna głośność
         const FAR_DISTANCE = 3000; // od tego dystansu (i dalej) — cisza
 
-        const cameraPos = CameraObject.getPosition;
+        const cameraPos = Camera.getCenter;
         const dx = args.position.x - cameraPos.x;
         const dy = args.position.y - cameraPos.y;
         const distance = Math.sqrt(dx * dx + dy * dy);

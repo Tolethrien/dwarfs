@@ -1,4 +1,4 @@
-import AxiomMath from "@/core/axiom/math";
+import AxiomMath from "@axiom/math";
 import { SPRITES } from "./generalData";
 import { GameResourcesID } from "./resourcesObject";
 

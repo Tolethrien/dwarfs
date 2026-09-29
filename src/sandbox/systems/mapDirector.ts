@@ -1,14 +1,14 @@
-import Grid from "@/core/axiom/grid";
-import PragmaComponent from "@/core/pragma/component";
-import Chunk from "@/sandbox/bActors/chunk";
-import Spark from "@/sandbox/bActors/spark";
-import CameraObject from "@/sandbox/managers/cameraObject";
-import EntitiesObject, { BlocksID } from "@/sandbox/managers/entitiesObject";
-import MapObject, { LAYER, MAX_DAMAGE } from "@/sandbox/managers/mapObject";
-import SoundBank, { SoundsID } from "@/sandbox/managers/soundbank";
+import Grid from "@axiom/grid";
+import PragmaComponent from "@pragma/component";
+import Chunk from "@sandbox/bActors/chunk";
+import Spark from "@sandbox/bActors/spark";
+import { Camera } from "@engine/camera/camera";
+import EntitiesObject, { BlocksID } from "@sandbox/managers/entitiesObject";
+import MapObject, { LAYER, MAX_DAMAGE } from "@sandbox/managers/mapObject";
+import SoundBank, { SoundsID } from "@sandbox/managers/soundbank";
 import Explode from "../bActors/explode";
-import { assert } from "@/utils/utils";
-import PragmaActor from "@/core/pragma/actor";
+import { assert } from "@axiom/utils";
+import PragmaActor from "@pragma/actor";
 import { SPAWN_REGISTRY } from "../managers/spawnRegistry";
 
 type ChunkRange = { minX: number; minY: number; maxX: number; maxY: number };
@@ -58,14 +58,11 @@ export default class MapDirector extends PragmaComponent {
   }
 
   private computeRange(): ChunkRange {
-    const view = CameraObject.getViewBox();
+    const view = Camera.getViewBounds;
     const { mapInChunks } = MapObject.mapMeta;
 
-    const topLeft = MapObject.worldToChunkTile({ x: view.x, y: view.y });
-    const bottomRight = MapObject.worldToChunkTile({
-      x: view.x + view.w,
-      y: view.y + view.h,
-    });
+    const topLeft = MapObject.worldToChunkTile(view.min);
+    const bottomRight = MapObject.worldToChunkTile(view.max);
 
     return {
       minX: Math.max(0, topLeft.x - MARGIN),

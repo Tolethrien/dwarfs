@@ -1,7 +1,8 @@
-import auroraConfig from "@/core/aurora/renderer/config";
-import Renderer from "@/core/aurora/renderer/renderer";
-import Engine from "@/core/engine/engine";
-import Pragma from "@/core/pragma/pragma";
+import Aurora from "@aurora/core";
+import URP from "@aurora/urp/urp";
+import { COLOR } from "@axiom/color";
+import Engine from "@engine/engine";
+import Pragma from "@pragma/pragma";
 import chars from "@sandbox/assets/chars.png";
 import stones from "@sandbox/assets/stones.png";
 import blockDamage from "@sandbox/assets/blockDamage.mp3";
@@ -10,38 +11,37 @@ import mineAmbient from "@sandbox/assets/mineAmbient1.mp3";
 import bg from "@sandbox/assets/bg.png";
 import anims from "@sandbox/assets/anims.png";
 import icons from "@sandbox/assets/icons.png";
+import lato from "@sandbox/assets/fonts/Lato-Regular.ttf";
 import MapObject from "./managers/mapObject";
 import { registerInputsBindings } from "./inputActions";
-import Cello from "@/core/cello/cello";
+import Cello from "@cello/cello";
 import SoundBank, { SoundsID } from "./managers/soundbank";
 import { registerSoundEffects } from "./soundEffects";
 import GameScene from "./scenes/gameScene";
 
 async function preload() {
-  const aurora = auroraConfig({
+  await Aurora.config({
     userTextures: [
-      { name: "chars", url: chars },
-      { name: "stones", url: stones },
-      { name: "bg", url: bg },
-      { name: "anims", url: anims },
-      { name: "icons", url: icons },
+      { name: "chars", albedo: chars },
+      { name: "stones", albedo: stones },
+      { name: "bg", albedo: bg },
+      { name: "anims", albedo: anims },
     ],
-    userFonts: [],
-    feature: {
-      bloom: false,
-      lighting: false,
-    },
-    debugger: "minimal",
-    camera: { builtInCameraInputs: false, speed: 0 },
+    userUI: [{ name: "icons", url: icons }],
+    fonts: [{ name: "lato", type: "dynamic", url: lato }],
     rendering: {
-      sortOrder: "y+x+z",
-      renderRes: "1920x1080", // must be in fullHD
-      toneMapping: "none",
-      drawOrigin: "center", // don't work - must be like this
-      canvasColor: [0, 0, 0, 255],
+      renderRes: "1080p",
+      canvasColor: COLOR.BLACK,
     },
+    camera: { viewHeight: 1080 },
   });
-  await Renderer.initialize(aurora);
+  await URP.init({
+    sortMode: "layer",
+    toneMapping: { mode: "none" },
+    bloom: { enabled: false },
+    lighting: { enabled: false },
+    pixelSnap: "world",
+  });
   await MapObject.loadMap("test.dwb");
 
   await Cello.initialize({

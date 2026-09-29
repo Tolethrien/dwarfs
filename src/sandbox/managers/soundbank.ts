@@ -1,4 +1,4 @@
-import Cello, { CategoryTree } from "@/core/cello/cello";
+import Cello, { CategoryTree } from "@cello/cello";
 
 interface SoundObject {
   name: string;

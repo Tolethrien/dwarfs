@@ -1,4 +1,4 @@
-import PragmaComponent from "@/core/pragma/component";
+import PragmaComponent from "@pragma/component";
 type StatsProps = DwarfStats;
 interface DwarfStats {
   kind: "dwarf";

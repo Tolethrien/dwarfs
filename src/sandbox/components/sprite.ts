@@ -1,9 +1,8 @@
-import Draw from "@/core/aurora/draw";
-import PragmaComponent from "@/core/pragma/component";
-import { assert } from "@/utils/utils";
-import Transform from "./transform";
-import AuroraCamera from "@/core/aurora/camera";
-import CameraObject from "../managers/cameraObject";
+import { Draw } from "@aurora/urp/draw/draw";
+import PragmaComponent from "@pragma/component";
+import { assert } from "@axiom/utils";
+import Transform from "@pragma/transform";
+import { Camera } from "@engine/camera/camera";
 interface SpriteProps {
   sprite: string;
   crop: Crop;
@@ -40,12 +39,12 @@ export default class Sprite extends PragmaComponent {
     const x = pos.x - width / 2;
     const y = pos.y - height / 2;
 
-    const view = CameraObject.getViewBox();
+    const view = Camera.getViewBounds;
     if (
-      x + this.crop.width < view.x - CULL_MARGIN ||
-      y + this.crop.height < view.y - CULL_MARGIN ||
-      x > view.x + view.w + CULL_MARGIN ||
-      y > view.y + view.h + CULL_MARGIN
+      x + this.crop.width < view.min.x - CULL_MARGIN ||
+      y + this.crop.height < view.min.y - CULL_MARGIN ||
+      x > view.max.x + CULL_MARGIN ||
+      y > view.max.y + CULL_MARGIN
     )
       return;
 
@@ -57,18 +56,8 @@ export default class Sprite extends PragmaComponent {
       },
       crop: this.crop,
       size: { height: height, width: width },
-      textureToUse: this.sprite,
+      texture: this.sprite,
       tint: this.tint,
-    });
-    Draw.pointLight({
-      position: {
-        x: x,
-        y: y,
-        z: 1,
-      },
-      size: { height: 2000, width: 2000 },
-      intensity: 150,
-      tint: [255, 176, 64],
     });
   }
 }

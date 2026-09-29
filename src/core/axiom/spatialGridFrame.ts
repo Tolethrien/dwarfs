@@ -1,6 +1,6 @@
 const CELL_KEY_OFFSET = 1 << 15;
 type SpatialGridItem<T> = {
-  id: Symbol;
+  id: symbol;
   bounds: Box | BoxAABB;
   data: T;
 };
@@ -36,7 +36,7 @@ export default class FrameSpatialGrid<T> {
   query(range: Box | BoxAABB): T[] {
     const { minCellX, minCellY, maxCellX, maxCellY } =
       FrameSpatialGrid.getCellRange(range, this.cellSize);
-    const seen = new Set<Symbol>();
+    const seen = new Set<symbol>();
     const result: T[] = [];
 
     for (let cx = minCellX; cx <= maxCellX; cx++) {

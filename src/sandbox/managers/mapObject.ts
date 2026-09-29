@@ -1,10 +1,10 @@
 import { LoadedMap } from "@/backend/IPC/streaming";
-import Grid from "@/core/axiom/grid";
-import Vec2 from "@/core/axiom/vec2";
-import { assert } from "@/utils/utils";
+import Grid from "@axiom/grid";
+import Vec2 from "@axiom/vec2";
+import { assert } from "@axiom/utils";
 import EntitiesObject, { BlocksID } from "./entitiesObject";
-import CameraObject from "./cameraObject";
-import InputManager from "@/core/engine/inputManager";
+import { Camera } from "@engine/camera/camera";
+import InputManager from "@engine/inputManager";
 
 export interface TileHit {
   rect: Rect;
@@ -156,7 +156,7 @@ export default class MapObject {
     return index === -1 ? 0 : this.damage[index];
   }
   public static isTileVisible(gx: number, gy: number): boolean {
-    const view = CameraObject.getViewBox();
+    const view = Camera.getViewBounds;
     const pos = this.tileCenterToWorld({ x: gx, y: gy });
     const { tileInPixels } = this.mapConfig;
 
@@ -166,10 +166,10 @@ export default class MapObject {
     const halfH = tileInPixels.height / 2;
 
     return !(
-      pos.x + halfW < view.x - marginX ||
-      pos.y + halfH < view.y - marginY ||
-      pos.x - halfW > view.x + view.w + marginX ||
-      pos.y - halfH > view.y + view.h + marginY
+      pos.x + halfW < view.min.x - marginX ||
+      pos.y + halfH < view.min.y - marginY ||
+      pos.x - halfW > view.max.x + marginX ||
+      pos.y - halfH > view.max.y + marginY
     );
   }
 
@@ -187,7 +187,7 @@ export default class MapObject {
   }
   public static mouseToTile(): Position2D {
     const mouse = InputManager.getMousePos();
-    return this.worldToTile(CameraObject.screenToWorld(mouse));
+    return this.worldToTile(Camera.screenToWorld(mouse));
   }
 
   public static isDiscovered(chunkIndex: number) {

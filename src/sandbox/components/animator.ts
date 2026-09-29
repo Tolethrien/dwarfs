@@ -1,5 +1,5 @@
-import PragmaComponent from "@/core/pragma/component";
-import Time from "@/core/engine/time";
+import PragmaComponent from "@pragma/component";
+import Time from "@engine/time";
 import Sprite from "./sprite";
 import EntitiesObject, { AnimsID } from "../managers/entitiesObject";
 

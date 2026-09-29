@@ -2,7 +2,10 @@ import DogmaComponent from "./component";
 import Dogma, { SharedData } from "./dogma";
 import EventManager, { EventData } from "./eventManager";
 import Scene from "./scene";
-import { dogmaConfig } from "@/sandbox/configs";
+import { dogmaConfig } from "@sandbox/configs";
+import type Coroutine from "@engine/coroutines/coroutine";
+import type { CoroutineScript } from "@engine/coroutines/coroutine";
+import type { DogmaCoroutineOptions } from "./scene";
 
 export interface InternalDSProps {
   scene: Scene;
@@ -37,16 +40,20 @@ export type SystemComponent<T extends DogmaComponentRegistryKeys> =
     ? R
     : never;
 export type SystemComponentList<T extends DogmaComponentRegistryKeys> = Map<
-  Symbol,
+  symbol,
   SystemComponent<T>
 >;
 export default abstract class DogmaSystem {
   private systemActive: boolean = true;
   declare private parentScene: Scene;
   declare public readonly systemName: DogmaSystemRegistryKeys;
+  public readonly ID: symbol;
+  // started by this system for an entity, stopped with the system too
+  private readonly entityCoroutines = new Set<Coroutine>();
   public constructor({ scene, systemName }: InternalDSProps) {
     this.parentScene = scene;
     this.systemName = systemName;
+    this.ID = Symbol(String(systemName));
   }
 
   /**@description set activity of a system, when false system will not be executed */
@@ -100,7 +107,7 @@ export default abstract class DogmaSystem {
 
   /**@description returns specific component from components list */
   public getComponent<T extends DogmaComponentRegistryKeys>(
-    ID: Symbol,
+    ID: symbol,
     componentName: T,
   ) {
     return this.parentScene.getComponentList(componentName)?.get(ID) as
@@ -174,6 +181,45 @@ export default abstract class DogmaSystem {
   }
   public get events() {
     return this.parentScene.eventManager;
+  }
+
+  // frozen while the system is inactive; owned by the system, or by options.entity
+  public startCoroutine<Result>(
+    script: CoroutineScript<Result>,
+    options?: DogmaCoroutineOptions,
+  ): Coroutine<Result> {
+    const coroutine = this.parentScene.startCoroutine(script, {
+      ...options,
+      owner: options?.entity ?? this.ID,
+      ownerName:
+        options?.entity === undefined
+          ? `system ${String(this.systemName)}`
+          : this.parentScene.entityName(options.entity),
+      active: () => this.systemActive,
+    });
+    if (options?.entity === undefined) return coroutine;
+    for (const started of this.entityCoroutines) {
+      if (started.done) this.entityCoroutines.delete(started);
+    }
+    this.entityCoroutines.add(coroutine);
+    return coroutine;
+  }
+  public stopCoroutine(key: string, entity?: symbol) {
+    this.parentScene.coroutines.stop(key, entity ?? this.ID);
+  }
+  public restartCoroutine(key: string, entity?: symbol) {
+    this.parentScene.coroutines.restart(key, entity ?? this.ID);
+  }
+  public skipCoroutine(key: string, entity?: symbol) {
+    this.parentScene.coroutines.skip(key, entity ?? this.ID);
+  }
+  public skipCoroutineWait(key: string, entity?: symbol) {
+    this.parentScene.coroutines.skipWait(key, entity ?? this.ID);
+  }
+  public stopAllCoroutines() {
+    this.parentScene.coroutines.stopOwner(this.ID);
+    for (const coroutine of this.entityCoroutines) coroutine.stop();
+    this.entityCoroutines.clear();
   }
   //MAIN OVERRIDES
   /**@description this will happen ones right after the new frame start, good for debugging and timing*/

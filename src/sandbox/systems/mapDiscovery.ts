@@ -1,5 +1,5 @@
-import PragmaComponent from "@/core/pragma/component";
-import MapObject from "@/sandbox/managers/mapObject";
+import PragmaComponent from "@pragma/component";
+import MapObject from "@sandbox/managers/mapObject";
 import { BallChangedChunkEvent } from "../systems/physBall";
 import mapDirector from "./mapDirector";
 

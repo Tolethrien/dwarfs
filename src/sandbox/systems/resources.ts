@@ -1,12 +1,12 @@
 import GameResources, { GameResourcesID } from "../managers/resourcesObject";
-import PragmaComponent from "@/core/pragma/component";
+import PragmaComponent from "@pragma/component";
 import { TileMinedEvent } from "./mapDirector";
 import EntitiesObject from "../managers/entitiesObject";
 import { SPRITES } from "../managers/generalData";
-import Navi from "@/core/navi/navi";
-import UINode from "@/core/navi/node";
-import { auto, px } from "@/core/navi/units";
-import UIText from "@/core/navi/elements/text";
+import Navi from "@navi/navi";
+import UINode from "@navi/node";
+import { auto, px } from "@navi/units";
+import UIText from "@navi/elements/text";
 const RESOURCE_COUNT =
   Object.keys(GameResourcesID).filter((k) => isNaN(Number(k))).length - 1; // no none - all class need to -1 index
 export default class PlayerResources extends PragmaComponent {
