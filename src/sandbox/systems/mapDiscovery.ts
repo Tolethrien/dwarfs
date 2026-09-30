@@ -1,12 +1,12 @@
-import PragmaComponent from "@pragma/component";
+import PragmaSystem from "@pragma/system";
 import MapObject from "@sandbox/managers/mapObject";
-import { BallChangedChunkEvent } from "../systems/physBall";
+import type { BallChangedChunkEvent } from "../systems/physBall";
 import mapDirector from "./mapDirector";
 
-export default class MapDiscovery extends PragmaComponent {
+export default class MapDiscovery extends PragmaSystem {
   declare private map: mapDirector;
 
-  constructor(internal: InternalPCProps) {
+  constructor(internal: InternalPSProps) {
     super(internal);
   }
 
@@ -17,7 +17,7 @@ export default class MapDiscovery extends PragmaComponent {
   }
 
   start(): void {
-    this.map = this.getSibling(mapDirector)!;
+    this.map = this.scene.getSystem(mapDirector);
   }
 
   private discover(chunk: number) {

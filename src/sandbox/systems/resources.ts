@@ -1,5 +1,5 @@
 import GameResources, { GameResourcesID } from "../managers/resourcesObject";
-import PragmaComponent from "@pragma/component";
+import PragmaSystem from "@pragma/system";
 import { TileMinedEvent } from "./mapDirector";
 import EntitiesObject from "../managers/entitiesObject";
 import { SPRITES } from "../managers/generalData";
@@ -9,10 +9,10 @@ import { auto, px } from "@navi/units";
 import UIText from "@navi/elements/text";
 const RESOURCE_COUNT =
   Object.keys(GameResourcesID).filter((k) => isNaN(Number(k))).length - 1; // no none - all class need to -1 index
-export default class PlayerResources extends PragmaComponent {
+export default class PlayerResources extends PragmaSystem {
   private panel!: UINode;
   private resList: number[] = new Array(RESOURCE_COUNT).fill(0);
-  constructor(internal: InternalPCProps) {
+  constructor(internal: InternalPSProps) {
     super(internal);
     this.addResource(GameResourcesID.coal, 6);
     this.removeResource(GameResourcesID.coal, 3);

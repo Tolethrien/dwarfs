@@ -13,6 +13,10 @@ import { watchStore } from "../watch/store";
 import { coroutineStore } from "../coroutines/store";
 import CoroutinesRunningPanel from "./coroutines/running";
 import CoroutinesFinishedPanel from "./coroutines/finished";
+import { mapGenStore } from "../mapGen/store";
+import MapGenSummaryPanel from "./mapGen/summary";
+import MapGenOresPanel from "./mapGen/ores";
+import MapGenConfigPanel from "./mapGen/config";
 
 export interface PanelDefinition {
   title: string | (() => string);
@@ -81,6 +85,24 @@ export const PANELS = {
     size: { w: 12, h: 3 },
     component: CoroutinesFinishedPanel,
     live: coroutineStore.live,
+  },
+  mapGenSummary: {
+    title: "Map",
+    size: { w: 4, h: 2 },
+    component: MapGenSummaryPanel,
+    live: mapGenStore.live,
+  },
+  mapGenOres: {
+    title: "Ores per depth",
+    size: { w: 8, h: 3 },
+    component: MapGenOresPanel,
+    live: mapGenStore.live,
+  },
+  mapGenConfig: {
+    title: "Current settings",
+    size: { w: 12, h: 6 },
+    component: MapGenConfigPanel,
+    live: mapGenStore.live,
   },
 } satisfies Record<string, PanelDefinition>;
 

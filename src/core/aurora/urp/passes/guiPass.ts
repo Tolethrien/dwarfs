@@ -62,7 +62,8 @@ export default class GuiPass extends MultiPass {
     group: labels("backdrop"),
     scene: labels("backdropScene"),
   };
-  declare private pipelines: GPURenderPipeline[];
+  // indexed by material id, null for world only materials (Material gui: false)
+  declare private pipelines: (GPURenderPipeline | null)[];
   declare private binds: PassBinds<typeof GUI_BINDS>;
   declare private pyramidBinds: PassBinds<typeof PYRAMID_BINDS>;
   declare private pyramid: PyramidPipelines;
@@ -116,14 +117,16 @@ export default class GuiPass extends MultiPass {
     const [pipelines, snapshot, scene, downsample] = await Promise.all([
       Promise.all(
         materials.map((material) =>
-          Aurora.createRenderPipeline(drawTargets, {
-            label: `GuiPass:${material.name}`,
-            shader: DrawGuiShader.replace("// MATERIAL", material.fragment),
-            buffers: [GUI_LAYOUT.layout],
-            binds: this.binds.layout,
-            blend: material.gpuBlend,
-            constants: { linearColors: Aurora.isLinear },
-          }),
+          material.gui
+            ? Aurora.createRenderPipeline(drawTargets, {
+                label: `GuiPass:${material.name}`,
+                shader: DrawGuiShader.replace("// MATERIAL", material.fragment),
+                buffers: [GUI_LAYOUT.layout],
+                binds: this.binds.layout,
+                blend: material.gpuBlend,
+                constants: { linearColors: Aurora.isLinear },
+              })
+            : null,
         ),
       ),
       pyramid("backdropSnapshot", true, true),
@@ -214,7 +217,7 @@ export default class GuiPass extends MultiPass {
       let end = first + 1;
       while (end < to && materialOf(uints[end * stride + offset]) === id) end++;
       step.setPipeline(
-        this.pipelines[id] ?? this.pipelines[DEFAULT_MATERIAL.id],
+        this.pipelines[id] ?? this.pipelines[DEFAULT_MATERIAL.id]!,
       );
       step.draw(6, end - first, 0, first);
       first = end;

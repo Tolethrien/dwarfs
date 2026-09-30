@@ -322,6 +322,8 @@ Pomysł: wplecenie korpo-sztampy (stanowiska, żargon, procedury) przerobionej n
 
 ## System mapy — jak działa i jak z nim pracować
 
+> **Nieaktualne.** Opisuje stary system z plikiem `.dwb`. Mapa jest teraz generowana, nowy system projektujemy w `.todo/mapRewamp.md`.
+
 ### Model danych
 
 Odkrycie chunka przy nieruchomej kamerze. `MapComponent.update()` wychodzi wcześnie, gdy zakres widocznych chunków się nie zmienił. Ale chunk może zostać odkryty, gdy kamera stoi — kulka tam wlatuje, a ty patrzysz w jedno miejsce. Dlatego obok porównania zakresu jest flaga dirty, którą ustawia `DiscoveryComponent` przy każdym nowo odkrytym chunku. Bez niej chunk pojawiłby się dopiero po ruszeniu kamerą.

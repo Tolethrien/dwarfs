@@ -5,11 +5,11 @@ import PragmaComponent from "@pragma/component";
 import { assert } from "@axiom/utils";
 import Transform from "@pragma/transform";
 import { RENDER_ORDER } from "@sandbox/managers/generalData";
+import PhysBall from "@sandbox/systems/physBall";
 
 type PhysicsBodyType = "static" | "kinetic" | "rigid";
 export type ColliderBody =
-  | { type: "circle"; radius: number }
-  | { type: "rect"; w: number; h: number };
+  { type: "circle"; radius: number } | { type: "rect"; w: number; h: number };
 
 type PhysicsProps =
   | {
@@ -43,11 +43,11 @@ export default class Physics extends PragmaComponent {
   }
   start(): void {
     this.transform = this.actor.transform;
-    this.emitSceneEvent("physRegister", { physics: this });
+    this.scene.getSystem(PhysBall).register(this);
   }
 
   destroy(): void {
-    this.emitSceneEvent("physUnregister", { physics: this });
+    this.scene.findSystem(PhysBall)?.unregister(this);
   }
   render(): void {
     if (!Physics.debugDraw || !this.body) return;

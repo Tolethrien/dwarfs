@@ -8,6 +8,7 @@ import { DevCommand } from "./modules/command/command";
 import { DevTweak } from "./modules/tweak/tweak";
 import { CameraDevModule } from "./modules/camera/camera";
 import { DevCoroutines } from "./modules/coroutines/coroutines";
+import { MapGenDevModule } from "./modules/mapGen/mapGen";
 export class Debug {
   // first: the other modules log through it
   public log = new DevLogger({ mirrorToDevtools: CAPTURE.mirrorToDevtools });
@@ -18,6 +19,7 @@ export class Debug {
   public aurora = new AuroraDevModule(this.log.named("Aurora"), this.tweak, this.command);
   public camera = new CameraDevModule(this.tweak, this.command, this.log.named("Camera"));
   public coroutines = new DevCoroutines();
+  public mapGen = new MapGenDevModule(this.tweak, this.command, this.log.named("MapGen"));
   constructor() {
     captureErrors(this.log);
     profilerState.connect();

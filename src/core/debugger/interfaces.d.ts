@@ -13,6 +13,8 @@ import type { SortProps, URPProps } from "@aurora/urp/urp";
 import type { TexturePreview } from "@aurora/urp/passes/previewPass";
 import type { TweakField, TweakFieldsSectionInfo } from "./modules/tweak/report";
 import type Coroutine from "@engine/coroutines/coroutine";
+import type { GeneratedMap, MapGenConfig } from "@sandbox/mapGen/mapGenerator";
+import type { BlocksID } from "@sandbox/managers/entitiesObject";
 
 export interface ILogHandle {
   log(...args: unknown[]): void;
@@ -198,6 +200,20 @@ export interface ICoroutineModule {
   describe(coroutine: Coroutine, info: CoroutineGroupInfo): void;
   endFrame(): void;
 }
+export interface MapGenDebugData {
+  seed: number;
+  config: MapGenConfig;
+  defaults: MapGenConfig;
+  map: GeneratedMap;
+  blocks: typeof BlocksID;
+}
+export interface IMapGenModule {
+  // dev: the seed / config saved by the mapGen panel for this session, if any
+  seed(fallback: number): number;
+  config(fallback: MapGenConfig): MapGenConfig;
+  measure<Result>(generate: () => Result): Result;
+  connect(source: MapGenDebugData): void;
+}
 export interface IDebug {
   performance: IPerformanceModule;
   aurora: IAuroraModule;
@@ -207,4 +223,5 @@ export interface IDebug {
   tweak: ITweakModule;
   camera: ICameraModule;
   coroutines: ICoroutineModule;
+  mapGen: IMapGenModule;
 }

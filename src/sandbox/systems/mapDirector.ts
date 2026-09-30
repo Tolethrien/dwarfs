@@ -1,5 +1,5 @@
 import Grid from "@axiom/grid";
-import PragmaComponent from "@pragma/component";
+import PragmaSystem from "@pragma/system";
 import Chunk from "@sandbox/bActors/chunk";
 import Spark from "@sandbox/bActors/spark";
 import { Camera } from "@engine/camera/camera";
@@ -27,19 +27,16 @@ export interface TileDamagedEvent {
 export interface MapDiscoveryEvent {}
 const MARGIN = 1; //viewbox margin
 const SHOW_ALL_CHUNKS = true;
-export default class MapDirector extends PragmaComponent {
+export default class MapDirector extends PragmaSystem {
   private pool: Chunk[] = [];
   private loadedChunks: Map<number, Chunk> = new Map();
   private lastRange: ChunkRange = { minX: -1, minY: -1, maxX: -1, maxY: -1 };
   private spawnedActors: Map<number, Map<number, PragmaActor>> = new Map();
   private dirty = false;
-  constructor(internal: InternalPCProps) {
+  constructor(internal: InternalPSProps) {
     super(internal);
   }
 
-  awake(): void {
-    this.systemSharedData.add("mapDirector", this);
-  }
   start(): void {
     this.syncChunks(this.computeRange());
   }

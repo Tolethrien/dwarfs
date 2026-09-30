@@ -1,33 +1,22 @@
-import PragmaActor from "@pragma/actor";
-import PragmaComponent from "@pragma/component";
-import Interactive from "../components/interactive";
-import { GameMode } from "../scenes/gameScene";
+import PragmaSystem from "@pragma/system";
+import type Interactive from "../components/interactive";
 import InputManager from "@engine/inputManager";
 import { ACTION } from "../inputActions";
 import Collision from "@axiom/collision";
 import { Camera } from "@engine/camera/camera";
 
-export interface InteractiveActor {
-  component: Interactive;
-}
-export default class InteractiveElements extends PragmaComponent {
+export default class InteractiveElements extends PragmaSystem {
   private registered: Set<Interactive> = new Set();
-  constructor(internal: InternalPCProps) {
+  constructor(internal: InternalPSProps) {
     super(internal);
   }
-  awake(): void {
-    this.onSceneEvent<InteractiveActor>(
-      "interactiveRegister",
-      ({ component }) => this.registered.add(component),
-    );
-    this.onSceneEvent<InteractiveActor>(
-      "interactiveUnregister",
-      ({ component }) => this.registered.delete(component),
-    );
+  public register(component: Interactive) {
+    this.registered.add(component);
+  }
+  public unregister(component: Interactive) {
+    this.registered.delete(component);
   }
   preUpdate(): void {
-    const gameMode = this.systemSharedData.get<GameMode>("gameMode");
-    if (!gameMode || gameMode.mode === "build") return;
     if (InputManager.onActionPressed(ACTION.interact)) {
       const mousePos = InputManager.getMousePos();
       const worldPos = Camera.screenToWorld(mousePos);

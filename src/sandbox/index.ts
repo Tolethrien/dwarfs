@@ -13,11 +13,17 @@ import anims from "@sandbox/assets/anims.png";
 import icons from "@sandbox/assets/icons.png";
 import lato from "@sandbox/assets/fonts/Lato-Regular.ttf";
 import MapObject from "./managers/mapObject";
+import TileMask from "./managers/tileMask";
 import { registerInputsBindings } from "./inputActions";
 import Cello from "@cello/cello";
 import SoundBank, { SoundsID } from "./managers/soundbank";
 import { registerSoundEffects } from "./soundEffects";
 import GameScene from "./scenes/gameScene";
+import { Light } from "@/core/aurora/urp/draw/draw";
+import { debug } from "@debug";
+import { MAP_GEN_CONFIG } from "./mapGen/mapGenerator";
+
+const MAP_SEED = 1778679494;
 
 async function preload() {
   await Aurora.config({
@@ -38,11 +44,15 @@ async function preload() {
   await URP.init({
     sortMode: "layer",
     toneMapping: { mode: "none" },
-    bloom: { enabled: false },
-    lighting: { enabled: false },
+    bloom: { enabled: true },
+    lighting: { enabled: true },
     pixelSnap: "world",
   });
-  await MapObject.loadMap("test.dwb");
+  MapObject.generate(
+    debug.mapGen.seed(MAP_SEED),
+    debug.mapGen.config(MAP_GEN_CONFIG),
+  );
+  TileMask.init();
 
   await Cello.initialize({
     preloadSounds: [
@@ -58,7 +68,6 @@ function setup() {
   registerInputsBindings();
   registerSoundEffects();
 
-  // Renderer.setGlobalIllumination([25, 25, 80]);
   new GameScene();
 }
 Engine.initialize({ setup, preload });

@@ -272,6 +272,45 @@ export default class Noise {
     );
   }
 
+  // a whole grid of a slow field: sampled every `step` cells and bilinearly filled in between,
+  // for noise whose smallest detail is several cells wide it costs step² times less
+  public static sampleGrid(
+    size: Size2D,
+    step: number,
+    sample: (x: number, y: number) => number,
+  ) {
+    const columns = Math.ceil((size.width - 1) / step) + 1;
+    const rows = Math.ceil((size.height - 1) / step) + 1;
+    const coarse = new Float32Array(columns * rows);
+    for (let row = 0; row < rows; row++)
+      for (let column = 0; column < columns; column++)
+        coarse[column + row * columns] = sample(column * step, row * step);
+
+    const grid = new Float32Array(size.width * size.height);
+    for (let y = 0; y < size.height; y++) {
+      const row = Math.floor(y / step);
+      const ty = (y - row * step) / step;
+      const nextRow = Math.min(row + 1, rows - 1);
+      for (let x = 0; x < size.width; x++) {
+        const column = Math.floor(x / step);
+        const tx = (x - column * step) / step;
+        const nextColumn = Math.min(column + 1, columns - 1);
+        const top = Noise.lerp(
+          coarse[column + row * columns],
+          coarse[nextColumn + row * columns],
+          tx,
+        );
+        const bottom = Noise.lerp(
+          coarse[column + nextRow * columns],
+          coarse[nextColumn + nextRow * columns],
+          tx,
+        );
+        grid[x + y * size.width] = Noise.lerp(top, bottom, ty);
+      }
+    }
+    return grid;
+  }
+
   public poissonDisk(
     bounds: BoxAABB,
     minDistance: number,

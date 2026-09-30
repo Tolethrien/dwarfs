@@ -1,6 +1,6 @@
 import PragmaComponent from "@pragma/component";
-import { InteractiveActor } from "../systems/interactiveEvents";
-import { ColliderBody } from "./physics";
+import InteractiveElements from "../systems/interactiveEvents";
+import type { ColliderBody } from "./physics";
 
 interface InteractiveProps {
   bodyType: ColliderBody;
@@ -14,13 +14,9 @@ export default class Interactive extends PragmaComponent {
     this.bodyType = props.bodyType;
   }
   start(): void {
-    this.emitSceneEvent<InteractiveActor>("interactiveRegister", {
-      component: this,
-    });
+    this.scene.getSystem(InteractiveElements).register(this);
   }
   destroy(): void {
-    this.emitSceneEvent<InteractiveActor>("interactiveUnregister", {
-      component: this,
-    });
+    this.scene.findSystem(InteractiveElements)?.unregister(this);
   }
 }

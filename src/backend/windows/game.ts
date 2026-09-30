@@ -1,13 +1,13 @@
 import { BrowserWindow, app } from "electron";
 import path from "path";
 import { registerWindowEventsIPC } from "../IPC/gameWindow";
+import { registerSavesIPC } from "../IPC/saves";
 import { resetLogSession, watchGameWindow } from "../IPC/log";
 import { resetWatchSession } from "../IPC/watch";
 import { resetCommandSession } from "../IPC/command";
 import { resetTweakSession } from "../IPC/tweak";
 import { loadRenderer } from "./loader";
 import { sendToProfiler } from "./profiler";
-import { registerGameStreamingEventsIPC } from "../IPC/streaming";
 
 export let gameWindow: BrowserWindow;
 
@@ -26,7 +26,7 @@ export function createGameWindow() {
   gameWindow.setAspectRatio(16 / 9);
 
   registerWindowEventsIPC();
-  registerGameStreamingEventsIPC();
+  registerSavesIPC();
   if (!app.isPackaged) watchGameWindow(gameWindow);
   loadRenderer(gameWindow, {
     devServerUrl: MAIN_WINDOW_VITE_DEV_SERVER_URL,

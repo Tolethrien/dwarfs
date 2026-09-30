@@ -4,18 +4,10 @@ import { Draw } from "@aurora/urp/draw/draw";
 import DrawBatch from "@aurora/urp/draw/drawBatch";
 import { Camera } from "@engine/camera/camera";
 import EntitiesObject from "@sandbox/managers/entitiesObject";
-import { BG_SHADES } from "@/mapFormat";
+import TileMask from "@sandbox/managers/tileMask";
 import { RENDER_ORDER, SPRITES } from "../managers/generalData";
 import type { TileDamagedEvent } from "./mapDirector";
 type TileDefs = Record<number, { crop: Crop }>;
-const TINTS: RGBA[] = Array.from({ length: BG_SHADES + 1 }, (_, i) => {
-  const shade = ((i / BG_SHADES) * 200) | 0;
-  return [shade, 150, shade, 255];
-});
-const BG_CROP: Crop = { x: 0, y: 0, width: 96, height: 96 };
-const BG_DEFS: TileDefs = Array.from({ length: BG_SHADES + 1 }, () => ({
-  crop: BG_CROP,
-}));
 // dynamic: rebuilt when MapObject bumps the chunk version (tile type changed)
 const LAYERS = [
   {
@@ -123,17 +115,20 @@ export default class TileLayer extends PragmaComponent {
     const data = MapObject.getChunkData(layer.layer, this.chunkIndex);
     const damage = MapObject.getChunkDamage(this.chunkIndex);
     const origin = MapObject.chunkToWorld(this.chunkIndex);
+    const solid = layer.layer === LAYER.solid;
+    // created in preload, after this module's LAYERS
+    const material = solid ? TileMask.solid : undefined;
+    if (solid) TileMask.writeChunk(this.chunkIndex);
 
     batch.begin();
     for (let index = 0; index < data.length; index++) {
       const type = data[index];
       if (type === 0) continue;
-      if (layer.layer === LAYER.solid && EntitiesObject.getBlock(type).spawn)
-        continue;
+      if (solid && EntitiesObject.getBlock(type).spawn) continue;
       const crop = layer.defs[type].crop;
 
       let tint: RGBA | undefined;
-      if (layer.layer === LAYER.solid) {
+      if (solid) {
         tint = this.damageTint(damage[index]);
       } else if (layer.tints) {
         tint = layer.tints[type];
@@ -149,6 +144,7 @@ export default class TileLayer extends PragmaComponent {
         texture: layer.texture,
         size: { width: crop.width, height: crop.height },
         tint,
+        material,
       });
     }
     batch.end();

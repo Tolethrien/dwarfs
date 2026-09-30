@@ -7,6 +7,7 @@ import { prodCommand } from "./modules/command/command";
 import { prodTweak } from "./modules/tweak/tweak";
 import { prodCamera } from "./modules/camera/camera";
 import { prodCoroutines } from "./modules/coroutines/coroutines";
+import { prodMapGen } from "./modules/mapGen/mapGen";
 export const debug: IDebug = {
   performance: prodPerformance,
   aurora: prodAurora,
@@ -16,4 +17,5 @@ export const debug: IDebug = {
   tweak: prodTweak,
   camera: prodCamera,
   coroutines: prodCoroutines,
+  mapGen: prodMapGen,
 };

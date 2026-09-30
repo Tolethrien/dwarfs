@@ -12,6 +12,9 @@ export interface MaterialOptions<Name extends string> {
   transparent?: boolean;
   // not multiplied by the light map: glows at full strength in the dark
   emissive?: boolean;
+  // false: world only, the gui pass builds no pipeline and draws it with the default material;
+  // the fragment may then read what only the world shader has (in.world, camera)
+  gui?: boolean;
   // names with defaults, key order is the slot in the shader: in.params.x, y, z, w
   params?: Record<Name, number>;
 }
@@ -29,6 +32,7 @@ export default class Material<Name extends string = string> {
   public readonly blend: MaterialBlend;
   public readonly transparent: boolean;
   public readonly emissive: boolean;
+  public readonly gui: boolean;
   public readonly paramNames: readonly Name[];
   public readonly defaults: MaterialParams;
 
@@ -40,6 +44,7 @@ export default class Material<Name extends string = string> {
       blend = "normal",
       transparent = false,
       emissive = false,
+      gui = true,
       params,
     }: MaterialOptions<Name>,
   ) {
@@ -49,6 +54,7 @@ export default class Material<Name extends string = string> {
     this.blend = blend;
     this.transparent = transparent || blend !== "normal";
     this.emissive = emissive;
+    this.gui = gui;
     this.paramNames = params ? (Object.keys(params) as Name[]) : [];
     assert(
       this.paramNames.length <= 4,

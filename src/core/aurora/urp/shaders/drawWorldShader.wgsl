@@ -291,6 +291,8 @@ struct MaterialInput {
   uv: vec2f,
   // world units from the shape center, before rotation
   local: vec2f,
+  // world position of the pixel; world only, a material reading it needs gui: false
+  world: vec2f,
   size: vec2f,
   // premultiplied
   color: vec4f,
@@ -456,6 +458,7 @@ fn fragmentMain(in: VertexOut) -> FragmentOut {
   var input: MaterialInput;
   input.uv = uv01;
   input.local = local;
+  input.world = in.clipPoint;
   input.size = in.halfSize * 2.0;
   input.color = in.color;
   input.outlineColor = in.outlineColor;

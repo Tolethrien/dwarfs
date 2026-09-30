@@ -97,6 +97,8 @@ planImple.md
 *.dwb
 # debugger log dumps
 .MisaLogs/
+# game saves and dumps
+gameData/
 
 # module todos
 .todo/

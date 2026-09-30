@@ -1,10 +1,17 @@
-import { LoadedMap } from "@/backend/IPC/streaming";
 import Grid from "@axiom/grid";
 import Vec2 from "@axiom/vec2";
 import { assert } from "@axiom/utils";
 import EntitiesObject, { BlocksID } from "./entitiesObject";
 import { Camera } from "@engine/camera/camera";
 import InputManager from "@engine/inputManager";
+import { debug } from "@debug";
+import {
+  chunkMajorIndex,
+  generateMap,
+  MAP_GEN_CONFIG,
+  MapGenConfig,
+  MapMeta,
+} from "../mapGen/mapGenerator";
 
 export interface TileHit {
   rect: Rect;
@@ -30,7 +37,7 @@ export default class MapObject {
   declare private static discovered: Uint8Array;
   declare private static biome: Uint8Array;
 
-  declare private static mapConfig: LoadedMap["header"];
+  declare private static mapConfig: MapMeta;
   declare private static chunkVersions: Uint32Array;
   declare private static origin: Position2D;
 
@@ -45,32 +52,24 @@ export default class MapObject {
   );
   private static result: TileHit[] = [];
 
-  public static async loadMap(path: string) {
-    const data = await window.API.STREAMING.loadMapFromFile(path);
-    const { totalBlocks, totalChunks, offsets, start } = data.header;
-    const bytes = data.data;
+  public static generate(seed: number, config: MapGenConfig) {
+    const map = debug.mapGen.measure(() => generateMap(seed, config));
 
-    const blocks = (offset: number) =>
-      new Uint16Array(bytes.buffer, bytes.byteOffset + offset, totalBlocks);
-    const chunks = (offset: number) =>
-      new Uint8Array(bytes.buffer, bytes.byteOffset + offset, totalChunks);
+    this.mapConfig = map.meta;
+    this.origin = map.meta.start;
+    this.layers = [map.background, map.decoBack, map.solid, map.decoFront];
+    this.damage = map.damage;
+    this.discovered = map.discovered;
+    this.biome = map.biome;
+    this.chunkVersions = new Uint32Array(map.meta.totalChunks);
 
-    this.mapConfig = data.header;
-    this.origin = start;
-
-    this.layers = [
-      blocks(offsets.background),
-      blocks(offsets.decoBack),
-      blocks(offsets.solidType),
-      blocks(offsets.decoFront),
-    ];
-    this.damage = blocks(offsets.solidDamage);
-    this.discovered = chunks(offsets.discovered);
-    this.biome = chunks(offsets.biome);
-
-    this.chunkVersions = new Uint32Array(totalChunks);
-
-    console.log("loaded map", data.header);
+    debug.mapGen.connect({
+      seed,
+      config,
+      defaults: MAP_GEN_CONFIG,
+      map,
+      blocks: BlocksID,
+    });
   }
 
   public static get mapMeta() {
@@ -121,19 +120,10 @@ export default class MapObject {
   }
 
   private static tileIndex(gx: number, gy: number) {
-    const { chunkInTiles, mapInTiles, mapInChunks, blocksPerChunk } =
-      this.mapConfig;
-
+    const { mapInTiles } = this.mapConfig;
     if (gx < 0 || gy < 0 || gx >= mapInTiles.width || gy >= mapInTiles.height)
       return -1;
-
-    const cx = Math.floor(gx / chunkInTiles.width);
-    const cy = Math.floor(gy / chunkInTiles.height);
-    const localIndex =
-      (gy - cy * chunkInTiles.height) * chunkInTiles.width +
-      (gx - cx * chunkInTiles.width);
-
-    return (cy * mapInChunks.width + cx) * blocksPerChunk + localIndex;
+    return chunkMajorIndex(this.mapConfig, gx, gy);
   }
 
   public static chunkIndexOfTile(gx: number, gy: number) {

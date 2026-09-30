@@ -1,24 +1,16 @@
 import InputManager from "@engine/inputManager";
-import PragmaComponent from "@pragma/component";
+import PragmaSystem from "@pragma/system";
 import { ACTION } from "../inputActions";
-import { GameMode } from "../scenes/gameScene";
 import MapObject, { LAYER } from "../managers/mapObject";
 import { BlocksID } from "../managers/entitiesObject";
 
 interface MapBuilderProps {}
 interface StructurePlacedEvent {}
-export default class MapBuilder extends PragmaComponent {
-  constructor(internal: InternalPCProps, props?: MapBuilderProps) {
+export default class MapBuilder extends PragmaSystem {
+  constructor(internal: InternalPSProps, props?: MapBuilderProps) {
     super(internal);
   }
   preUpdate(): void {
-    const gameMode = this.systemSharedData.get<GameMode>("gameMode");
-    if (!gameMode) return;
-    if (InputManager.onActionPressed(ACTION.changeMode)) {
-      if (gameMode.mode === "build") gameMode.mode = "game";
-      else gameMode.mode = "build";
-    }
-    if (gameMode.mode !== "build") return;
     if (InputManager.onActionPressed(ACTION.placeBlock)) {
       const tilePos = MapObject.mouseToTile();
       if (!this.isTileEmpty(tilePos)) {

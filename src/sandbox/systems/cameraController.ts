@@ -2,7 +2,7 @@ import { Camera } from "@engine/camera/camera";
 import AxiomMath from "@axiom/math";
 import Cello from "@cello/cello";
 import InputManager from "@engine/inputManager";
-import PragmaComponent from "@pragma/component";
+import PragmaSystem from "@pragma/system";
 import { ACTION } from "@sandbox/inputActions";
 
 const ZOOM = {
@@ -11,10 +11,10 @@ const ZOOM = {
   silent: 0.15,
   audible: 0.42,
 };
-export default class CameraController extends PragmaComponent {
+export default class CameraController extends PragmaSystem {
   private lastZoom: number = -1;
 
-  constructor(internal: InternalPCProps) {
+  constructor(internal: InternalPSProps) {
     super(internal);
   }
 

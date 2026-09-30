@@ -1,14 +1,13 @@
 import Vec2 from "@axiom/vec2";
-import PragmaComponent from "@pragma/component";
+import PragmaSystem from "@pragma/system";
 import SpatialGrid from "@axiom/SpatialGrid";
 import Collision from "@axiom/collision";
-import Physics from "@sandbox/components/physics";
+import type Physics from "@sandbox/components/physics";
 import Time from "@engine/time";
 import Stats from "@sandbox/components/stats";
 import MapObject from "@sandbox/managers/mapObject";
 import MapDirector from "./mapDirector";
 import { BlocksID } from "@sandbox/managers/entitiesObject";
-import { assert } from "@axiom/utils";
 
 type Hit =
   | { kind: "entity"; physics: Physics; distance: number; normal: Vec2 }
@@ -27,33 +26,18 @@ const MAX_BOUNCES_PER_TICK = 4;
 const SKIN = 0.01;
 const DECAY_RATE = 1;
 
-export default class PhysBall extends PragmaComponent {
+export default class PhysBall extends PragmaSystem {
   private grid = new SpatialGrid<Physics>({ width: 256, height: 256 });
   private movingBodies = new Set<Physics>();
   private triggeredThisFrame = new Map<Symbol, Set<Symbol>>();
   private ballChunk = new Map<Symbol, number>();
   declare private map: MapDirector;
-  constructor(internal: InternalPCProps) {
-    super(internal);
+
+  start(): void {
+    this.map = this.scene.getSystem(MapDirector);
   }
 
-  awake(): void {
-    this.onSceneEvent<{ physics: Physics }>("physRegister", ({ physics }) =>
-      this.register(physics),
-    );
-    this.onSceneEvent<{ physics: Physics }>("physUnregister", ({ physics }) =>
-      this.unregister(physics),
-    );
-  }
-  start(): void {
-    const mapComponent = this.systemSharedData.get<MapDirector>("mapDirector");
-    assert(
-      mapComponent !== undefined,
-      `mapComponent is required for physics to work`,
-    );
-    this.map = mapComponent;
-  }
-  private register(physics: Physics) {
+  public register(physics: Physics) {
     if (physics.body) {
       this.grid.insert({
         id: physics.actor.ID,
@@ -64,7 +48,7 @@ export default class PhysBall extends PragmaComponent {
     if (physics.type !== "static") this.movingBodies.add(physics);
   }
 
-  private unregister(physics: Physics) {
+  public unregister(physics: Physics) {
     this.grid.remove(physics.actor.ID);
     this.movingBodies.delete(physics);
     this.ballChunk.delete(physics.actor.ID);
@@ -248,7 +232,7 @@ export default class PhysBall extends PragmaComponent {
     gy: number,
   ): "penetrate" | "bounce" {
     const ballStats = ball.getSibling(Stats);
-    if (ballStats?.data.kind !== "dwarf" || !this.map) return "bounce";
+    if (ballStats?.data.kind !== "dwarf") return "bounce";
 
     const power =
       ballStats.data.baseDmg * (ball.velocity.length() / ball.baseSpeed);

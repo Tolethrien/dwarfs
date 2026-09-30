@@ -10,7 +10,7 @@ import OptionsMenu from "./components/optionsMenu";
 import { tweakStore } from "./tweak/store";
 import { tabVisibility } from "./tabVisibility";
 
-export type TabId = "custom" | "console" | "watch" | "aurora" | "coroutines";
+export type TabId = "custom" | "console" | "watch" | "aurora" | "coroutines" | "mapGen";
 
 interface TabDefinition {
   label: string;
@@ -41,6 +41,10 @@ function AuroraActions() {
   );
 }
 
+function MapGenActions() {
+  return <GroupButton group="mapGen" label="⚙ Settings" />;
+}
+
 export const TABS: Record<TabId, TabDefinition> = {
   custom: { label: "Custom", component: CustomTab },
   console: { label: "Console", component: ConsoleTab },
@@ -66,6 +70,11 @@ export const TABS: Record<TabId, TabDefinition> = {
   coroutines: {
     label: "Coroutines",
     panels: ["coroutinesRunning", "coroutinesFinished"],
+  },
+  mapGen: {
+    label: "MapGen",
+    actions: MapGenActions,
+    panels: ["mapGenSummary", "mapGenOres", "mapGenConfig"],
   },
 };
 

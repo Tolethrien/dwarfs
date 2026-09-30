@@ -1,18 +1,29 @@
 import Pragma from "@pragma/pragma";
 import { Camera } from "@engine/camera/camera";
-import WorldPhysics from "../bActors/worldPhysics";
-import MineMap from "../bActors/mineMap";
-import Player from "../bActors/player";
+import GameMode from "../systems/gameMode";
+import PhysBall from "../systems/physBall";
+import MapDirector from "../systems/mapDirector";
+import MapDiscovery from "../systems/mapDiscovery";
+import MapBuilder from "../systems/mapBuilder";
+import CameraController from "../systems/cameraController";
+import PlayerInputsComponent from "../systems/playerInputComp";
+import PlayerResources from "../systems/resources";
+import InteractiveElements from "../systems/interactiveEvents";
 import MapObject from "../managers/mapObject";
 import SoundBank, { SoundsID } from "../managers/soundbank";
-export type GameMode = { mode: "game" | "build" };
 export default class GameScene {
   constructor() {
     const world = Pragma.addScene("testSetup");
-    world.sharedData.add<GameMode>("gameMode", { mode: "game" });
-    world.spawnActor(new WorldPhysics());
-    world.spawnActor(new MineMap());
-    world.spawnActor(new Player());
+    // added order = run order in every phase
+    world.addSystem(GameMode);
+    world.addSystem(PhysBall);
+    world.addSystem(MapDirector);
+    world.addSystem(MapDiscovery);
+    world.addSystem(MapBuilder);
+    world.addSystem(CameraController);
+    world.addSystem(PlayerInputsComponent);
+    world.addSystem(PlayerResources);
+    world.addSystem(InteractiveElements);
     GameScene.setupCamera();
     // const ambientController = SoundBank.loopSound(SoundsID.ambientOne);
     // ambientController?.fadeOutAndStop(15);

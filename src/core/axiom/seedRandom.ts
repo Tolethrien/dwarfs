@@ -5,6 +5,13 @@ export default class SeededRandom {
     this.state = seed;
   }
 
+  // an independent seed per salt, so one stream does not shift when another draws more
+  static derive(seed: number, salt: number) {
+    let hash = Math.imul(seed ^ Math.imul(salt, 0x9e3779b9), 0x85ebca6b);
+    hash = Math.imul(hash ^ (hash >>> 13), 0xc2b2ae35);
+    return (hash ^ (hash >>> 16)) | 0;
+  }
+
   next(): number {
     this.state |= 0;
     this.state = (this.state + 0x6d2b79f5) | 0;
@@ -39,7 +46,7 @@ export default class SeededRandom {
     return items[items.length - 1];
   }
 
-  arrayIndex(array: []) {
+  arrayIndex(array: readonly unknown[]) {
     return this.int(0, array.length - 1);
   }
 
