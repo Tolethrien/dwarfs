@@ -1,8 +1,9 @@
 import AxiomMath from "@axiom/math";
-import { BlocksID } from "../../managers/entitiesObject";
+import { BlocksID } from "../../content/blocks";
+import type { Tile } from "../../world/tile";
 import type GenContext from "../context";
 import type { PassTools, Range } from "../context";
-import type { MapMeta } from "../mapGenerator";
+import type { MapGenConfig } from "../mapGenerator";
 
 export interface CraterConfig {
   chunk: number;
@@ -10,8 +11,8 @@ export interface CraterConfig {
   radius: Size2D;
   roughness: number;
   cracks: { count: Range; length: Range };
-  rubble: { count: Range; type: BlocksID };
-  coal: { count: Range; radius: Range; type: BlocksID };
+  rubble: { count: Range; type: Tile };
+  coal: { count: Range; radius: Range; type: Tile };
 }
 
 export interface CraterArea {
@@ -34,7 +35,7 @@ const TUNING = {
 export function craterPass(
   ctx: GenContext,
   config: CraterConfig,
-  meta: MapMeta,
+  meta: Pick<MapGenConfig, "mapInChunks" | "chunkInTiles">,
   tools: PassTools,
 ): CraterArea {
   const random = tools.random;

@@ -1,8 +1,28 @@
 import type Noise from "@axiom/noise";
 import type SeededRandom from "@axiom/seedRandom";
-import { BlocksID } from "../managers/entitiesObject";
+import { BlocksID } from "../content/blocks";
+import type { Tile } from "../world/tile";
 
 export type Range = readonly [number, number];
+
+export const NEIGHBOURS = {
+  four: [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ],
+  eight: [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+    [1, 1],
+    [1, -1],
+    [-1, 1],
+    [-1, -1],
+  ],
+} as const;
 
 export interface PassTools {
   random: SeededRandom;
@@ -15,12 +35,13 @@ export default class GenContext {
   readonly height: number;
   readonly solid: Uint16Array;
   readonly mask: Uint8Array;
-  readonly border: BlocksID;
+  readonly border: Tile;
 
-  constructor(size: Size2D, border: BlocksID) {
+  // writes straight into the world's array, no copy at the end
+  constructor(solid: Uint16Array, size: Size2D, border: Tile) {
     this.width = size.width;
     this.height = size.height;
-    this.solid = new Uint16Array(size.width * size.height);
+    this.solid = solid;
     this.mask = new Uint8Array(size.width * size.height);
     this.border = border;
   }
@@ -37,12 +58,12 @@ export default class GenContext {
     return this.inside(gx, gy) && this.mask[this.index(gx, gy)] === 1;
   }
 
-  get(gx: number, gy: number): BlocksID {
+  get(gx: number, gy: number): Tile {
     if (!this.inside(gx, gy)) return this.border;
     return this.solid[this.index(gx, gy)];
   }
 
-  set(gx: number, gy: number, type: BlocksID) {
+  set(gx: number, gy: number, type: Tile) {
     if (this.playable(gx, gy)) this.solid[this.index(gx, gy)] = type;
   }
 
@@ -76,7 +97,7 @@ export default class GenContext {
   stamp(
     center: Position2D,
     radius: number,
-    type: BlocksID,
+    type: Tile,
     filter: (gx: number, gy: number) => boolean = () => true,
   ) {
     const reach = Math.ceil(radius);

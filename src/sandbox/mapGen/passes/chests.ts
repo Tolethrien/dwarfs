@@ -1,4 +1,4 @@
-import { BlocksID } from "../../managers/entitiesObject";
+import { BlocksID } from "../../content/blocks";
 import type GenContext from "../context";
 import type { PassTools, Range } from "../context";
 import type { CraterArea } from "./crater";

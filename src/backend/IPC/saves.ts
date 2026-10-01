@@ -7,7 +7,7 @@ import { GAME_DATA, GAME_DATA_EXTENSION } from "../gameData";
 const SAVE = {
   gameId: /^[a-zA-Z0-9_-]+$/,
   file: new RegExp(
-    `^(auto|manual)_(\\d{8}-\\d{6})(?:_([a-z0-9-]+))?\\${GAME_DATA_EXTENSION.save}$`,
+    `^(auto|manual)_(\\d{8}-\\d{6}(?:\\d{3})?)(?:_([a-z0-9-]+))?\\${GAME_DATA_EXTENSION.save}$`,
   ),
   nameLength: 40,
 };
@@ -93,6 +93,10 @@ async function remove(gameId: string, file?: string) {
     return;
   }
   await fs.rm(savePath(gameId, file), { force: true });
+  // the last save point gone = the game is gone
+  const left = await fs.readdir(gameFolder(gameId)).catch(() => []);
+  if (left.length === 0)
+    await fs.rm(gameFolder(gameId), { recursive: true, force: true });
 }
 
 async function pruneAutosaves(gameId: string, limit: number) {
@@ -122,11 +126,11 @@ function slug(text: string) {
     .slice(0, SAVE.nameLength);
 }
 
-// 2026-09-30T14:25:01 <-> 20260930-142501
+// 2026-09-30T14:25:01.123 <-> 20260930-142501123; older saves have no milliseconds
 function toStamp(time: Temporal.PlainDateTime) {
   return time
-    .toString({ smallestUnit: "second" })
-    .replace(/[-:]/g, "")
+    .toString({ smallestUnit: "millisecond" })
+    .replace(/[-:.]/g, "")
     .replace("T", "-");
 }
 
@@ -138,6 +142,7 @@ function fromStamp(stamp: string) {
     hour: Number(stamp.slice(9, 11)),
     minute: Number(stamp.slice(11, 13)),
     second: Number(stamp.slice(13, 15)),
+    millisecond: Number(stamp.slice(15, 18) || 0),
   });
 }
 

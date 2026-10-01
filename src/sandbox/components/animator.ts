@@ -1,7 +1,7 @@
 import PragmaComponent from "@pragma/component";
 import Time from "@engine/time";
 import Sprite from "./sprite";
-import EntitiesObject, { AnimsID } from "../managers/entitiesObject";
+import { ANIMATIONS, AnimsID } from "../content/animations";
 
 export interface AnimationEvent {
   id: AnimsID;
@@ -35,7 +35,7 @@ export default class Animator extends PragmaComponent {
   }
 
   public play(id: AnimsID, loop = this.loop) {
-    const data = EntitiesObject.animations[id];
+    const data = ANIMATIONS[id];
     this.id = id;
     this.loop = loop;
     this.frames = data.frames;

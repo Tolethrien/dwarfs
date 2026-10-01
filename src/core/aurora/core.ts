@@ -118,6 +118,10 @@ export default class Aurora {
   public static get getSettings(): DeepReadonly<AuroraConfig> {
     return this.settings;
   }
+  // frame.time of the shaders, for timestamps a material compares against (hit time...)
+  public static get getGameTime() {
+    return SharedBinds.getGameTime;
+  }
   public static get getGpuTime() {
     return GpuTimer.getTime;
   }
@@ -166,6 +170,10 @@ export default class Aurora {
   public static addGlobal(global: GlobalBinding) {
     SharedBinds.addGlobal(global);
     if (RenderGraph.isBuilt) void RenderGraph.rebuild();
+  }
+  // swaps what an existing global points at, without rebuilding the render graph
+  public static setGlobalResource(binding: number, resource: GPUBindingResource) {
+    SharedBinds.setGlobalResource(binding, resource);
   }
   public static beginFrame() {
     if (this.pendingCanvasSize !== null) {

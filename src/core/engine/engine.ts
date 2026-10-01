@@ -57,8 +57,7 @@ export default class Engine {
     InputManager.updateInputs();
     Aurora.beginFrame();
     Navi.updateSystem();
-    Pragma.update(); // pick one
-    // Dogma.tickAll(); // pick one
+    Pragma.update();
     GameCamera.update();
     Navi.drawSystem();
     Aurora.endFrame();

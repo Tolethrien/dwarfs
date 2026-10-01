@@ -41,8 +41,8 @@ export default class Sprite extends PragmaComponent {
 
     const view = Camera.getViewBounds;
     if (
-      x + this.crop.width < view.min.x - CULL_MARGIN ||
-      y + this.crop.height < view.min.y - CULL_MARGIN ||
+      x + width < view.min.x - CULL_MARGIN ||
+      y + height < view.min.y - CULL_MARGIN ||
       x > view.max.x + CULL_MARGIN ||
       y > view.max.y + CULL_MARGIN
     )

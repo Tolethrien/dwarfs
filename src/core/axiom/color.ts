@@ -28,6 +28,10 @@ export default class AxiomColor {
       from[3] + (to[3] - from[3]) * t,
     ];
   }
+  // a palette color (COLOR.*) with another alpha, 0-255
+  static withAlpha(color: Readonly<RGBA>, alpha: number): RGBA {
+    return [color[0], color[1], color[2], alpha];
+  }
   static rgbaToHex([r, g, b, a]: RGBA): string {
     const toHex = (n: number) => Math.round(n).toString(16).padStart(2, "0");
     return `#${toHex(r)}${toHex(g)}${toHex(b)}${toHex(a * 255)}`;

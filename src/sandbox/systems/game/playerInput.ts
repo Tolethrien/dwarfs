@@ -1,0 +1,68 @@
+import { Draw } from "@aurora/urp/draw/draw";
+import AxiomMath from "@axiom/math";
+import Vec2 from "@axiom/vec2";
+import InputManager from "@engine/inputManager";
+import PragmaSystem from "@pragma/system";
+import Dwarf from "@sandbox/bActors/dwarf";
+import { ACTION } from "@sandbox/inputActions";
+import { Camera } from "@engine/camera/camera";
+import { DwarfsID } from "@sandbox/content/dwarfs";
+import { RENDER_ORDER } from "@sandbox/configs";
+import type { GameModeChangedEvent } from "./gameMode";
+export default class PlayerInput extends PragmaSystem {
+  private mouseLocked: boolean = false;
+  private mousePos: Position2D = { x: 0, y: 0 };
+  constructor(internal: InternalPSProps) {
+    super(internal);
+  }
+  start(): void {
+    this.onSceneEvent<GameModeChangedEvent>("gameModeChanged", () => this.cancelAim());
+  }
+  public cancelAim() {
+    this.mouseLocked = false;
+  }
+  preUpdate(): void {
+    if (InputManager.onActionPressed(ACTION.shoot) && !this.mouseLocked)
+      this.saveMousePos();
+    if (InputManager.onActionReleased(ACTION.shoot) && this.mouseLocked)
+      this.shootDwarf();
+  }
+  private saveMousePos() {
+    this.mouseLocked = true;
+    const pos = InputManager.getMousePos();
+    const worldPos = Camera.screenToWorld(pos);
+    this.mousePos = worldPos;
+  }
+  private async shootDwarf() {
+    const pos = InputManager.getMousePos();
+    const worldPos = Camera.screenToWorld(pos);
+
+    const delta = Vec2.sub(
+      Vec2.create(this.mousePos.x, this.mousePos.y),
+      Vec2.create(worldPos.x, worldPos.y),
+    );
+    const dragDistance = delta.length();
+    const direction = delta.clone().normalize();
+    const speed = AxiomMath.clamp(dragDistance, 500, 3500);
+    this.scene.spawnActor(
+      new Dwarf({
+        position: this.mousePos,
+        launchSpeed: speed,
+        velocity: direction,
+        dwarfID: DwarfsID.scout,
+      }),
+    );
+    this.mouseLocked = false;
+  }
+  render(): void {
+    if (!this.mouseLocked) return;
+    Draw.circle({
+      position: {
+        x: this.mousePos.x,
+        y: this.mousePos.y,
+        z: RENDER_ORDER.debug,
+      },
+      radius: 5,
+    });
+  }
+}

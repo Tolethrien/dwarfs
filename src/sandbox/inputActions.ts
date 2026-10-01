@@ -12,7 +12,9 @@ export const ACTION = {
   shoot: "shoot",
   changeMode: "changeMode",
   placeBlock: "placeBlock",
+  mineTile: "mineTile",
   interact: "interact",
+  pause: "pause",
 } as const;
 
 export function registerInputsBindings() {
@@ -30,5 +32,8 @@ export function registerInputsBindings() {
   });
   InputManager.bindAction({ name: ACTION.shoot, mouse: "RIGHT", mods: [] });
   InputManager.bindAction({ name: ACTION.placeBlock, mouse: "LEFT", mods: [] });
+  // build mode only, the same button shoots in game mode
+  InputManager.bindAction({ name: ACTION.mineTile, mouse: "RIGHT", mods: [] });
   InputManager.bindAction({ name: ACTION.interact, mouse: "LEFT", mods: [] });
+  InputManager.bindAction({ name: ACTION.pause, key: KEY.escape, mods: [] });
 }

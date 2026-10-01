@@ -6,12 +6,13 @@ export default defineConfig(({ mode }) => {
   const isProd = mode === "production";
   return {
     build: { target: "esnext" },
+    // module workers (new Worker(..., { type: "module" })), same aliases as the page
+    worker: { format: "es" },
     cacheDir: "node_modules/.vite/main_window",
     resolve: {
       alias: {
         "@sandbox": path.resolve(import.meta.dirname, "../src/sandbox"),
         "@engine": path.resolve(import.meta.dirname, "../src/core/engine"),
-        "@dogma": path.resolve(import.meta.dirname, "../src/core/dogma"),
         "@pragma": path.resolve(import.meta.dirname, "../src/core/pragma"),
         "@aurora": path.resolve(import.meta.dirname, "../src/core/aurora"),
         "@cello": path.resolve(import.meta.dirname, "../src/core/cello"),

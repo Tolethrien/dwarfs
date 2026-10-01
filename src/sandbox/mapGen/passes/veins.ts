@@ -1,12 +1,13 @@
 import AxiomMath from "@axiom/math";
-import { BlocksID } from "../../managers/entitiesObject";
+import { BlocksID } from "../../content/blocks";
+import type { Tile } from "../../world/tile";
 import type GenContext from "../context";
 import type { PassTools, Range } from "../context";
 
 export type VeinShape = "seam" | "vein" | "cluster" | "geode";
 
 export interface VeinConfig {
-  type: BlocksID;
+  type: Tile;
   shape: VeinShape;
   perChunk: number;
   depth: Range;
@@ -14,7 +15,7 @@ export interface VeinConfig {
   density: number;
   wallBias: number;
   district: number;
-  shell?: BlocksID;
+  shell?: Tile;
 }
 
 const TUNING = {

@@ -15,7 +15,7 @@ import type { MapGenConfigSection, MapGenItem, MapGenReport, MapGenTable } from 
 // so a fresh start always shows the map from the code
 const STORAGE = { seed: "mapGen:seed", config: "mapGen:config" };
 const FORMAT = { decimals: 4, codeWidth: 90, indent: "  " };
-// fields holding a BlocksID, written by name
+// fields holding a tile (type + variant), written by name
 const BLOCK_KEYS = new Set(["type", "shell", "border", "placeholder", "rocks"]);
 const GENERAL_KEYS = ["tileInPixels", "chunkInTiles", "mapInChunks", "start", "border", "placeholder"];
 
@@ -74,6 +74,10 @@ export class MapGenDevModule implements IMapGenModule {
     }
   }
 
+  public requested() {
+    return readStorage(STORAGE.seed) !== null || readStorage(STORAGE.config) !== null;
+  }
+
   public measure<Result>(generate: () => Result) {
     const started = performance.now();
     const result = generate();
@@ -83,6 +87,7 @@ export class MapGenDevModule implements IMapGenModule {
 
   public connect(source: MapGenDebugData) {
     this.source = source;
+    if (source.timeMs !== undefined) this.timeMs = source.timeMs;
     const draft: MapGenDraft = { seed: source.seed, config: structuredClone(source.config) };
     this.draft = draft;
 
@@ -137,10 +142,10 @@ export class MapGenDevModule implements IMapGenModule {
 
   private logCode() {
     if (!this.source || !this.draft) return;
-    const blocks = this.source.blocks as unknown as Record<number, string>;
+    const tiles = this.source.tiles;
     const config = formatValue(
       this.draft.config,
-      (type) => `BlocksID.${blocks[type]}`,
+      (value) => tiles.find((tile) => tile.value === value)?.code ?? String(value),
       "",
       0,
       FORMAT.codeWidth,
@@ -247,7 +252,7 @@ function configSections(config: MapGenConfig, blockName: BlockName): MapGenConfi
     },
     { title: "Passes", items: flatten(config.passes, "", blockName, []) },
   ];
-  for (const title of ["shape", "rock", "caves", "crater", "chests"] as const)
+  for (const title of ["shape", "rock", "caves", "crater", "chests", "decos"] as const)
     sections.push({ title, items: flatten(config[title], "", blockName, []) });
 
   sections.push({
@@ -273,8 +278,7 @@ function configSections(config: MapGenConfig, blockName: BlockName): MapGenConfi
 // ore counts per rock layer (straight depth bands, without the boundary warp)
 function oreTable(source: MapGenDebugData, blockName: BlockName) {
   const config = source.config;
-  const map = source.map;
-  const meta = map.meta;
+  const world = source.world;
   const rocks = new Set<number>(config.rock.layers.flatMap((layer) => layer.rocks));
   rocks.add(config.border);
   rocks.add(config.placeholder);
@@ -284,24 +288,21 @@ function oreTable(source: MapGenDebugData, blockName: BlockName) {
   const oreTypes = new Set<number>();
   const tiles = { playable: 0, air: 0 };
 
-  for (let chunk = 0; chunk < meta.totalChunks; chunk++) {
-    const chunkY = Math.floor(chunk / meta.mapInChunks.width);
-    for (let local = 0; local < meta.blocksPerChunk; local++) {
-      const index = chunk * meta.blocksPerChunk + local;
-      if (map.background[index] === 0) continue;
-      tiles.playable++;
-      const type = map.solid[index];
-      if (type === 0) {
-        tiles.air++;
-        continue;
-      }
-      if (rocks.has(type)) continue;
-      const gy = chunkY * meta.chunkInTiles.height + Math.floor(local / meta.chunkInTiles.width);
-      const found = layers.findIndex((item) => gy / meta.mapInTiles.height < item.until);
-      const layer = found === -1 ? layers.length - 1 : found;
-      counts[layer].set(type, (counts[layer].get(type) ?? 0) + 1);
-      oreTypes.add(type);
+  // the border band lies outside the mine shape, as before (it had no background there)
+  for (let index = 0; index < world.solid.length; index++) {
+    const type = world.solid[index];
+    if (type === source.known.outside || type === config.border) continue;
+    tiles.playable++;
+    if (type === source.known.air) {
+      tiles.air++;
+      continue;
     }
+    if (rocks.has(type)) continue;
+    const gy = Math.floor(index / world.mapInTiles.width);
+    const found = layers.findIndex((item) => gy / world.mapInTiles.height < item.until);
+    const layer = found === -1 ? layers.length - 1 : found;
+    counts[layer].set(type, (counts[layer].get(type) ?? 0) + 1);
+    oreTypes.add(type);
   }
 
   const table: MapGenTable = {
@@ -325,17 +326,17 @@ function oreTable(source: MapGenDebugData, blockName: BlockName) {
 }
 
 function buildReport(source: MapGenDebugData, timeMs: number, origin: string): MapGenReport {
-  const blocks = source.blocks as unknown as Record<number, string>;
-  const blockName: BlockName = (type) => blocks[type];
+  const blockName: BlockName = (value) =>
+    source.tiles.find((tile) => tile.value === value)?.name ?? `#${value}`;
   const ores = oreTable(source, blockName);
-  const meta = source.map.meta;
+  const world = source.world;
 
   return {
     summary: [
       { key: "seed", value: String(source.seed) },
       { key: "source", value: origin },
       { key: "generated in", value: `${Math.round(timeMs)} ms` },
-      { key: "size", value: `${meta.mapInChunks.width}×${meta.mapInChunks.height} chunks, ${meta.mapInTiles.width}×${meta.mapInTiles.height} tiles` },
+      { key: "size", value: `${world.meta.mapInChunks.width}×${world.meta.mapInChunks.height} chunks, ${world.mapInTiles.width}×${world.mapInTiles.height} tiles` },
       { key: "playable tiles", value: String(ores.tiles.playable) },
       { key: "air", value: `${Math.round((ores.tiles.air / Math.max(1, ores.tiles.playable)) * 1000) / 10}%` },
     ],
@@ -347,6 +348,7 @@ function buildReport(source: MapGenDebugData, timeMs: number, origin: string): M
 export const prodMapGen: IMapGenModule = {
   seed: (fallback) => fallback,
   config: (fallback) => fallback,
+  requested: () => false,
   measure: (generate) => generate(),
   connect: () => {},
 };

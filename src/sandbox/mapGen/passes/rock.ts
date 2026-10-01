@@ -1,12 +1,12 @@
 import AxiomMath from "@axiom/math";
 import Noise from "@axiom/noise";
-import type { BlocksID } from "../../managers/entitiesObject";
+import type { Tile } from "../../world/tile";
 import type GenContext from "../context";
 import type { PassTools } from "../context";
 
 export interface RockLayer {
   until: number;
-  rocks: readonly BlocksID[];
+  rocks: readonly Tile[];
 }
 
 export interface RockConfig {

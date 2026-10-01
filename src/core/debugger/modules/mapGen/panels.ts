@@ -19,6 +19,7 @@ export const MAP_GEN_PAGES = {
     mapVeins: 5,
     mapCrater: 6,
     mapChests: 7,
+    mapDecos: 8,
   },
 } as const;
 
@@ -405,9 +406,11 @@ type VeinItem = {
 };
 
 function veinsPanel(draft: MapGenDraft, source: MapGenDebugData): TweakPanel {
-  const blocks = source.blocks as unknown as Record<string, number | string>;
-  const names = Object.keys(blocks).filter((key) => Number.isNaN(Number(key)));
-  const nameOf = (type: number) => String(blocks[type]);
+  const names = source.tiles.map((tile) => tile.name);
+  const nameOf = (value: number) =>
+    source.tiles.find((tile) => tile.value === value)?.name ?? `#${value}`;
+  const valueOf = (name: string) =>
+    source.tiles.find((tile) => tile.name === name)?.value ?? 0;
   return {
     ...page("mapVeins", "Veins"),
     sections: [
@@ -443,7 +446,7 @@ function veinsPanel(draft: MapGenDraft, source: MapGenDebugData): TweakPanel {
         }),
         fromItems: (items) =>
           items.map((item) => ({
-            type: blocks[item.type] as number,
+            type: valueOf(item.type),
             shape: item.shape as VeinShape,
             perChunk: item.perChunk,
             depth: [item.depthFrom, item.depthTo],
@@ -451,7 +454,7 @@ function veinsPanel(draft: MapGenDraft, source: MapGenDebugData): TweakPanel {
             density: item.density,
             wallBias: item.wallBias,
             district: item.district,
-            ...(item.shell === NO_SHELL ? {} : { shell: blocks[item.shell] as number }),
+            ...(item.shell === NO_SHELL ? {} : { shell: valueOf(item.shell) }),
           })),
         create: {
           type: nameOf(source.defaults.veins[0].type),
@@ -535,6 +538,26 @@ function chestsPanel(draft: MapGenDraft, defaults: MapGenConfig): TweakPanel {
   };
 }
 
+// one section per deco kind, the kinds come from the config
+function decosPanel(draft: MapGenDraft, defaults: MapGenConfig): TweakPanel {
+  const names = Object.keys(defaults.decos) as (keyof MapGenConfig["decos"])[];
+  return {
+    ...page("mapDecos", "Decos"),
+    sections: names.map((name) => {
+      const placement = (config: MapGenConfig) => config.decos[name];
+      return knobSection(
+        name,
+        [
+          knob("chance", placement, slider(0, 0.5, 0.001), "chance per fitting tile"),
+          ...rangeKnobs("depth", placement, CONTROL.share),
+        ],
+        draft,
+        defaults,
+      );
+    }),
+  };
+}
+
 export function mapGenPanels(
   draft: MapGenDraft,
   source: MapGenDebugData,
@@ -548,5 +571,6 @@ export function mapGenPanels(
     mapVeins: veinsPanel(draft, source),
     mapCrater: craterPanel(draft, source.defaults),
     mapChests: chestsPanel(draft, source.defaults),
+    mapDecos: decosPanel(draft, source.defaults),
   };
 }

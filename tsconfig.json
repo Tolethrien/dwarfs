@@ -13,7 +13,6 @@
       "@/*": ["./src/*"],
       "@sandbox/*": ["./src/sandbox/*"],
       "@engine/*": ["./src/core/engine/*"],
-      "@dogma/*": ["./src/core/dogma/*"],
       "@pragma/*": ["./src/core/pragma/*"],
       "@aurora/*": ["./src/core/aurora/*"],
       "@cello/*": ["./src/core/cello/*"],

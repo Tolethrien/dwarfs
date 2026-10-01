@@ -322,133 +322,131 @@ Pomysł: wplecenie korpo-sztampy (stanowiska, żargon, procedury) przerobionej n
 
 ## System mapy — jak działa i jak z nim pracować
 
-> **Nieaktualne.** Opisuje stary system z plikiem `.dwb`. Mapa jest teraz generowana, nowy system projektujemy w `.todo/mapRewamp.md`.
+Mapa nie pochodzi z pliku, tylko z generatora (`src/sandbox/mapGen`). Nowa gra = generacja na workerze + od razu zapis; od tej chwili prawdą jest zapis, wczytanie idzie z pliku, bez generatora. Plany i stan prac: `.todo/rework.md`.
 
-### Model danych
+### Trzy warstwy
 
-Odkrycie chunka przy nieruchomej kamerze. `MapComponent.update()` wychodzi wcześnie, gdy zakres widocznych chunków się nie zmienił. Ale chunk może zostać odkryty, gdy kamera stoi — kulka tam wlatuje, a ty patrzysz w jedno miejsce. Dlatego obok porównania zakresu jest flaga dirty, którą ustawia `DiscoveryComponent` przy każdym nowo odkrytym chunku. Bez niej chunk pojawiłby się dopiero po ruszeniu kamerą.
+- **Dane** — `World` (`src/sandbox/world/world.ts`): instancja należąca do sceny gry, czyste dane bez reguł, eventów i kamery. Wyjście do menu wyrzuca ją razem ze sceną, wczytanie tworzy nową — nic do resetowania.
+- **Symulacja** — zmienia dane, działa niezależnie od kamery, emituje eventy, niczego nie rysuje ani nie gra: `Terrain`, `PhysBall`, `Discovery`.
+- **Prezentacja** — pokazuje to, co widać, reaguje na eventy, nie zmienia danych: `ChunkView`, `MapEffects`, `DecoView`.
 
-Mapa to jeden plik `.dwb`: 20-bajtowy nagłówek, a za nim gęste sekcje o stałym rozmiarze. Nic zmiennej długości, żadnych rzadkich list — dzięki temu cały plik to jeden ciągły bufor, wczytanie to jeden odczyt plus widoki typowane, a zapis to jeden zrzut tego samego bufora.
+Zasada: **symulacja nie zależy od kamery, kamera decyduje wyłącznie o prezentacji.** Przechowujemy tylko to, czego nie da się wyliczyć, każdy rodzaj danych w formacie pasującym do jego gęstości.
 
-Nagłówek (20 B): `startX` i `startY` (i32, pozycja mapy w świecie — kopalnia nie zaczyna się w 0,0, bo nad nią jest powierzchnia), dalej `tileW`, `tileH`, `chunkTilesW`, `chunkTilesH`, `mapChunksW`, `mapChunksH` (u16).
+### Co siedzi w `World`
 
-Sekcje per blok (u16, `totalBlocks` elementów): `background`, `decoBack`, `solidType`, `solidDamage`, `decoFront`.
+| pole         | postać                                                           | uwagi                                                       |
+| ------------ | ---------------------------------------------------------------- | ----------------------------------------------------------- |
+| `solid`      | gęsta tablica u16, wiersz po wierszu (`gx + gy * szerokość`)     | typ (11 bitów) + wariant grafiki (5 bitów), patrz `tile.ts` |
+| `damage`     | rzadka `Map`: indeks kafla → obrażenia (0–`MAX_DAMAGE`)          | uszkodzony jest ułamek procenta kafli                       |
+| `decos`      | rzadkie `Map` osobno dla `back` i `front`: indeks kafla → deco   | typ + wariant spakowane jak kafel, najwyżej jedno na warstwę |
+| `discovered` | `u8` na chunk                                                    | mgły wojny nie ma, patrz niżej                              |
+| `biomes`     | gruba siatka `u8` (komórka `biomeCellInTiles`)                   | `biomeAt(gx, gy)`                                           |
+| `meta`       | seed, `origin`, rozmiary kafla / chunka / mapy, `border`         | `origin` = pozycja mapy w świecie (nad kopalnią jest niebo) |
 
-Sekcje per chunk (u8, `totalChunks` elementów): `discovered`, `biome`.
+`void` (typ 0) to poza kopalnią (niebo, pustka za ramką), `air` to zawsze wnętrze kopalni. `World.getType` poza mapą zwraca `meta.border`.
 
-Definicja sekcji żyje w [src/mapFormat.ts](src/mapFormat.ts) i jest współdzielona przez generator i backend. Rozjazd między nimi daje mapę wyglądającą jak szum, bez żadnego błędu — nigdy nie duplikuj tej tabeli.
+Surowe `solid[i]` czyta tylko `World` (`getType`, `getVariant`, `setTile`) — podział bitów jest częścią formatu zapisu. Gorące pętle (fizyka, `ChunkView`) mogą maskować inline, z komentarzem dlaczego.
 
-W każdej warstwie 0 znaczy „nic". Powietrze, brak dekoracji, brak tła — ta sama konwencja wszędzie.
-
-### Warstwy
-
-| warstwa     | do czego                                                                              |
-| ----------- | ------------------------------------------------------------------------------------- |
-| background  | tło za wszystkim, rysowane zawsze — także pod blokami, bo blok może być przezroczysty |
-| decoBack    | ozdoby za kulkami                                                                     |
-| solidType   | teren i konstrukcje gracza — jeden blok na kafel                                      |
-| solidDamage | postęp zniszczenia bloku (0–65535)                                                    |
-| decoFront   | ozdoby przed kulkami                                                                  |
-
-Tory, platformy, szyby i palisady nie mają osobnej warstwy — siedzą w `solidType` razem ze skałą. Dzięki temu fizyka, licznik uszkodzeń i niszczenie działają dla nich bez jednej dodatkowej linijki.
+`World` nie ma w sobie reguł. „Co się dzieje, gdy kulka trafi kafel” to `Terrain`, nie `World`.
 
 ### Co gdzie mieszka
 
-To jest najważniejsza reguła całego systemu:
+W danych mapy trzymasz wyłącznie to, co różni kafel od kafla. Wszystko, co wynika z typu, siedzi w tabelach w `src/sandbox/content/`:
 
-W bajtach mapy trzymasz wyłącznie to, co różni się kafel od kafla. Wszystko, co wynika z typu, mieszka w tabeli typów.
+- `blocks.ts` (`BLOCKS`, `getBlock`): `variants` (przycięcia grafiki, indeks = wariant kafla), `collides` (maska „kogo zatrzymuje”), `str` (wytrzymałość), `category`, `resource`, `reveals`.
+- `decos.ts` (`DECOS`, `getDeco`): `layer`, `attached` (`self` / `below` / `above`), `permanent`, `clickable`, `area`, zastępczy kolor.
+- `objects.ts` (`OBJECTS`): kształt obiektu, `LOOT`.
 
-W tabeli typów ([data.ts](src/sandbox/data.ts)): `solid`, `str`, `category`, `crop`, `texture`, `spawns`. Tabela jest spłaszczana przy starcie do płaskich tablic indeksowanych numerem typu, bo pętla renderu nie może schodzić przez klucze tekstowe.
-
-Konsekwencja: żeby zmienić regułę („palisady są od teraz nieprzelotowe") edytujesz jedną linijkę, a nie regenerujesz każdą mapę.
+Konsekwencja: żeby zmienić regułę (np. „kamień jest od teraz twardszy”) edytujesz jedną linijkę, nie regenerujesz map. Do `content/` importuje też worker generatora, więc **nie wolno tam ciągnąć Pragmy ani Aurory**. Dlatego tabele „typ → aktor” (`REVEALED` w `terrain.ts`, `DECO_ACTORS` w `decoView.ts`, `SAVED_ACTORS` w `gameScene.ts`) są w systemach, nie w `content/`.
 
 ### Kto czym zarządza
 
-- **MapObject** — statyczny, trzyma bajty i widoki. Konwersje świat↔kafel↔chunk (bo tylko on zna `startX`/`startY`). Zero reguł, zero decyzji.
-- **MapComponent** — reguły warstwy litej: `applyHit`, `damageTile`, `destroyTile`, `placeTile`. Plus cykl życia chunków.
-- **DiscoveryComponent** — mgła wojny.
-- **Chunk** — cztery komponenty warstw (trzymacze danych) plus `TileLayer`, który jako jedyny ma fazę render i rysuje wszystko jedną pętlą.
-- **Fizyka** — czyta `MapObject` bezpośrednio, nigdy przez załadowane chunki.
+- **`Terrain`** (`systems/game/terrain.ts`) — jedyne miejsce, które zmienia teren według reguł gry: `hit`, `damage`, `mine`, `place`. Trzyma `World` (`addSystem(Terrain, world)`, dostęp przez `scene.getSystem(Terrain).world`). Usuwa też deco zależne od wykopanego kafla.
+- **`PhysBall`** — czyta `World` bezpośrednio, nigdy przez załadowane chunki. Kulka poza kadrem normalnie zderza się z mapą i kopie.
+- **`Discovery`** — które chunki są odkryte.
+- **`ChunkView`** — batche widocznych chunków (tło, kafle, deco), poolowane. Chunk w widoku: zakres z kamery + margines, tylko odkryte (komenda `game.showAllChunks()` pokazuje wszystkie).
+- **`MapEffects`** — rysy, błysk, rozpad, iskry i dźwięki po eventach.
+- **`DecoView`** — aktorzy deco z zachowaniem (pochodnia).
+- **`InteractiveElements`** — klik jedną drogą (niżej).
 
-Ten ostatni punkt jest fundamentem. Kulka poza kadrem normalnie zderza się z mapą i kopie, bo kolizja nie zależy od tego, czy chunk jest wczytany jako aktor.
+### Eventy sceny
+
+`tileDamaged`, `tileMined` (po fakcie, kafel jest już powietrzem), `tilePlaced`, `tileRevealed`, `decoRemoved`, `tileClicked`, `decoClicked`, `ballBounced`, `ballEnteredChunk`, `chunkDiscovered`, `chunkShown`, `chunkHidden`, `gameModeChanged`.
+
+Surowce, dźwięki, statystyki po wykopaniu — przez `tileMined`: listener dostaje typ i sam rozstrzyga (ruda z terenu czy zwrot materiałów), więc `Terrain` nie wie nic o surowcach ani dźwięku.
 
 ### Jak zrobić rzecz X
 
-**Coś interaktywnego (skrzynia, stacja, brama bossa, zepsuty tor do naprawy)**
+**Obiekt z zachowaniem (skrzynia, palisada, pułapka)**
 
-Zrób z tego typ bloku, który jest `solid` i nie ma grafiki, i podepnij pod niego aktora przez pole `spawns`.
+To aktor z komponentami (`Sprite` / `Shape`, `Physics`, `Interactive`...), żyje całą grę niezależnie od kamery (kamera tylko go nie rysuje), stan trzyma w sobie. Brak rekordów obiektów w `World` i brak tabel zachowań.
 
-Kafel jest wtedy kotwicą: niesie kolizję i trwałość, a aktor niesie wygląd, stan i interakcję. Aktor spawnuje się przy wczytaniu chunka i despawnuje przy wyładowaniu — więc gdy gracz nie patrzy, nie kosztuje nic, ale kolizja zostaje, bo fizyka czyta bajt, nie aktora.
+- Zapis: klasa ma `save(writer): boolean` (false = nic do zachowania) i `static load(reader)`, rejestracja w `GameScene.SAVED_ACTORS` (numerów nie zmieniać). `capture()` przechodzi po aktorach sceny, `restore()` je spawnuje.
+- Kolizja: `Physics` (static lub trigger, koło lub obrócony prostokąt). Przelot kulki przez trigger daje actor event `triggerEntered`.
+- Klik: `Interactive` → actor event `clicked`.
 
-Po zakończeniu interakcji podmieniasz typ przez `placeTile` i aktor znika razem ze swoją kotwicą.
+**Kafel-niespodzianka (ukryta skrzynia, ul)**
+
+Blok z `reveals: ObjectsID`. Pierwsze trafienie: kulka się odbija, kafel staje się powietrzem, `Terrain` spawnuje aktora z tabeli `REVEALED` i emituje `tileRevealed`. Nowy rodzaj = wpis w `REVEALED` plus aktor.
 
 **Coś niezniszczalnego**
 
-Nie ma osobnego mechanizmu — daj typowi ogromny `str`, jak bedrock. `applyHit` liczy stosunek siły do wytrzymałości, nigdy nie dobija progu i kulka po prostu się odbija.
+Nie ma osobnego mechanizmu — ogromny `str`, jak obsydian. `strike` liczy stosunek siły do wytrzymałości, nigdy nie dobija progu i kulka się odbija.
 
-**Postęp budowy albo naprawy**
+**Dekoracja**
 
-Kafel niezniszczalny nigdy nie używa swojego bajtu zniszczeń, bo fizyka do niego nie pisze. To darmowe miejsce na postęp — zapisuje się razem z mapą, bez żadnej dodatkowej struktury.
+Dane są prawdą, a aktor tylko widokiem — nie ma życia poza ekranem (kulka go nie trąca, nic nie symuluje).
 
-Ale uwaga: plac budowy to obiekt dynamiczny. Nie licz postępu „przy następnym wczytaniu chunka", bo wczytywanie jest sterowane kamerą i budowa stałaby, kiedy nie patrzysz. Osobny system tyka to niezależnie od chunków, a zbiór aktywnych budów odbudowuje jednym przebiegiem po mapie przy starcie, nie skanem co klatkę.
+- Zwykłe deco (grzyb, stalaktyt): wpis w `DECOS`, generator stawia je w pass `mapGen/passes/decos.ts` według `attached`, szansy i głębokości z `MAP_GEN_CONFIG.decos`. Rysuje je batch chunka.
+- Deco z zachowaniem (pochodnia): dodatkowo wpis w `DECO_ACTORS`. `DecoView` spawnuje aktora na `chunkShown` i usuwa na `chunkHidden` / `decoRemoved`. Aktor **nie trzyma trwałego stanu** — co ma przetrwać, pisze do danych deco.
+- Znika razem z kaflem: nie-`permanent` deco jest usuwane przez `Terrain`, gdy wykopany zostanie kafel, od którego zależy (`DEPENDENTS`); event `decoRemoved` jest pod efekty.
 
-**Coś widocznego, przez co kulki przelatują (tor)**
+**Klik**
 
-Ustaw `solid: false` w tabeli typów. To jest czwarty stan kafla, obok „pusty", „lity" i „poza mapą": rysuje się, ale fizyka przez to przelatuje.
+Jedna droga w `InteractiveElements`, od najbliższego widza: deco przednie → aktorzy z `Interactive` → deco tylne → kafel. Deco łapie klik tylko z `clickable` i w swoim `area`. Kafel i deco dostają eventy sceny `tileClicked` / `decoClicked`, aktor dostaje actor event `clicked`.
 
-Dlatego raycast pyta o flagę `solid`, a nie o `type !== 0` — te dwa pytania przestały mieć tę samą odpowiedź.
+**Coś ruchomego (wagon, potwór, kulka)**
 
-**Dekoracja, która ma zniknąć razem z blokiem**
+Nie jest kaflem ani deco. Bajt nie zmieści stanu „jestem w 40% trasy i wiozę 12 żelaza” — to aktor/encja. Kryterium: czy cały stan mieści się w kaflu? Jeśli tak, dane plus odtwarzalny widok. Jeśli nie, aktor.
 
-`destroyTile` emituje `tileMined` z `{ gx, gy, type }`. Podepnij się pod ten event i wyzeruj swoją warstwę w tym kaflu przez `MapObject`.
+**Postęp budowy / naprawy**
 
-Dekoracje nie biorą udziału w fizyce, więc mogą zniknąć klatkę później i nikt tego nie zauważy. To jest właśnie powód, dla którego mogą zostać zwykłą warstwą mapy zamiast osobnego bytu.
+Plac budowy to obiekt dynamiczny: aktor, który sam tyka niezależnie od kamery. Nie licz postępu „przy następnym pokazaniu chunka”, bo pokazywanie jest sterowane kamerą i budowa stałaby, kiedy nie patrzysz.
 
-**Surowce, dźwięki, statystyki po wykopaniu**
+### Chunki w widoku
 
-Też przez `tileMined`. Listener dostaje typ i sam rozstrzyga, czy sypnąć rudą (teren), czy zwrócić materiały (konstrukcja gracza) — pole `category` w tabeli typów.
+`ChunkView` liczy zakres chunków z viewboxa kamery, dokłada margines i synchronizuje: oddaje do puli to, co wypadło, i bierze z puli to, czego brakuje (emituje `chunkHidden` / `chunkShown`). Chunk w puli jest przepinany na nowy indeks, nie kasowany.
 
-Dzięki temu `MapComponent` nie wie nic o systemie surowców ani o dźwięku.
+Wczytanie i wyładowanie nie niosą stanu: cała prawda siedzi w `World`, chunk to okno na nią. Wjazd kamerą tam i z powrotem daje ten sam chunk ze zniszczeniami. `World.chunkVersions` (tylko w pamięci) rośnie, gdy zmieni się typ kafla lub deco w chunku, i mówi widokowi, że batch trzeba przebudować.
 
-**Coś ruchomego (wagon, pocisk, kulka)**
+### Odkrywanie chunków
 
-Nie jest kaflem. Bajt nie zmieści stanu „jestem w 40% trasy i wiozę 12 żelaza". To encja, aktualizowana zawsze, niezależnie od kamery — inaczej wagon zamarłby, gdy odwrócisz wzrok.
+Chunk jest odkryty, gdy kulka w nim była albo jest sąsiadem chunka, w którym jest kulka (`Discovery`, na `ballEnteredChunk`). Monotonicznie — raz odkryty, zawsze odkryty. Wchodząc w chunk, kulka odkrywa też ośmiu sąsiadów, więc nigdy nie wyprzedza odkrytego obszaru.
 
-Kryterium jest proste: czy cały stan obiektu mieści się w kaflu? Jeśli tak — bajt plus odtwarzalny aktor. Jeśli nie — encja.
-
-### Cykl życia chunka
-
-Chunki wczytują się z kamery, nie z kulek. `MapComponent` liczy zakres z viewboxa, dokłada margines i synchronizuje: zwalnia to, co wypadło, potem bierze to, czego brakuje.
-
-Chunki są poolowane — zwolniony wraca do puli i jest przepinany na nowy indeks, zamiast być kasowany. Przepięcie to podmiana pięciu widoków, więc kosztuje tyle co nic.
-
-Wczytanie i wyładowanie są bezstanowe: cała prawda siedzi w `MapObject`, a widoki chunka to okna na nią. Wjazd kamerą tam i z powrotem daje ten sam chunk ze zniszczeniami, bez żadnej serializacji.
-
-Pułapka: gdy dojdzie spawnowanie aktorów z pola `spawns`, przestanie to być bezstanowe. `reuse()` musi despawnować aktorów poprzedniego chunka, a `releaseChunk()` musi despawnować przy oddawaniu do puli — bo aktorzy są obiektami sceny i ukrycie chunka ich nie dotyczy. Bez tego zobaczysz konstrukcje wiszące tam, gdzie chunka już nie ma, albo z zupełnie innego miejsca mapy. Żadne z tego nie rzuci błędu.
-
-### Mgła wojny
-
-Chunk jest odkryty, gdy kulka w nim była albo jest sąsiadem chunka, w którym jest kulka. Monotonicznie — raz odkryty, zawsze odkryty.
-
-Ta reguła gwarantuje, że kulka nigdy nie wyprzedzi mgły: wchodząc w chunk odkrywa też ośmiu sąsiadów, a w jednym kroku fizyki przelatuje ~58 px przy chunku 3072 px. Kolizja z niewidocznym blokiem jest więc strukturalnie niemożliwa, nie tylko mało prawdopodobna.
-
-Nieodkryte chunki po prostu się nie spawnują. Fizyka działa tam normalnie.
+Mgły wojny i fali odkrycia już nie ma (usunięte jako brzydkie, kopia w `git stash`). Odkryty chunk po prostu się pojawia. Fizyka działa tak samo na odkrytych i nieodkrytych.
 
 ### Zapis gry
 
-Zapis to kopia całego `.dwb`. Autorski plik jest assetem tylko do odczytu; nowa gra to skopiowanie go do slotu w `userData`, a zapis to zrzut całego bufora do pliku tymczasowego, fsync i rename.
+Jeden plik `.sav` z sekcjami, w `gameData/saves/<gameId>/` (dev: repo, prod: `userData`). Renderer nigdy nie dotyka dysku, tylko IPC (`src/backend/IPC/saves.ts`). Zapis atomowy: plik tymczasowy + rename.
 
-Żadnych diffów, żadnych list nadpisań. `chunkVersions` mówi tylko, czy zapis jest w ogóle potrzebny.
+- Nagłówek: magic `KRSN` + wersja formatu. Sekcja: `id u16, wersja u16, długość u32, payload` — nieznaną sekcję można pominąć, wersja sekcji pozwala na migrację. `meta` jest pierwsza, bo menu czyta tylko nagłówek i nazwę.
+- Sekcje (`saveFormat.ts`, **numerów nigdy nie zmieniać ani nie używać ponownie**): 1 meta, 2 terrain, 3 damage, 4 discovered, 5 biomes, 7 resources, 9 actors, 10 decos. Sekcje 6 (objects) i 8 (dwarfs) wycofane — stare zapisy wczytują się bez krasnoludów i skrzyń, migracji nie ma.
+- Kodek (`saveCodec.ts`) nie zna aktorów: sekcja `actors` to `kind u16, długość u32, bajty` na aktora, resztę robi `GameScene.capture()` / `restore()`.
+- Model w pamięci jest oddzielony od kodeka: zmiana formatu to kilka funkcji, nie przebudowa gry.
+- Zapis zamiast seed + diff: seed + diff łamie zapisy przy każdej zmianie generatora. Seed zostaje w `meta` do rzeczy wyliczanych.
 
-Przy testach: zmiany w autorskiej mapie nie dotrą do istniejących zapisów. Po edycji mapy trzeba skasować slot, inaczej stracisz godzinę na zastanawianie się, czemu nic się nie zmieniło.
+Komendy w profilerze: `game.save(name?)`, `game.saves()`, `game.load(gameId?, file?)`, `game.newGame(seed?, chunksWide?, chunksHigh?)`, `game.check()` (zapis, odczyt z dysku, porównanie ze światem w pamięci). Po zmianie formatu lub dowolnej sekcji uruchom `game.check()`.
 
 ### Pułapki, o których łatwo zapomnieć
 
-- `getChunkData` zwraca widok, nie kopię. Jeśli kiedykolwiek zmienisz to na kopię, wszystko dalej się skompiluje i uruchomi, ale chunki przestaną widzieć zniszczenia — zamrożą się w stanie z momentu wczytania.
+- Bity `solid` (11 typ / 5 wariant) są częścią formatu zapisu. Zmiana podziału = migracja sekcji `terrain`.
+- Wariant spoza tabeli (zapis ze starszej wersji) nie może wywalić gry — `getVariantCrop` ma fallback na wariant 0. Czytaj grafikę przez niego, nie przez `variants[variant]`.
+- Plik w `content/`, który zaimportuje Pragmę, Aurorę albo cokolwiek z ekranu, zepsuje build workera generatora. Błąd wychodzi dopiero przy `pnpm package`.
+- `Terrain.place` nie rusza deco (stawianie kafli przez gracza i tak jest wyłączone — `MapBuilder` stawia palisady). Gdy wróci stawianie kafli, trzeba zdecydować, co z deco na zajętym kaflu.
 - Alfa 255 albo utrata porządku głębi. Sprite z alfą inną niż 255 trafia do batcha przezroczystego, który ma wyłączony zapis głębi i leci po wszystkim nieprzezroczystym. Jedna warstwa z alfą 254 wyląduje nad całą mapą.
 - `z` nie bierze udziału w sortowaniu — sortowanie idzie po Y. Kolejność warstw robi wyłącznie test głębi, greater-equal, czyli wygrywa większe `z`.
-- Prędkość kulki ma sufit. `getTilesForRaycast` skanuje prostokąt obejmujący cały odcinek lotu, więc liczba kandydatów rośnie z kwadratem przebytej drogi. Przy puli 64 sufit to ~33 000 px/s. Przekroczenie łapie assert — bez niego kulka po cichu przelatywałaby przez skałę.
-- Współrzędne. `gx`/`gy` to kafel w całej mapie (lokalne dla mapy, nie dla świata), `lx`/`ly` to kafel wewnątrz chunka, `cx`/`cy` to chunk. Wszystkie konwersje świat↔kafel idą przez `MapObject`, bo tylko on zna przesunięcie mapy w świecie.
+- Współrzędne. `gx`/`gy` to kafel w całej mapie (lokalne dla mapy, nie dla świata), `lx`/`ly` to kafel wewnątrz chunka, `cx`/`cy` to chunk. Konwersje świat↔kafel↔chunk idą przez `World` (`worldToTile`, `tileToWorld`, `chunkOfTile`...), bo tylko on zna `origin` mapy.
+- Shadery WGSL kompilują się dopiero w grze — błąd widać dopiero w konsoli.
 
 ---
 

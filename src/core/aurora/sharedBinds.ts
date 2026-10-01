@@ -106,6 +106,11 @@ export default class SharedBinds {
       }),
     );
   }
+  // what shaders read as frame.time: game time (stops on pause), wrapped every TIME_WRAP s;
+  // during the update it is the value of the last drawn frame
+  public static get getGameTime() {
+    return this.gameTime % TIME_WRAP;
+  }
   public static get isFrameDirty() {
     return this.frameDirty;
   }
@@ -114,27 +119,33 @@ export default class SharedBinds {
     this.frameDirty = false;
   }
   public static buildFrame() {
+    this.frameLayout = Aurora.device.createBindGroupLayout({
+      label: "frameLayout",
+      entries: this.frameLayoutEntries(),
+    });
+    this.buildFrameBindGroup();
+  }
+  private static frameLayoutEntries() {
     const layoutEntries: GPUBindGroupLayoutEntry[] = [
       { binding: 0, visibility: ALL_STAGES, buffer: { type: "uniform" } },
       { binding: 1, visibility: ALL_STAGES, buffer: { type: "uniform" } },
     ];
-    const entries: GPUBindGroupEntry[] = [
-      { binding: 0, resource: { buffer: this.frameBuffer } },
-      { binding: 1, resource: { buffer: this.cameraBuffer } },
-    ];
-
     this.globals.forEach((global) => {
       layoutEntries.push({
         binding: global.binding,
         visibility: global.visibility ?? ALL_STAGES,
         ...global.layout,
       });
-      entries.push({ binding: global.binding, resource: global.resource });
     });
-
-    this.frameLayout = Aurora.device.createBindGroupLayout({
-      label: "frameLayout",
-      entries: layoutEntries,
+    return layoutEntries;
+  }
+  private static buildFrameBindGroup() {
+    const entries: GPUBindGroupEntry[] = [
+      { binding: 0, resource: { buffer: this.frameBuffer } },
+      { binding: 1, resource: { buffer: this.cameraBuffer } },
+    ];
+    this.globals.forEach((global) => {
+      entries.push({ binding: global.binding, resource: global.resource });
     });
     this.frameBindGroup = Aurora.device.createBindGroup({
       label: "frameBind",
@@ -156,6 +167,14 @@ export default class SharedBinds {
     if (this.frameLayout === undefined) return;
     this.buildFrame();
     this.frameDirty = true;
+  }
+  // same layout (a texture of another size, a new buffer): only the bind group is rebuilt, no pipeline
+  public static setGlobalResource(binding: number, resource: GPUBindingResource) {
+    const global = this.globals.get(binding);
+    assert(global !== undefined, `Global binding ${binding} is not registered, addGlobal it first`);
+    global.resource = resource;
+    if (this.frameLayout === undefined) return;
+    this.buildFrameBindGroup();
   }
   public static buildAssets() {
     const layoutEntries: GPUBindGroupLayoutEntry[] = [];

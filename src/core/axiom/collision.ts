@@ -16,6 +16,13 @@ type RaycastHit = {
 
 type Ray = { origin: Position2D; direction: Vec2 };
 
+// corner: which corner of the rect was hit, -1 / 1 per axis in the rect's own frame; 0, 0 = a side
+export type SweepHit = {
+  distance: number;
+  normal: Position2D;
+  corner: Position2D;
+};
+
 export default class Collision {
   private constructor() {}
 
@@ -465,6 +472,103 @@ export default class Collision {
     );
 
     return { hit: true, point, distance: tMin, normal };
+  }
+
+  // a circle moving along the ray (direction normalized) against a rect: the rect grown by the radius
+  // with rounded corners. A circle already overlapping the rect is no hit. Writes into out, allocates nothing
+  static sweepCircleRect(
+    ray: { origin: Position2D; direction: Position2D },
+    radius: number,
+    rect: Rect,
+    maxDistance: number,
+    out: SweepHit,
+  ): boolean {
+    let ox = ray.origin.x - rect.x;
+    let oy = ray.origin.y - rect.y;
+    let dx = ray.direction.x;
+    let dy = ray.direction.y;
+    const rotated = rect.rotation !== 0;
+    let cos = 1;
+    let sin = 0;
+    if (rotated) {
+      cos = Math.cos(rect.rotation);
+      sin = Math.sin(rect.rotation);
+      const localOx = ox * cos + oy * sin;
+      oy = oy * cos - ox * sin;
+      ox = localOx;
+      const localDx = dx * cos + dy * sin;
+      dy = dy * cos - dx * sin;
+      dx = localDx;
+    }
+
+    const halfW = rect.w / 2;
+    const halfH = rect.h / 2;
+    const reachX = halfW + radius;
+    const reachY = halfH + radius;
+    let enter = -Infinity;
+    let exit = Infinity;
+    let nx = 0;
+    let ny = 0;
+
+    if (Math.abs(dx) < 1e-8) {
+      if (ox < -reachX || ox > reachX) return false;
+    } else {
+      const t1 = (-reachX - ox) / dx;
+      const t2 = (reachX - ox) / dx;
+      enter = Math.min(t1, t2);
+      exit = Math.max(t1, t2);
+      nx = dx > 0 ? -1 : 1;
+    }
+    if (Math.abs(dy) < 1e-8) {
+      if (oy < -reachY || oy > reachY) return false;
+    } else {
+      const t1 = (-reachY - oy) / dy;
+      const t2 = (reachY - oy) / dy;
+      const near = Math.min(t1, t2);
+      exit = Math.min(exit, Math.max(t1, t2));
+      if (near > enter) {
+        enter = near;
+        nx = 0;
+        ny = dy > 0 ? -1 : 1;
+      }
+    }
+    if (enter > exit || exit < 0 || enter > maxDistance) return false;
+
+    // enter < 0: the circle starts inside the grown box, legal only in a cut-off corner
+    // (it passed that corner closely), from there the rect is reachable only through that corner
+    const fromX = enter < 0 ? ox : ox + dx * enter;
+    const fromY = enter < 0 ? oy : oy + dy * enter;
+    const cornerX = AxiomMath.clamp(fromX, -halfW, halfW);
+    const cornerY = AxiomMath.clamp(fromY, -halfH, halfH);
+    const inCorner = radius > 0 && cornerX !== fromX && cornerY !== fromY;
+    if (enter < 0 && !inCorner) return false;
+
+    let distance = enter;
+    out.corner.x = 0;
+    out.corner.y = 0;
+    if (inCorner) {
+      const cx = ox - cornerX;
+      const cy = oy - cornerY;
+      const b = cx * dx + cy * dy;
+      const c = cx * cx + cy * cy - radius * radius;
+      const discriminant = b * b - c;
+      if (discriminant < 0) return false;
+      distance = -b - Math.sqrt(discriminant);
+      if (distance < 0 || distance > maxDistance) return false;
+      nx = (cx + dx * distance) / radius;
+      ny = (cy + dy * distance) / radius;
+      out.corner.x = cornerX > 0 ? 1 : -1;
+      out.corner.y = cornerY > 0 ? 1 : -1;
+    }
+
+    out.distance = distance;
+    out.normal.x = nx;
+    out.normal.y = ny;
+    if (rotated) {
+      out.normal.x = nx * cos - ny * sin;
+      out.normal.y = nx * sin + ny * cos;
+    }
+    return true;
   }
 
   static raycastCapsule(ray: Ray, capsule: Capsule): RaycastHit {

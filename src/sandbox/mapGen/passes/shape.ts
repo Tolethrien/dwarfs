@@ -1,7 +1,8 @@
 import AxiomMath from "@axiom/math";
-import type { BlocksID } from "../../managers/entitiesObject";
+import { BlocksID } from "../../content/blocks";
+import type { Tile } from "../../world/tile";
 import type GenContext from "../context";
-import type { PassTools, Range } from "../context";
+import { NEIGHBOURS, type PassTools, type Range } from "../context";
 
 export interface IntrusionConfig {
   perBand: readonly Range[];
@@ -30,25 +31,12 @@ export interface ShapeConfig {
 const EDGE_OFFSET = { left: 0, right: 1000, bottom: 2000 };
 const INTRUSION = { wobble: 0.3, spread: 0.6, startOutside: 1 };
 const ISLAND = { attempts: 20, roughness: 0.35, edgeFrequency: 1.3 };
-const NEIGHBOURS_4 = [
-  [1, 0],
-  [-1, 0],
-  [0, 1],
-  [0, -1],
-] as const;
-const NEIGHBOURS_8 = [
-  ...NEIGHBOURS_4,
-  [1, 1],
-  [1, -1],
-  [-1, 1],
-  [-1, -1],
-] as const;
 
 // the playable mask, a thin obsidian band hugging it, and void (air, never reachable) beyond the band
 export function shapePass(
   ctx: GenContext,
   config: ShapeConfig,
-  placeholder: BlocksID,
+  placeholder: Tile,
   tools: PassTools,
 ) {
   buildMask(ctx, config, placeholder, tools);
@@ -63,7 +51,7 @@ export function shapePass(
 function buildMask(
   ctx: GenContext,
   config: ShapeConfig,
-  placeholder: BlocksID,
+  placeholder: Tile,
   tools: PassTools,
 ) {
   const thickness = (along: number, length: number, offset: number) => {
@@ -232,7 +220,7 @@ function carveIslands(ctx: GenContext, config: ShapeConfig, tools: PassTools) {
             if (Math.hypot(dx, dy) > edge) continue;
             const index = ctx.index(center.x + dx, center.y + dy);
             ctx.mask[index] = 0;
-            ctx.solid[index] = 0;
+            ctx.solid[index] = BlocksID.void;
           }
         }
         break;
@@ -276,7 +264,7 @@ function carveCircle(ctx: GenContext, center: Position2D, radius: number) {
       if (!ctx.inside(gx, gy)) continue;
       const index = ctx.index(gx, gy);
       ctx.mask[index] = 0;
-      ctx.solid[index] = 0;
+      ctx.solid[index] = BlocksID.void;
     }
   }
 }
@@ -295,7 +283,7 @@ function roughenEdge(ctx: GenContext, config: ShapeConfig, tools: PassTools) {
     for (let gx = 0; gx < ctx.width; gx++) {
       const index = ctx.index(gx, gy);
       if (ctx.mask[index] !== 1) continue;
-      if (NEIGHBOURS_4.some(([dx, dy]) => !ctx.playable(gx + dx, gy + dy))) {
+      if (NEIGHBOURS.four.some(([dx, dy]) => !ctx.playable(gx + dx, gy + dy))) {
         depth[index] = 1;
         queue[tail++] = index;
       }
@@ -307,7 +295,7 @@ function roughenEdge(ctx: GenContext, config: ShapeConfig, tools: PassTools) {
     if (depth[index] >= maxDepth) continue;
     const gx = index % ctx.width;
     const gy = Math.floor(index / ctx.width);
-    for (const [dx, dy] of NEIGHBOURS_4) {
+    for (const [dx, dy] of NEIGHBOURS.four) {
       if (!ctx.playable(gx + dx, gy + dy)) continue;
       const next = ctx.index(gx + dx, gy + dy);
       if (depth[next] !== 0) continue;
@@ -332,7 +320,7 @@ function roughenEdge(ctx: GenContext, config: ShapeConfig, tools: PassTools) {
       );
       if (depth[index] > config.ragged.depth * wave) continue;
       ctx.mask[index] = 0;
-      ctx.solid[index] = 0;
+      ctx.solid[index] = BlocksID.void;
     }
   }
 }
@@ -355,7 +343,7 @@ function keepLargestRegion(ctx: GenContext) {
       const index = queue[head++];
       const gx = index % ctx.width;
       const gy = Math.floor(index / ctx.width);
-      for (const [dx, dy] of NEIGHBOURS_4) {
+      for (const [dx, dy] of NEIGHBOURS.four) {
         if (!ctx.inside(gx + dx, gy + dy)) continue;
         const next = ctx.index(gx + dx, gy + dy);
         if (ctx.mask[next] !== 1 || region[next] !== -1) continue;
@@ -370,7 +358,7 @@ function keepLargestRegion(ctx: GenContext) {
   for (let index = 0; index < ctx.mask.length; index++) {
     if (ctx.mask[index] !== 1 || region[index] === largest) continue;
     ctx.mask[index] = 0;
-    ctx.solid[index] = 0;
+    ctx.solid[index] = BlocksID.void;
   }
 }
 
@@ -391,7 +379,7 @@ function buildBorder(ctx: GenContext, config: ShapeConfig, tools: PassTools) {
     const gx = index % ctx.width;
     const gy = Math.floor(index / ctx.width);
 
-    for (const [dx, dy] of NEIGHBOURS_8) {
+    for (const [dx, dy] of NEIGHBOURS.eight) {
       if (!ctx.inside(gx + dx, gy + dy)) continue;
       const next = ctx.index(gx + dx, gy + dy);
       if (ctx.mask[next] === 1 || distance[next] !== 0) continue;

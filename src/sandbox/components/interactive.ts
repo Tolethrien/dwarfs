@@ -1,22 +1,33 @@
 import PragmaComponent from "@pragma/component";
-import InteractiveElements from "../systems/interactiveEvents";
-import type { ColliderBody } from "./physics";
+import InteractiveElements from "../systems/game/interactiveElements";
+import { bodyContains, type ColliderBody } from "./physics";
 
 interface InteractiveProps {
-  bodyType: ColliderBody;
+  body: ColliderBody;
 }
 
+export interface ClickedEvent {
+  point: Position2D;
+}
+
+// clickable area of the actor; a click sends it the actor event "clicked"
 export default class Interactive extends PragmaComponent {
-  public bodyType: ColliderBody;
+  public body: ColliderBody;
 
   constructor(internal: InternalPCProps, props: InteractiveProps) {
     super(internal);
-    this.bodyType = props.bodyType;
+    this.body = props.body;
   }
+
   start(): void {
     this.scene.getSystem(InteractiveElements).register(this);
   }
+
   destroy(): void {
     this.scene.findSystem(InteractiveElements)?.unregister(this);
+  }
+
+  public contains(point: Position2D) {
+    return bodyContains(this.body, this.actor.transform, point);
   }
 }

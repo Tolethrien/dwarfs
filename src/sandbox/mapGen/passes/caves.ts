@@ -1,8 +1,8 @@
 import AxiomMath from "@axiom/math";
 import Noise from "@axiom/noise";
-import { BlocksID } from "../../managers/entitiesObject";
+import { BlocksID } from "../../content/blocks";
 import type GenContext from "../context";
-import type { PassTools, Range } from "../context";
+import { NEIGHBOURS, type PassTools, type Range } from "../context";
 
 export interface CavesConfig {
   chambers: {
@@ -25,14 +25,8 @@ export interface CavesConfig {
 }
 
 const CHAMBER_STEP = 3;
-const OPEN = 1;
-const CLOSED = 0;
-const NEIGHBOURS_4 = [
-  [1, 0],
-  [-1, 0],
-  [0, 1],
-  [0, -1],
-] as const;
+// cells of the open/closed grid
+const CELL = { open: 1, closed: 0 };
 
 // works on its own open/closed grid, so a tile the smoothing fills back keeps its rock type
 export function cavesPass(ctx: GenContext, config: CavesConfig, tools: PassTools) {
@@ -42,11 +36,11 @@ export function cavesPass(ctx: GenContext, config: CavesConfig, tools: PassTools
   carveTunnels(ctx, open, config, tools);
   for (let pass = 0; pass < config.smoothing; pass++) smooth(ctx, open);
   if (config.minWidth > 0) removeNarrow(ctx, open, config.minWidth);
-  removeSmall(ctx, open, OPEN, config.minArea);
-  removeSmall(ctx, open, CLOSED, config.minRockArea);
+  removeSmall(ctx, open, CELL.open, config.minArea);
+  removeSmall(ctx, open, CELL.closed, config.minRockArea);
 
   for (let index = 0; index < open.length; index++)
-    if (open[index] === OPEN && ctx.mask[index] === 1)
+    if (open[index] === CELL.open && ctx.mask[index] === 1)
       ctx.solid[index] = BlocksID.air;
 }
 
@@ -100,7 +94,7 @@ function carveChambers(
 
     for (let gx = 0; gx < ctx.width; gx++) {
       const index = ctx.index(gx, gy);
-      if (ctx.mask[index] === 1 && field[index] > threshold) open[index] = OPEN;
+      if (ctx.mask[index] === 1 && field[index] > threshold) open[index] = CELL.open;
     }
   }
 }
@@ -151,7 +145,7 @@ function carveTunnels(
         for (let dx = -reach; dx <= reach; dx++) {
           if (dx * dx + dy * dy > radius * radius) continue;
           if (ctx.playable(centerX + dx, centerY + dy))
-            open[ctx.index(centerX + dx, centerY + dy)] = OPEN;
+            open[ctx.index(centerX + dx, centerY + dy)] = CELL.open;
         }
       }
     }
@@ -178,8 +172,8 @@ function smooth(ctx: GenContext, open: Uint8Array) {
       open[index + width] -
       open[index + width + 1];
 
-    if (rock >= 5) next[index] = CLOSED;
-    else if (rock <= 3) next[index] = OPEN;
+    if (rock >= 5) next[index] = CELL.closed;
+    else if (rock <= 3) next[index] = CELL.open;
   }
   open.set(next);
 }
@@ -196,25 +190,25 @@ function removeNarrow(ctx: GenContext, open: Uint8Array, radius: number) {
       return false;
     for (let y = gy - radius; y <= gy + radius; y++)
       for (let x = gx - radius; x <= gx + radius; x++)
-        if (open[x + y * width] !== OPEN) return false;
+        if (open[x + y * width] !== CELL.open) return false;
     return true;
   };
   const anyEroded = (gx: number, gy: number) => {
     for (let y = Math.max(0, gy - radius); y <= Math.min(height - 1, gy + radius); y++)
       for (let x = Math.max(0, gx - radius); x <= Math.min(width - 1, gx + radius); x++)
-        if (eroded[x + y * width] === OPEN) return true;
+        if (eroded[x + y * width] === CELL.open) return true;
     return false;
   };
 
   for (let gy = 0; gy < height; gy++)
     for (let gx = 0; gx < width; gx++)
-      if (open[gx + gy * width] === OPEN && allOpen(gx, gy))
-        eroded[gx + gy * width] = OPEN;
+      if (open[gx + gy * width] === CELL.open && allOpen(gx, gy))
+        eroded[gx + gy * width] = CELL.open;
 
   for (let gy = 0; gy < height; gy++) {
     for (let gx = 0; gx < width; gx++) {
       const index = gx + gy * width;
-      if (ctx.mask[index] === 1) open[index] = anyEroded(gx, gy) ? OPEN : CLOSED;
+      if (ctx.mask[index] === 1) open[index] = anyEroded(gx, gy) ? CELL.open : CELL.closed;
     }
   }
 }
@@ -244,7 +238,7 @@ function removeSmall(
       const gx = index % ctx.width;
       const gy = Math.floor(index / ctx.width);
 
-      for (const [dx, dy] of NEIGHBOURS_4) {
+      for (const [dx, dy] of NEIGHBOURS.four) {
         if (!ctx.playable(gx + dx, gy + dy)) {
           touchesEdge = true;
           continue;
@@ -256,9 +250,9 @@ function removeSmall(
       }
     }
 
-    const keep = tail >= minArea || (value === CLOSED && touchesEdge);
+    const keep = tail >= minArea || (value === CELL.closed && touchesEdge);
     if (keep) continue;
     for (let index = 0; index < tail; index++)
-      open[queue[index]] = value === OPEN ? CLOSED : OPEN;
+      open[queue[index]] = value === CELL.open ? CELL.closed : CELL.open;
   }
 }

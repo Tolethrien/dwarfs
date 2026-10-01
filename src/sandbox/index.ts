@@ -2,7 +2,6 @@ import Aurora from "@aurora/core";
 import URP from "@aurora/urp/urp";
 import { COLOR } from "@axiom/color";
 import Engine from "@engine/engine";
-import Pragma from "@pragma/pragma";
 import chars from "@sandbox/assets/chars.png";
 import stones from "@sandbox/assets/stones.png";
 import blockDamage from "@sandbox/assets/blockDamage.mp3";
@@ -12,16 +11,15 @@ import bg from "@sandbox/assets/bg.png";
 import anims from "@sandbox/assets/anims.png";
 import icons from "@sandbox/assets/icons.png";
 import lato from "@sandbox/assets/fonts/Lato-Regular.ttf";
-import MapObject from "./managers/mapObject";
-import TileMask from "./managers/tileMask";
+import TileMask from "./shaders/tileMask";
+import Materials from "./shaders/materials";
 import { registerInputsBindings } from "./inputActions";
 import Cello from "@cello/cello";
-import SoundBank, { SoundsID } from "./managers/soundbank";
-import { registerSoundEffects } from "./soundEffects";
-import GameScene from "./scenes/gameScene";
-import { Light } from "@/core/aurora/urp/draw/draw";
+import { SOUND_CATEGORIES } from "./content/sounds";
+import { registerSoundEffects } from "./audio/soundEffects";
+import SaveGame from "./world/saveGame";
+import MenuScene from "./scenes/menuScene";
 import { debug } from "@debug";
-import { MAP_GEN_CONFIG } from "./mapGen/mapGenerator";
 
 const MAP_SEED = 1778679494;
 
@@ -48,11 +46,8 @@ async function preload() {
     lighting: { enabled: true },
     pixelSnap: "world",
   });
-  MapObject.generate(
-    debug.mapGen.seed(MAP_SEED),
-    debug.mapGen.config(MAP_GEN_CONFIG),
-  );
-  TileMask.init();
+  TileMask.register();
+  Materials.register();
 
   await Cello.initialize({
     preloadSounds: [
@@ -61,13 +56,15 @@ async function preload() {
       { name: "mineAmbient", url: mineAmbient },
     ],
     masterVolume: 1,
-    categoryTree: SoundBank.categoryTree,
+    categoryTree: SOUND_CATEGORIES,
   });
 }
 function setup() {
   registerInputsBindings();
   registerSoundEffects();
-
-  new GameScene();
+  SaveGame.registerCommands();
+  // the mapGen panel's Generate goes straight into the new map, a normal start opens the menu
+  if (debug.mapGen.requested()) void SaveGame.newGame({ seed: debug.mapGen.seed(MAP_SEED) });
+  else MenuScene.open();
 }
 Engine.initialize({ setup, preload });

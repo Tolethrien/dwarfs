@@ -1,11 +1,9 @@
-import { Draw } from "@aurora/urp/draw/draw";
-import Collision from "@axiom/collision";
+import Collision, { type SweepHit } from "@axiom/collision";
 import Vec2 from "@axiom/vec2";
 import PragmaComponent from "@pragma/component";
 import { assert } from "@axiom/utils";
 import Transform from "@pragma/transform";
-import { RENDER_ORDER } from "@sandbox/managers/generalData";
-import PhysBall from "@sandbox/systems/physBall";
+import PhysBall from "@sandbox/systems/game/physBall";
 
 type PhysicsBodyType = "static" | "kinetic" | "rigid";
 export type ColliderBody =
@@ -32,7 +30,6 @@ export default class Physics extends PragmaComponent {
   public isTrigger: boolean;
   public baseSpeed: number;
   declare private transform: Transform;
-  static debugDraw = false;
   constructor(internal: InternalPCProps, props: PhysicsProps) {
     super(internal);
     this.type = props.type;
@@ -49,75 +46,78 @@ export default class Physics extends PragmaComponent {
   destroy(): void {
     this.scene.findSystem(PhysBall)?.unregister(this);
   }
-  render(): void {
-    if (!Physics.debugDraw || !this.body) return;
-    const pos = this.transform.getPosition();
-    let tint: RGBA = [255, 200, 0, 100];
-    if (this.type === "rigid") tint = [150, 250, 50, 255];
-    else if (this.type === "kinetic") tint = [50, 150, 250, 255];
 
-    if (this.body.type === "circle") {
-      Draw.circle({
-        position: { x: pos.x, y: pos.y, z: RENDER_ORDER.debug },
-        radius: this.body.radius,
-        color: tint,
-      });
-    } else {
-      Draw.rect({
-        position: {
-          x: pos.x - this.body.w / 2,
-          y: pos.y - this.body.h / 2,
-          z: RENDER_ORDER.debug,
-        },
-        size: { width: this.body.w, height: this.body.h },
-        color: tint,
-      });
-    }
-  }
-
+  // a turned rect is covered by the circle around it
   getBounds(): BoxAABB {
     assert(
       this.body !== undefined,
       `trying to access physics body on non-body component`,
     );
     const pos = this.transform.getWorldPosition();
+    let halfW = 0;
+    let halfH = 0;
     if (this.body.type === "circle") {
-      const r = this.body.radius;
-      return {
-        min: { x: pos.x - r, y: pos.y - r },
-        max: { x: pos.x + r, y: pos.y + r },
-      };
+      halfW = this.body.radius;
+      halfH = this.body.radius;
+    } else if (this.transform.getWorldRotation() === 0) {
+      halfW = this.body.w / 2;
+      halfH = this.body.h / 2;
+    } else {
+      halfW = Math.hypot(this.body.w, this.body.h) / 2;
+      halfH = halfW;
     }
-    const halfW = this.body.w / 2;
-    const halfH = this.body.h / 2;
     return {
       min: { x: pos.x - halfW, y: pos.y - halfH },
       max: { x: pos.x + halfW, y: pos.y + halfH },
     };
   }
 
-  raycastAgainst(
+  // a circle of the radius moving along the ray; result in out. Already overlapping = no hit, like tiles
+  sweep(
     ray: { origin: Position2D; direction: Vec2 },
-    sweepRadius = 0,
+    radius: number,
+    maxDistance: number,
+    out: SweepHit,
   ) {
     assert(
       this.body !== undefined,
       `trying to access physics body on non-body component`,
     );
     const pos = this.transform.getWorldPosition();
-    if (this.body.type === "circle") {
-      return Collision.raycastCircle(ray, {
+    if (this.body.type === "rect") {
+      const rect = {
         x: pos.x,
         y: pos.y,
-        r: this.body.radius + sweepRadius,
-      });
+        w: this.body.w,
+        h: this.body.h,
+        rotation: this.transform.getWorldRotation(),
+      };
+      return Collision.sweepCircleRect(ray, radius, rect, maxDistance, out);
     }
-    return Collision.raycastRect(ray, {
-      x: pos.x,
-      y: pos.y,
-      w: this.body.w + sweepRadius * 2,
-      h: this.body.h + sweepRadius * 2,
-      rotation: 0,
-    });
+    const reach = this.body.radius + radius;
+    const dx = ray.origin.x - pos.x;
+    const dy = ray.origin.y - pos.y;
+    if (dx * dx + dy * dy <= reach * reach) return false;
+    const hit = Collision.raycastCircle(ray, { x: pos.x, y: pos.y, r: reach });
+    if (!hit.hit || hit.distance > maxDistance) return false;
+    out.distance = hit.distance;
+    out.normal.x = hit.normal.x;
+    out.normal.y = hit.normal.y;
+    out.corner.x = 0;
+    out.corner.y = 0;
+    return true;
   }
+}
+
+export function bodyContains(body: ColliderBody, transform: Transform, point: Position2D) {
+  const pos = transform.getWorldPosition();
+  if (body.type === "circle")
+    return Collision.pointVsCircle(point, { x: pos.x, y: pos.y, r: body.radius }).collided;
+  return Collision.pointVsRect(point, {
+    x: pos.x,
+    y: pos.y,
+    w: body.w,
+    h: body.h,
+    rotation: transform.getWorldRotation(),
+  }).collided;
 }
