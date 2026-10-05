@@ -1,4 +1,5 @@
 import { DECOS, DecosID, type DecoAttached, type DecoLayer, type DecoName } from "../../content/decos";
+import { packTile } from "../../world/tile";
 import type GenContext from "../context";
 import type { PassTools, Range } from "../context";
 
@@ -29,7 +30,10 @@ export function decosPass(
         if (decos.back.has(index) || decos.front.has(index)) continue;
         if (!fits(ctx, kind.definition.attached, gx, gy)) continue;
         if (!tools.random.bool(kind.placement.chance)) continue;
-        decos[kind.definition.layer].set(index, kind.id);
+        // from the tile's hash, not the random stream: adding variants does not move the decos
+        const variants = Math.max(1, kind.definition.variants.length);
+        const variant = Math.min(variants - 1, Math.floor(tools.noise.white2D(gx, gy) * variants));
+        decos[kind.definition.layer].set(index, packTile(kind.id, variant));
       }
     }
   }

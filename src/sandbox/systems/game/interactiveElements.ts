@@ -48,13 +48,13 @@ export default class InteractiveElements extends PragmaSystem {
     const point = Camera.screenToWorld(InputManager.getMousePos());
     const tile = this.world.worldToTile(point);
 
-    if (this.clickDeco("front", tile, point)) return;
+    if (this.clickDeco("front", tile)) return;
     for (const target of this.targets) {
       if (!target.getEnabled() || !target.contains(point)) continue;
       target.emitActorEvent<ClickedEvent>("clicked", { point });
       return;
     }
-    if (this.clickDeco("back", tile, point)) return;
+    if (this.clickDeco("back", tile)) return;
     if (!this.world.inside(tile.x, tile.y)) return;
 
     const type = this.world.getType(tile.x, tile.y);
@@ -65,18 +65,10 @@ export default class InteractiveElements extends PragmaSystem {
     });
   }
 
-  // only a clickable deco, and only inside its area: a mushroom at the bottom of the tile does not
-  // take a click on the top half
-  private clickDeco(layer: DecoLayer, tile: Position2D, point: Position2D) {
+  // only a clickable deco takes the click, on the whole tile
+  private clickDeco(layer: DecoLayer, tile: Position2D) {
     const type = this.world.getDecoType(layer, tile.x, tile.y);
-    if (type === 0) return false;
-    const deco = getDeco(type);
-    if (!deco.clickable) return false;
-    const origin = this.world.tileToWorld(tile);
-    const x = point.x - origin.x - deco.area.x;
-    const y = point.y - origin.y - deco.area.y;
-    if (x < 0 || y < 0 || x > deco.area.width || y > deco.area.height)
-      return false;
+    if (type === 0 || !getDeco(type).clickable) return false;
     this.emitSceneEvent<DecoClickedEvent>("decoClicked", {
       gx: tile.x,
       gy: tile.y,

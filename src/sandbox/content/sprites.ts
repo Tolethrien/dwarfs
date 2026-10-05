@@ -1,7 +1,7 @@
 export const SPRITES = {
   dwarfs: "chars",
   blocks: "stones",
-  deco: "decor",
+  deco: "decos",
   base: "base",
   bg: "bg",
   anims: "anims",

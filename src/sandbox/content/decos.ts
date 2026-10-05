@@ -1,4 +1,3 @@
-import { COLOR } from "@axiom/color";
 import { assert } from "@axiom/utils";
 
 // written into saves: never change or reuse a number
@@ -23,11 +22,11 @@ interface DecoDefinition {
   attached: DecoAttached;
   // stays when the tile it is attached to goes
   permanent: boolean;
+  // the whole tile takes the click
   clickable: boolean;
-  // where it is inside the tile, from its top-left: drawn there and clicked there
-  area: { x: number; y: number; width: number; height: number };
-  // placeholder until there are graphics
-  color: RGBA;
+  // index = variant bits of the deco, whole tile crops in SPRITES.deco; empty = no graphics yet,
+  // not drawn (still clickable)
+  variants: Crop[];
 }
 
 export const DECOS: Record<Exclude<DecosID, DecosID.none>, DecoDefinition> = {
@@ -36,32 +35,39 @@ export const DECOS: Record<Exclude<DecosID, DecosID.none>, DecoDefinition> = {
     attached: "below",
     permanent: false,
     clickable: true,
-    area: { x: 32, y: 56, width: 32, height: 40 },
-    color: COLOR.CRIMSON,
+    variants: [],
   },
   [DecosID.stalactite]: {
     layer: "front",
     attached: "above",
     permanent: false,
     clickable: false,
-    area: { x: 36, y: 0, width: 24, height: 60 },
-    color: COLOR.GRAY,
+    variants: [
+      { x: 576, y: 0, width: 96, height: 96 },
+      { x: 672, y: 0, width: 96, height: 96 },
+    ],
   },
   [DecosID.moss]: {
     layer: "front",
     attached: "self",
     permanent: false,
     clickable: false,
-    area: { x: 0, y: 0, width: 96, height: 16 },
-    color: COLOR.FOREST_GREEN,
+    variants: [
+      { x: 192, y: 0, width: 96, height: 96 },
+      { x: 288, y: 0, width: 96, height: 96 },
+      { x: 384, y: 0, width: 96, height: 96 },
+      { x: 480, y: 0, width: 96, height: 96 },
+    ],
   },
   [DecosID.chains]: {
     layer: "back",
     attached: "above",
     permanent: true,
     clickable: false,
-    area: { x: 40, y: 0, width: 8, height: 96 },
-    color: COLOR.DARK_GRAY,
+    variants: [
+      { x: 768, y: 0, width: 96, height: 96 },
+      { x: 864, y: 0, width: 96, height: 96 },
+    ],
   },
   // drawn by its actor (DecoView), not by the chunk batch
   [DecosID.torch]: {
@@ -69,8 +75,10 @@ export const DECOS: Record<Exclude<DecosID, DecosID.none>, DecoDefinition> = {
     attached: "below",
     permanent: false,
     clickable: false,
-    area: { x: 40, y: 40, width: 16, height: 56 },
-    color: COLOR.ORANGE,
+    variants: [
+      { x: 0, y: 0, width: 96, height: 96 }, // torch
+      { x: 96, y: 0, width: 96, height: 96 }, // lantern
+    ],
   },
 };
 
@@ -78,4 +86,10 @@ export function getDeco(type: number) {
   const deco = DECOS[type as Exclude<DecosID, DecosID.none>];
   assert(deco !== undefined, `no deco with id ${type}`);
   return deco;
+}
+
+// undefined: no graphics yet; a save can hold a variant the table no longer has
+export function getDecoCrop(type: number, variant: number): Crop | undefined {
+  const variants = getDeco(type).variants;
+  return variants[variant] ?? variants[0];
 }

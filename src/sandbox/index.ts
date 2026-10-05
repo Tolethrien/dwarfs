@@ -9,6 +9,7 @@ import blockDestroy from "@sandbox/assets/blockDestroy.mp3";
 import mineAmbient from "@sandbox/assets/mineAmbient1.mp3";
 import bg from "@sandbox/assets/bg.png";
 import anims from "@sandbox/assets/anims.png";
+import decos from "@sandbox/assets/deco.png";
 import icons from "@sandbox/assets/icons.png";
 import lato from "@sandbox/assets/fonts/Lato-Regular.ttf";
 import TileMask from "./shaders/tileMask";
@@ -31,6 +32,7 @@ async function preload() {
       { name: "stones", albedo: stones },
       { name: "bg", albedo: bg },
       { name: "anims", albedo: anims },
+      { name: "decos", albedo: decos },
     ],
     userUI: [{ name: "icons", url: icons }],
     fonts: [{ name: "lato", type: "dynamic", url: lato }],

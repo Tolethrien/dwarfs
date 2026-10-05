@@ -1,16 +1,16 @@
 import PragmaSystem from "@pragma/system";
 import type PragmaActor from "@pragma/actor";
-import { DecosID, getDeco, type DecoLayer } from "@sandbox/content/decos";
+import { DecosID, type DecoLayer } from "@sandbox/content/decos";
 import Torch from "@sandbox/bActors/torch";
 import type World from "@sandbox/world/world";
 import Terrain, { type DecoRemovedEvent } from "./terrain";
 import type { ChunkHiddenEvent, ChunkShownEvent } from "./chunkView";
 
-// decos drawn by an actor instead of the chunk batch (ChunkView skips them)
+// decos drawn by an actor instead of the chunk batch (ChunkView skips them); position = tile centre
 export const DECO_ACTORS: Partial<
-  Record<DecosID, (position: Position2D, size: Size2D) => PragmaActor>
+  Record<DecosID, (position: Position2D, variant: number) => PragmaActor>
 > = {
-  [DecosID.torch]: (position, size) => new Torch({ position, size }),
+  [DecosID.torch]: (position, variant) => new Torch({ position, variant }),
 };
 
 export default class DecoView extends PragmaSystem {
@@ -53,16 +53,8 @@ export default class DecoView extends PragmaSystem {
           const type = this.world.getDecoType(layer, gx, gy) as DecosID;
           const spawn = DECO_ACTORS[type];
           if (!spawn) continue;
-          const area = getDeco(type).area;
-          const tile = this.world.tileToWorld({ x: gx, y: gy });
-          const position = {
-            x: tile.x + area.x + area.width / 2,
-            y: tile.y + area.y + area.height / 2,
-          };
-          const actor = spawn(position, {
-            width: area.width,
-            height: area.height,
-          });
+          const position = this.world.tileCenterToWorld({ x: gx, y: gy });
+          const actor = spawn(position, this.world.getDecoVariant(layer, gx, gy));
           this.scene.spawnActor(actor);
           actors.set(this.key(layer, gx, gy), actor);
         }

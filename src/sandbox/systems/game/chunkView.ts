@@ -6,7 +6,7 @@ import DrawBatch from "@aurora/urp/draw/drawBatch";
 import { Camera } from "@engine/camera/camera";
 import { BlocksID, getVariantCrop, hasGraphics } from "@sandbox/content/blocks";
 import { BACKGROUNDS, BackgroundsID } from "@sandbox/content/backgrounds";
-import { getDeco, type DecoLayer } from "@sandbox/content/decos";
+import { getDecoCrop, type DecoLayer } from "@sandbox/content/decos";
 import { SPRITES } from "@sandbox/content/sprites";
 import { RENDER_ORDER } from "@sandbox/configs";
 import TileMask from "@sandbox/shaders/tileMask";
@@ -240,7 +240,7 @@ export default class ChunkView extends PragmaSystem {
     draw.solid.end();
   }
 
-  // placeholder rects from the definitions until there are graphics
+  // the variant's crop over the whole tile, nothing for a deco without graphics yet
   private buildDecos(draw: ChunkDraw) {
     const origin = this.world.chunkOrigin(draw.chunk);
     const chunkInTiles = this.world.meta.chunkInTiles;
@@ -252,22 +252,22 @@ export default class ChunkView extends PragmaSystem {
       batch.begin();
       for (let ly = 0; ly < chunkInTiles.height; ly++) {
         for (let lx = 0; lx < chunkInTiles.width; lx++) {
-          const type = this.world.getDecoType(
-            layer,
-            origin.x + lx,
-            origin.y + ly,
-          );
+          const gx = origin.x + lx;
+          const gy = origin.y + ly;
+          const type = this.world.getDecoType(layer, gx, gy);
           if (type === 0 || DECO_ACTORS[type as keyof typeof DECO_ACTORS])
             continue;
-          const deco = getDeco(type);
-          Draw.rect({
+          const crop = getDecoCrop(type, this.world.getDecoVariant(layer, gx, gy));
+          if (!crop) continue;
+          Draw.sprite({
             position: {
-              x: pixels.x + lx * tile.width + deco.area.x,
-              y: pixels.y + ly * tile.height + deco.area.y,
+              x: pixels.x + lx * tile.width,
+              y: pixels.y + ly * tile.height,
               z: DECO_DEPTH[layer],
             },
-            size: { width: deco.area.width, height: deco.area.height },
-            color: deco.color,
+            crop,
+            texture: SPRITES.deco,
+            size: { width: tile.width, height: tile.height },
           });
         }
       }
