@@ -10,7 +10,8 @@ export interface MaterialOptions<Name extends string> {
   fragment: string;
   blend?: MaterialBlend;
   transparent?: boolean;
-  // not multiplied by the light map: glows at full strength in the dark
+  // not multiplied by the light map: glows at full strength in the dark; per pixel instead: the
+  // fragment sets materialGlow (0-1)
   emissive?: boolean;
   // false: world only, the gui pass builds no pipeline and draws it with the default material;
   // the fragment may then read what only the world shader has (in.world, camera)

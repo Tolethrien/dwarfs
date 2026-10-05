@@ -204,6 +204,15 @@ export default class World {
     };
   }
 
+  // where a world point lies on the tile, 0-1 each axis, clamped to the tile
+  worldToTileFraction(tile: Position2D, position: Position2D): Position2D {
+    const corner = this.tileToWorld(tile);
+    return {
+      x: AxiomMath.clamp((position.x - corner.x) / this.meta.tileInPixels.width, 0, 1),
+      y: AxiomMath.clamp((position.y - corner.y) / this.meta.tileInPixels.height, 0, 1),
+    };
+  }
+
   tileCenterToWorld(tile: Position2D): Position2D {
     return {
       x: this.meta.origin.x + (tile.x + 0.5) * this.meta.tileInPixels.width,

@@ -307,6 +307,10 @@ struct MaterialInput {
   params: vec4f,
 };
 
+// a material may set it per pixel: share (0-1) that ignores the light map, like Material.emissive
+// for the whole shape; no attribute behind it, computed in the fragment
+var<private> materialGlow: f32 = 0.0;
+
 // replaced with the material fragment, one pipeline per material:
 // fn material(in: MaterialInput) -> vec4f, returns premultiplied color
 // MATERIAL
@@ -499,6 +503,6 @@ fn fragmentMain(in: VertexOut) -> FragmentOut {
 fn fragmentOut(color: vec4f) -> FragmentOut {
   var out: FragmentOut;
   out.color = color;
-  out.emissive = vec4f(select(0.0, color.a, emissive), 0.0, 0.0, color.a);
+  out.emissive = vec4f(select(materialGlow, 1.0, emissive) * color.a, 0.0, 0.0, color.a);
   return out;
 }

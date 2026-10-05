@@ -161,11 +161,17 @@ export default class PhysBall extends PragmaSystem {
 
       const power = this.power(physics);
       if (hit.kind === "tile") {
-        if (
-          power > 0 &&
-          this.terrain.hit(hit.gx, hit.gy, power) === "penetrate"
-        )
-          continue;
+        const position = transform.getPosition();
+        const contact = {
+          point: {
+            x: position.x - hit.normal.x * radius,
+            y: position.y - hit.normal.y * radius,
+          },
+          normal: { x: hit.normal.x, y: hit.normal.y },
+        };
+        // a ball without power never mines nor opens surprise blocks, it only bounces
+        if (power <= 0) this.terrain.deflect(hit.gx, hit.gy, contact);
+        else if (this.terrain.hit(hit.gx, hit.gy, power, contact) === "penetrate") continue;
       } else if (this.resolveEntityHit(physics, hit.physics) === "penetrate")
         continue;
 

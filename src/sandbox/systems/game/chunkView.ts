@@ -13,7 +13,11 @@ import TileMask from "@sandbox/shaders/tileMask";
 import { tileType, tileVariant } from "@sandbox/world/tile";
 import { MAX_DAMAGE } from "@sandbox/world/strike";
 import type World from "@sandbox/world/world";
-import Terrain, { type TileDamagedEvent } from "./terrain";
+import Terrain, {
+  type TileContact,
+  type TileDamagedEvent,
+  type TileDeflectedEvent,
+} from "./terrain";
 import type { ChunkDiscoveredEvent } from "./discovery";
 import { DECO_ACTORS } from "./decoView";
 
@@ -27,8 +31,12 @@ export interface ChunkHiddenEvent {
 const VIEW = {
   // discovered chunks around the camera kept built, so a pan does not show them being made
   margin: 1,
-  // tileSolid params [damage 0-1, hit time]; a hit long ago = no flash
+  // tileSolid params [damage 0-1, hit time, packed impact, heat]; a hit long ago = no flash
   noHit: -1000,
+  middle: { x: 0.5, y: 0.5 },
+  // heat of a pick hit, blasts will send 1; a deflected hit lights no cracks
+  cold: 0,
+  deflected: -1,
 };
 const DECO_DEPTH: Record<DecoLayer, number> = {
   back: RENDER_ORDER.decoBackTiles,
@@ -58,14 +66,25 @@ export default class ChunkView extends PragmaSystem {
   private range: ChunkRange = { minX: -1, minY: -1, maxX: -1, maxY: -1 };
   private dirty = false;
   // undiscovered chunks drawn too, for looking at the whole map
-  private showAll = false;
+  private showAll = true;
 
   constructor(internal: InternalPSProps) {
     super(internal);
   }
 
   awake(): void {
-    this.onSceneEvent<TileDamagedEvent>("tileDamaged", (event) => this.patchDamage(event));
+    this.onSceneEvent<TileDamagedEvent>("tileDamaged", (event) =>
+      this.patchHit(event.gx, event.gy, event.damage, VIEW.cold, event.contact),
+    );
+    this.onSceneEvent<TileDeflectedEvent>("tileDeflected", (event) =>
+      this.patchHit(
+        event.gx,
+        event.gy,
+        this.world.getDamage(event.gx, event.gy),
+        VIEW.deflected,
+        event.contact,
+      ),
+    );
     this.onSceneEvent<ChunkDiscoveredEvent>("chunkDiscovered", () => {
       this.dirty = true;
     });
@@ -163,7 +182,8 @@ export default class ChunkView extends PragmaSystem {
   }
 
   private show(chunk: number) {
-    const capacity = this.world.meta.chunkInTiles.width * this.world.meta.chunkInTiles.height;
+    const capacity =
+      this.world.meta.chunkInTiles.width * this.world.meta.chunkInTiles.height;
     const draw = this.pool.pop() ?? {
       chunk,
       version: 0,
@@ -213,7 +233,7 @@ export default class ChunkView extends PragmaSystem {
           texture: SPRITES.blocks,
           size: { width: crop.width, height: crop.height },
           material: TileMask.solid,
-          params: [this.world.getDamage(gx, gy) / MAX_DAMAGE, VIEW.noHit, 0, 0],
+          params: [this.world.getDamage(gx, gy) / MAX_DAMAGE, VIEW.noHit, TileMask.packImpact(VIEW.middle), VIEW.cold],
         });
       }
     }
@@ -232,8 +252,13 @@ export default class ChunkView extends PragmaSystem {
       batch.begin();
       for (let ly = 0; ly < chunkInTiles.height; ly++) {
         for (let lx = 0; lx < chunkInTiles.width; lx++) {
-          const type = this.world.getDecoType(layer, origin.x + lx, origin.y + ly);
-          if (type === 0 || DECO_ACTORS[type as keyof typeof DECO_ACTORS]) continue;
+          const type = this.world.getDecoType(
+            layer,
+            origin.x + lx,
+            origin.y + ly,
+          );
+          if (type === 0 || DECO_ACTORS[type as keyof typeof DECO_ACTORS])
+            continue;
           const deco = getDeco(type);
           Draw.rect({
             position: {
@@ -262,8 +287,12 @@ export default class ChunkView extends PragmaSystem {
       for (let lx = 0; lx < chunkInTiles.width; lx++) {
         const gx = origin.x + lx;
         const gy = origin.y + ly;
-        if (this.world.getType(gx, gy) === BlocksID.void) continue;
-        const pick = Math.floor(this.backgroundNoise.white2D(gx, gy) * PICTURES.length);
+        const type = this.world.getType(gx, gy);
+        if (type === BlocksID.void) continue;
+        if (type === BlocksID.obsidian && !this.touchesMine(gx, gy)) continue;
+        const pick = Math.floor(
+          this.backgroundNoise.white2D(gx, gy) * PICTURES.length,
+        );
         const crop = BACKGROUNDS[PICTURES[pick]].crop;
         Draw.sprite({
           position: {
@@ -280,12 +309,28 @@ export default class ChunkView extends PragmaSystem {
     draw.background.end();
   }
 
-  private patchDamage(event: TileDamagedEvent) {
-    const draw = this.shown.get(this.world.chunkOfTile(event.gx, event.gy));
+  // obsidian among obsidian/void keeps its gaps black, only the band next to the mine shows bg
+  private touchesMine(gx: number, gy: number) {
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const type = this.world.getType(gx + dx, gy + dy);
+        if (type !== BlocksID.void && type !== BlocksID.obsidian) return true;
+      }
+    }
+    return false;
+  }
+
+  private patchHit(gx: number, gy: number, damage: number, heat: number, contact?: TileContact) {
+    const draw = this.shown.get(this.world.chunkOfTile(gx, gy));
     if (!draw) return;
     const origin = this.world.chunkOrigin(draw.chunk);
-    const local = event.gx - origin.x + (event.gy - origin.y) * this.world.meta.chunkInTiles.width;
-    draw.solid.edit(local)?.params(event.damage / MAX_DAMAGE, Aurora.getGameTime, 0, 0);
+    const local = gx - origin.x + (gy - origin.y) * this.world.meta.chunkInTiles.width;
+    const impact = contact
+      ? this.world.worldToTileFraction({ x: gx, y: gy }, contact.point)
+      : VIEW.middle;
+    draw.solid
+      .edit(local)
+      ?.params(damage / MAX_DAMAGE, Aurora.getGameTime, TileMask.packImpact(impact), heat);
   }
 
   private destroyDraw(draw: ChunkDraw) {

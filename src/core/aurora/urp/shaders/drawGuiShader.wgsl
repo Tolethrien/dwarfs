@@ -350,6 +350,9 @@ struct MaterialInput {
   params: vec4f,
 };
 
+// world contract (drawWorldShader.wgsl), no light map here: declared only so the same material compiles
+var<private> materialGlow: f32 = 0.0;
+
 // replaced with the material fragment, one pipeline per material:
 // fn material(in: MaterialInput) -> vec4f, returns premultiplied color
 // MATERIAL

@@ -37,6 +37,8 @@ export interface BlockData {
   resource?: GameResourcesID;
   // a surprise block: the first hit turns it into air and this object
   reveals?: ObjectsID;
+  // no hit ever does anything to it, not even shows it was hit
+  unbreakable?: boolean;
 }
 
 export const BLOCKS: Record<BlocksID, BlockData> = {
@@ -83,6 +85,7 @@ export const BLOCKS: Record<BlocksID, BlockData> = {
     collides: COLLIDES.ball | COLLIDES.monster,
     category: "terrain",
     resource: GameResourcesID.none,
+    unbreakable: true,
   },
   [BlocksID.gold]: {
     variants: [{ x: 192, y: 96, width: 96, height: 96 }],

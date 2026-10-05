@@ -8,18 +8,33 @@ import { getDeco, type DecoAttached, type DecoLayer } from "@sandbox/content/dec
 import Chest from "@sandbox/bActors/chest";
 import { MAX_DAMAGE, strike } from "@sandbox/world/strike";
 
+// where a ball touched the tile: world point and the surface normal; none when not hit by a ball
+export interface TileContact {
+  point: Position2D;
+  normal: Position2D;
+}
+
 export interface TileDamagedEvent {
   gx: number;
   gy: number;
   type: number;
   damage: number;
+  contact?: TileContact;
 }
-// sent after the tile is already air
+// hit too weak to do anything, the tile stays as it was
+export interface TileDeflectedEvent {
+  gx: number;
+  gy: number;
+  type: number;
+  contact?: TileContact;
+}
+// sent after the tile is already air; impact: world point of the final hit
 export interface TileMinedEvent {
   gx: number;
   gy: number;
   type: BlocksID;
   variant: number;
+  impact?: Position2D;
 }
 export interface TilePlacedEvent {
   gx: number;
@@ -64,7 +79,7 @@ export default class Terrain extends PragmaSystem {
     super(internal);
   }
 
-  public hit(gx: number, gy: number, power: number): "penetrate" | "bounce" {
+  public hit(gx: number, gy: number, power: number, contact?: TileContact): "penetrate" | "bounce" {
     const type = this.world.getType(gx, gy);
     if (type === BlocksID.air) return "bounce";
     const block = getBlock(type);
@@ -86,36 +101,45 @@ export default class Terrain extends PragmaSystem {
 
     const result = strike(power, block.str);
     if (result.outcome === "penetrate") {
-      this.mine(gx, gy);
+      this.mine(gx, gy, contact?.point);
       return "penetrate";
     }
-    if (result.outcome === "break") this.mine(gx, gy);
-    else if (result.outcome === "damage")
-      this.damage(gx, gy, Math.round(result.damage * MAX_DAMAGE));
+    const damage = Math.round(result.damage * MAX_DAMAGE);
+    if (result.outcome === "break") this.mine(gx, gy, contact?.point);
+    // right at the damage threshold the share rounds to nothing
+    else if (result.outcome === "damage" && damage > 0) this.damage(gx, gy, damage, contact);
+    else this.deflect(gx, gy, contact);
     return "bounce";
   }
 
-  public damage(gx: number, gy: number, amount: number) {
+  // a ball bounced off without doing anything (too weak, or one that never mines)
+  public deflect(gx: number, gy: number, contact?: TileContact) {
+    const type = this.world.getType(gx, gy);
+    if (type === BlocksID.air || getBlock(type).unbreakable) return;
+    this.emitSceneEvent<TileDeflectedEvent>("tileDeflected", { gx, gy, type, contact });
+  }
+
+  public damage(gx: number, gy: number, amount: number, contact?: TileContact) {
     const type = this.world.getType(gx, gy);
     if (type === BlocksID.air || !this.world.inside(gx, gy) || amount <= 0) return;
 
     const damage = this.world.getDamage(gx, gy) + amount;
     if (damage >= MAX_DAMAGE) {
-      this.mine(gx, gy);
+      this.mine(gx, gy, contact?.point);
       return;
     }
     this.world.setDamage(gx, gy, damage);
-    this.emitSceneEvent<TileDamagedEvent>("tileDamaged", { gx, gy, type, damage });
+    this.emitSceneEvent<TileDamagedEvent>("tileDamaged", { gx, gy, type, damage, contact });
   }
 
-  public mine(gx: number, gy: number) {
+  public mine(gx: number, gy: number, impact?: Position2D) {
     const type = this.world.getType(gx, gy);
     if (type === BlocksID.air || !this.world.inside(gx, gy)) return;
     const variant = this.world.getVariant(gx, gy);
 
     this.removeDependentDecos(gx, gy);
     this.world.setTile(gx, gy, BlocksID.air);
-    this.emitSceneEvent<TileMinedEvent>("tileMined", { gx, gy, type, variant });
+    this.emitSceneEvent<TileMinedEvent>("tileMined", { gx, gy, type, variant, impact });
   }
 
   public place(gx: number, gy: number, type: BlocksID, variant = 0) {

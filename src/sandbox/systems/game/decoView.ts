@@ -1,6 +1,5 @@
 import PragmaSystem from "@pragma/system";
 import type PragmaActor from "@pragma/actor";
-import { Light } from "@aurora/urp/draw/draw";
 import { DecosID, getDeco, type DecoLayer } from "@sandbox/content/decos";
 import Torch from "@sandbox/bActors/torch";
 import type World from "@sandbox/world/world";
@@ -14,12 +13,6 @@ export const DECO_ACTORS: Partial<
   [DecosID.torch]: (position, size) => new Torch({ position, size }),
 };
 
-// test only, until lighting gets its own place: dark enough for the torches to show
-const AMBIENT = { test: 0.45, normal: 1 };
-
-// presentation: an actor for each deco that has one, only in the shown chunks (they have a margin
-// around the view, so a torch just off screen still lights it). The deco itself stays data in the
-// World; the actor keeps nothing and goes with its chunk
 export default class DecoView extends PragmaSystem {
   declare private world: World;
   private actors = new Map<number, Map<string, PragmaActor>>();
@@ -28,12 +21,14 @@ export default class DecoView extends PragmaSystem {
     super(internal);
   }
 
-  // awake: ChunkView shows the first chunks in its start
   awake(): void {
     this.world = this.scene.getSystem(Terrain).world;
-    Light.setAmbient({ intensity: AMBIENT.test });
-    this.onSceneEvent<ChunkShownEvent>("chunkShown", (event) => this.show(event.chunk));
-    this.onSceneEvent<ChunkHiddenEvent>("chunkHidden", (event) => this.hide(event.chunk));
+    this.onSceneEvent<ChunkShownEvent>("chunkShown", (event) =>
+      this.show(event.chunk),
+    );
+    this.onSceneEvent<ChunkHiddenEvent>("chunkHidden", (event) =>
+      this.hide(event.chunk),
+    );
     this.onSceneEvent<DecoRemovedEvent>("decoRemoved", (event) => {
       const chunk = this.world.chunkOfTile(event.gx, event.gy);
       const key = this.key(event.layer, event.gx, event.gy);
@@ -44,9 +39,7 @@ export default class DecoView extends PragmaSystem {
     });
   }
 
-  destroy(): void {
-    Light.setAmbient({ intensity: AMBIENT.normal });
-  }
+  destroy(): void {}
 
   private show(chunk: number) {
     const origin = this.world.chunkOrigin(chunk);
@@ -62,8 +55,14 @@ export default class DecoView extends PragmaSystem {
           if (!spawn) continue;
           const area = getDeco(type).area;
           const tile = this.world.tileToWorld({ x: gx, y: gy });
-          const position = { x: tile.x + area.x + area.width / 2, y: tile.y + area.y + area.height / 2 };
-          const actor = spawn(position, { width: area.width, height: area.height });
+          const position = {
+            x: tile.x + area.x + area.width / 2,
+            y: tile.y + area.y + area.height / 2,
+          };
+          const actor = spawn(position, {
+            width: area.width,
+            height: area.height,
+          });
           this.scene.spawnActor(actor);
           actors.set(this.key(layer, gx, gy), actor);
         }

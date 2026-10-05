@@ -1,5 +1,6 @@
 // solid map tile: where it borders air the edge is chipped inward in whole grains, never past the
-// tile and shallow, the ball collides with the full tile. World only (Material gui: false)
+// tile and shallow, the ball collides with the full tile. Also the shards of a mined tile
+// (shardMaterial), cut by the same cracks. World only (Material gui: false)
 
 // replaced by TileMask.register: tileMask binding, TILE_ORIGIN, TILE_SIZE
 // TILE_MAP
@@ -17,13 +18,31 @@ const TILE_CHIP_CHAMFER: f32 = 0.5;
 
 // damage (in.params.x, 0-1): cracks are cell borders in a jittered grid of TILE_CRACK_CELLS
 // cells per tile, a border shows once the damage passes its cell's own threshold; the tile also
-// darkens up to TILE_DAMAGE_SHADE. Hit (in.params.y, game time): a flash fading in TILE_FLASH_TIME s
+// darkens up to TILE_DAMAGE_SHADE. Hit (in.params.y, game time) at the impact packed in in.params.z
+// (TileMask.packImpact): a light ring runs out of it, the cracks around it light up pale and fade;
+// with heat (in.params.w, a blast) they glow instead and cool down (bloom, same ember as tileBurn.wgsl);
+// heat below 0 = a deflected hit, the ring alone
 const TILE_CRACK_CELLS: f32 = 2.5;
 const TILE_CRACK_WIDTH: f32 = 0.07;
 const TILE_CRACK_SHADE: f32 = 0.4;
 const TILE_DAMAGE_SHADE: f32 = 0.3;
-const TILE_FLASH_TIME: f32 = 0.15;
+// reach and width in tiles
+const TILE_FLASH_TIME: f32 = 0.18;
 const TILE_FLASH_STRENGTH: f32 = 0.6;
+const TILE_FLASH_REACH: f32 = 0.7;
+const TILE_FLASH_WIDTH: f32 = 0.12;
+const TILE_FRESH_TIME: f32 = 0.8;
+const TILE_FRESH_RADIUS: f32 = 0.9;
+// linear: a cold hit lights the cracks up as freshly broken pale stone, partly self lit so the
+// dark mine does not swallow it
+const TILE_FRESH_COLOR: vec3f = vec3f(0.8, 0.72, 0.58);
+const TILE_FRESH_SELF_LIT: f32 = 0.7;
+const TILE_HEAT_BRIGHTNESS: f32 = 8.0;
+const TILE_EMBER_HOT: vec3f = vec3f(1.0, 0.1, 0.0);
+const TILE_EMBER_COOL: vec3f = vec3f(0.6, 0.035, 0.0);
+// must match IMPACT in tileMask.ts
+const TILE_IMPACT_STEPS: f32 = 255.0;
+const TILE_IMPACT_ROW: f32 = 256.0;
 // frame.time wraps at this (sharedBinds.ts TIME_WRAP)
 const TILE_TIME_WRAP: f32 = 3600.0;
 
@@ -51,11 +70,15 @@ fn tileIsAir(cell: vec2i) -> bool {
   return textureLoad(tileMask, cell, 0).r < 0.5;
 }
 
-// position in tiles, already snapped to the grain: the cracks keep the pixel art step
-fn tileCrack(position: vec2f, damage: f32) -> bool {
-  if (damage <= 0.0) {
-    return false;
-  }
+struct TileCell {
+  // lattice coords of the cell the point belongs to
+  nearest: vec2f,
+  // how far the point is from the border with the next cell, in cells
+  border: f32,
+};
+// position in tiles, already snapped to the grain: the cracks keep the pixel art step.
+// The seeds must match TileMask.shardsOf (CPU copy of the same cells)
+fn tileCell(position: vec2f) -> TileCell {
   let point = position * TILE_CRACK_CELLS;
   let base = floor(point);
   var first = 100.0;
@@ -75,8 +98,16 @@ fn tileCrack(position: vec2f, damage: f32) -> bool {
       }
     }
   }
-  let shown = tileHash(nearest + vec2f(53.0, 7.0)) < damage;
-  return shown && second - first < TILE_CRACK_WIDTH;
+  return TileCell(nearest, second - first);
+}
+
+fn tileCrack(position: vec2f, damage: f32) -> bool {
+  if (damage <= 0.0) {
+    return false;
+  }
+  let cell = tileCell(position);
+  let shown = tileHash(cell.nearest + vec2f(53.0, 7.0)) < damage;
+  return shown && cell.border < TILE_CRACK_WIDTH;
 }
 
 // seconds from a game time stamp to now, negative while it is still ahead; handles the wrap
@@ -91,15 +122,34 @@ fn tileSince(stamp: f32) -> f32 {
   return since;
 }
 
-fn tileFlash(hitTime: f32) -> f32 {
-  let since = tileSince(hitTime);
-  if (since < 0.0) {
+// gap: distance in tiles from the impact
+fn tileFlash(since: f32, gap: f32) -> f32 {
+  if (since < 0.0 || since >= TILE_FLASH_TIME) {
     return 0.0;
   }
-  return TILE_FLASH_STRENGTH * exp(-3.0 * since / TILE_FLASH_TIME);
+  let progress = since / TILE_FLASH_TIME;
+  let radius = TILE_FLASH_REACH * sqrt(progress);
+  let band = clamp(1.0 - abs(gap - radius) / TILE_FLASH_WIDTH, 0.0, 1.0);
+  return TILE_FLASH_STRENGTH * (1.0 - progress) * band;
 }
 
-fn material(in: MaterialInput) -> vec4f {
+// cracks around the impact just after the hit: freshly broken stone, or hot with heat
+fn tileFresh(since: f32, gap: f32) -> f32 {
+  if (since < 0.0 || since >= TILE_FRESH_TIME) {
+    return 0.0;
+  }
+  let near = clamp(1.0 - gap / TILE_FRESH_RADIUS, 0.0, 1.0);
+  // holds most of its light, then goes out at the end
+  let progress = since / TILE_FRESH_TIME;
+  return (1.0 - progress * progress) * sqrt(near);
+}
+
+fn tileImpact(packed: f32) -> vec2f {
+  let row = floor(packed / TILE_IMPACT_ROW);
+  return vec2f(packed - row * TILE_IMPACT_ROW, row) / TILE_IMPACT_STEPS;
+}
+
+fn solidMaterial(in: MaterialInput) -> vec4f {
   // the pixel snapped to the grain, in tiles from the map origin
   let position = (floor((in.world - TILE_ORIGIN) / TILE_GRAIN) + 0.5) * TILE_GRAIN / TILE_SIZE;
   let cell = vec2i(floor(position));
@@ -129,9 +179,40 @@ fn material(in: MaterialInput) -> vec4f {
   let outline = in.outlineColor * in.ring;
   let base = outline + in.color * in.texel * (1.0 - outline.a);
   let damage = in.params.x;
-  let crack = select(1.0, TILE_CRACK_SHADE, tileCrack(position, damage));
-  let shade = (1.0 - damage * TILE_DAMAGE_SHADE) * crack;
+  let since = tileSince(in.params.y);
+  let gap = length(local - tileImpact(in.params.z));
   // premultiplied: the flash adds light in proportion to coverage
-  let light = tileFlash(in.params.y);
-  return vec4f(base.rgb * shade + light * base.a, base.a);
+  let flash = tileFlash(since, gap);
+  let shade = 1.0 - damage * TILE_DAMAGE_SHADE;
+  if (!tileCrack(position, damage)) {
+    return vec4f(base.rgb * shade + flash * base.a, base.a);
+  }
+
+  // a deflected hit did nothing: no fresh cracks, only the ring
+  let fresh = select(tileFresh(since, gap), 0.0, in.params.w < 0.0);
+  let cold = fresh * (1.0 - in.params.w);
+  let crack = mix(base.rgb * shade * TILE_CRACK_SHADE, TILE_FRESH_COLOR * base.a, cold);
+  let heat = fresh * in.params.w;
+  let hot = mix(TILE_EMBER_COOL, TILE_EMBER_HOT, heat) * mix(1.0, TILE_HEAT_BRIGHTNESS, heat) * base.a;
+  let heated = smoothstep(0.0, 0.3, heat);
+  materialGlow = max(heated, cold * TILE_FRESH_SELF_LIT);
+  return vec4f(mix(crack, hot, heated) + flash * base.a, base.a);
 }
+
+// a shard of a mined tile, flying off on its own sprite (whole tile crop, moved and rotated): only
+// the tile's pixels in one crack cell, so the tile breaks along the cracks it had. in.params: xy =
+// the tile in map tiles, zw = the cell's lattice coords (TileMask.shardsOf); fades with the tint
+fn shardMaterial(in: MaterialInput) -> vec4f {
+  // local is before the rotation: the pixel where it sat in the tile, snapped like the tile
+  let pixel = (floor((in.local + in.size * 0.5) / TILE_GRAIN) + 0.5) * TILE_GRAIN;
+  let cell = tileCell(in.params.xy + pixel / TILE_SIZE);
+  if (any(cell.nearest != in.params.zw)) {
+    return vec4f(0.0);
+  }
+  let base = in.color * in.texel;
+  let rim = select(1.0, TILE_CRACK_SHADE, cell.border < TILE_CRACK_WIDTH);
+  return vec4f(base.rgb * (1.0 - TILE_DAMAGE_SHADE) * rim, base.a);
+}
+
+// replaced by TileMask.register with the material entry: solidMaterial or shardMaterial
+// TILE_ENTRY

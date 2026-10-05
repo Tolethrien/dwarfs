@@ -20,6 +20,7 @@ import { registerSoundEffects } from "./audio/soundEffects";
 import SaveGame from "./world/saveGame";
 import MenuScene from "./scenes/menuScene";
 import { debug } from "@debug";
+import { Light } from "@/core/aurora/urp/draw/draw";
 
 const MAP_SEED = 1778679494;
 
@@ -63,8 +64,10 @@ function setup() {
   registerInputsBindings();
   registerSoundEffects();
   SaveGame.registerCommands();
+  Light.setAmbient({ enabled: true, intensity: 0.2 });
   // the mapGen panel's Generate goes straight into the new map, a normal start opens the menu
-  if (debug.mapGen.requested()) void SaveGame.newGame({ seed: debug.mapGen.seed(MAP_SEED) });
+  if (debug.mapGen.requested())
+    void SaveGame.newGame({ seed: debug.mapGen.seed(MAP_SEED) });
   else MenuScene.open();
 }
 Engine.initialize({ setup, preload });

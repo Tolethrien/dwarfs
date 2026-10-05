@@ -8,7 +8,11 @@ import { shapePass, type ShapeConfig } from "./passes/shape";
 import { layerAt, rockPass, type RockConfig } from "./passes/rock";
 import { cavesPass, type CavesConfig } from "./passes/caves";
 import { veinsPass, type VeinConfig } from "./passes/veins";
-import { craterPass, type CraterArea, type CraterConfig } from "./passes/crater";
+import {
+  craterPass,
+  type CraterArea,
+  type CraterConfig,
+} from "./passes/crater";
 import { chestsPass, type ChestsConfig } from "./passes/chests";
 import { decosPass, type DecosConfig } from "./passes/decos";
 
@@ -21,6 +25,7 @@ export interface MapGenConfig {
   border: Tile;
   placeholder: Tile;
   passes: {
+    fill: boolean;
     rock: boolean;
     caves: boolean;
     veins: boolean;
@@ -45,7 +50,15 @@ export const MAP_GEN_CONFIG: MapGenConfig = {
   biomeCellInTiles: 8,
   border: BlocksID.obsidian,
   placeholder: packTile(BlocksID.rock, ROCK.brown),
-  passes: { rock: true, caves: true, veins: true, crater: true, chests: true, decos: true },
+  passes: {
+    fill: true,
+    rock: true,
+    caves: true,
+    veins: true,
+    crater: true,
+    chests: true,
+    decos: true,
+  },
   shape: {
     margin: { min: 2, base: 3, amplitude: 2, frequency: 0.04 },
     teeth: { amplitude: 20, frequency: 0.015, threshold: 0.15 },
@@ -57,21 +70,59 @@ export const MAP_GEN_CONFIG: MapGenConfig = {
       safeTop: 48,
       reach: 0.42,
       tongues: {
-        perBand: [[1, 2], [2, 3], [3, 4], [5, 6]],
+        perBand: [
+          [1, 2],
+          [2, 3],
+          [3, 4],
+          [5, 6],
+        ],
         length: [30, 80],
         width: [6, 14],
         turn: 0.12,
         tip: 1.2,
       },
-      spikes: { perBand: [[30, 40]], length: [5, 7], width: [2, 4], turn: 0.05, tip: 0.7 },
+      spikes: {
+        perBand: [[30, 40]],
+        length: [5, 7],
+        width: [2, 4],
+        turn: 0.05,
+        tip: 0.7,
+      },
     },
-    islands: { perBand: [[0, 1], [1, 2], [2, 3], [3, 5]], radius: [4, 8], clearance: 4 },
+    islands: {
+      perBand: [
+        [0, 1],
+        [1, 2],
+        [2, 3],
+        [3, 5],
+      ],
+      radius: [4, 8],
+      clearance: 4,
+    },
   },
   rock: {
     layers: [
-      { until: 0.33, rocks: [packTile(BlocksID.rock, ROCK.lightBrown), packTile(BlocksID.rock, ROCK.brown)] },
-      { until: 0.66, rocks: [packTile(BlocksID.rock, ROCK.lightGray), packTile(BlocksID.rock, ROCK.gray)] },
-      { until: 1, rocks: [packTile(BlocksID.rock, ROCK.gray), packTile(BlocksID.rock, ROCK.darkGray)] },
+      {
+        until: 0.33,
+        rocks: [
+          packTile(BlocksID.rock, ROCK.lightBrown),
+          packTile(BlocksID.rock, ROCK.brown),
+        ],
+      },
+      {
+        until: 0.66,
+        rocks: [
+          packTile(BlocksID.rock, ROCK.lightGray),
+          packTile(BlocksID.rock, ROCK.gray),
+        ],
+      },
+      {
+        until: 1,
+        rocks: [
+          packTile(BlocksID.rock, ROCK.gray),
+          packTile(BlocksID.rock, ROCK.darkGray),
+        ],
+      },
     ],
     boundary: { warp: 40, frequency: 0.01 },
     patches: { frequency: 0.04 },
@@ -84,7 +135,12 @@ export const MAP_GEN_CONFIG: MapGenConfig = {
       warp: 1.5,
     },
     tunnels: {
-      perBand: [[8, 10], [6, 8], [5, 7], [3, 5]],
+      perBand: [
+        [8, 10],
+        [6, 8],
+        [5, 7],
+        [3, 5],
+      ],
       length: [40, 120],
       radius: [1.5, 2.2],
       turn: 0.5,
@@ -96,14 +152,87 @@ export const MAP_GEN_CONFIG: MapGenConfig = {
     minRockArea: 12,
   },
   veins: [
-    { type: BlocksID.coal, shape: "seam", perChunk: 0.45, depth: [0, 0.6], size: [3, 6], density: 1, wallBias: 0, district: 0.3 },
-    { type: BlocksID.copper, shape: "vein", perChunk: 0.5, depth: [0.1, 0.55], size: [8, 16], density: 0.85, wallBias: 0.2, district: 0.7 },
-    { type: packTile(BlocksID.bones, BONES.one), shape: "cluster", perChunk: 0.4, depth: [0.1, 0.7], size: [1, 3], density: 0.8, wallBias: 0.5, district: 0.5 },
-    { type: packTile(BlocksID.bones, BONES.two), shape: "cluster", perChunk: 0.3, depth: [0.2, 0.8], size: [1, 3], density: 0.8, wallBias: 0.5, district: 0.5 },
-    { type: BlocksID.silver, shape: "vein", perChunk: 0.5, depth: [0.3, 0.9], size: [10, 20], density: 0.85, wallBias: 0.2, district: 0.7 },
-    { type: BlocksID.gold, shape: "vein", perChunk: 0.3, depth: [0.5, 1], size: [6, 12], density: 0.75, wallBias: 0.4, district: 0.8 },
-    { type: BlocksID.sapphire, shape: "cluster", perChunk: 0.25, depth: [0.6, 1], size: [1, 2], density: 0.6, wallBias: 0.6, district: 0.8 },
-    { type: BlocksID.diamonds, shape: "geode", perChunk: 0.08, depth: [0.8, 1], size: [2, 4], density: 0.6, wallBias: 0.7, district: 0.5, shell: packTile(BlocksID.rock, ROCK.lightGray) },
+    {
+      type: BlocksID.coal,
+      shape: "seam",
+      perChunk: 0.45,
+      depth: [0, 0.6],
+      size: [3, 6],
+      density: 1,
+      wallBias: 0,
+      district: 0.3,
+    },
+    {
+      type: BlocksID.copper,
+      shape: "vein",
+      perChunk: 0.5,
+      depth: [0.1, 0.55],
+      size: [8, 16],
+      density: 0.85,
+      wallBias: 0.2,
+      district: 0.7,
+    },
+    {
+      type: packTile(BlocksID.bones, BONES.one),
+      shape: "cluster",
+      perChunk: 0.4,
+      depth: [0.1, 0.7],
+      size: [1, 3],
+      density: 0.8,
+      wallBias: 0.5,
+      district: 0.5,
+    },
+    {
+      type: packTile(BlocksID.bones, BONES.two),
+      shape: "cluster",
+      perChunk: 0.3,
+      depth: [0.2, 0.8],
+      size: [1, 3],
+      density: 0.8,
+      wallBias: 0.5,
+      district: 0.5,
+    },
+    {
+      type: BlocksID.silver,
+      shape: "vein",
+      perChunk: 0.5,
+      depth: [0.3, 0.9],
+      size: [10, 20],
+      density: 0.85,
+      wallBias: 0.2,
+      district: 0.7,
+    },
+    {
+      type: BlocksID.gold,
+      shape: "vein",
+      perChunk: 0.3,
+      depth: [0.5, 1],
+      size: [6, 12],
+      density: 0.75,
+      wallBias: 0.4,
+      district: 0.8,
+    },
+    {
+      type: BlocksID.sapphire,
+      shape: "cluster",
+      perChunk: 0.25,
+      depth: [0.6, 1],
+      size: [1, 2],
+      density: 0.6,
+      wallBias: 0.6,
+      district: 0.8,
+    },
+    {
+      type: BlocksID.diamonds,
+      shape: "geode",
+      perChunk: 0.08,
+      depth: [0.8, 1],
+      size: [2, 4],
+      density: 0.6,
+      wallBias: 0.7,
+      district: 0.5,
+      shell: packTile(BlocksID.rock, ROCK.lightGray),
+    },
   ],
   crater: {
     chunk: 3,
@@ -114,7 +243,12 @@ export const MAP_GEN_CONFIG: MapGenConfig = {
     rubble: { count: [2, 3], type: packTile(BlocksID.rock, ROCK.brown) },
     coal: { count: [1, 2], radius: [2, 3], type: BlocksID.coal },
   },
-  chests: { spacing: 55, searchRadius: 6, fallbackChance: 0.5, nearStart: [2, 4] },
+  chests: {
+    spacing: 55,
+    searchRadius: 6,
+    fallbackChance: 0.5,
+    nearStart: [2, 4],
+  },
   decos: {
     mushroom: { chance: 0.08, depth: [0, 0.6] },
     stalactite: { chance: 0.1, depth: [0.2, 1] },
@@ -155,7 +289,9 @@ export function generateMap(
     return { random: new SeededRandom(passSeed), noise: new Noise(passSeed) };
   };
 
-  shapePass(ctx, config.shape, config.placeholder, tools("shape"));
+  // without fill the mine is empty air, only the obsidian band shows
+  const fill = config.passes.fill ? config.placeholder : BlocksID.air;
+  shapePass(ctx, config.shape, fill, tools("shape"));
   if (config.passes.rock) rockPass(ctx, config.rock, tools("rock"));
   if (config.passes.caves) cavesPass(ctx, config.caves, tools("caves"));
   if (config.passes.veins)
@@ -166,7 +302,8 @@ export function generateMap(
   if (config.passes.chests)
     chestsPass(ctx, config.chests, crater, tools("chests"));
   // last: decos stand on the final rock
-  if (config.passes.decos) decosPass(ctx, config.decos, world.decos, tools("decos"));
+  if (config.passes.decos)
+    decosPass(ctx, config.decos, world.decos, tools("decos"));
 
   fillBiomes(world, config);
   discoverStart(world, config, crater);
@@ -179,11 +316,19 @@ function fillBiomes(world: World, config: MapGenConfig) {
   for (let by = 0; by < world.biomeGrid.height; by++) {
     const depth = ((by + 0.5) * cell) / world.mapInTiles.height;
     const biome = layerAt(config.rock.layers, depth);
-    world.biomes.fill(biome, by * world.biomeGrid.width, (by + 1) * world.biomeGrid.width);
+    world.biomes.fill(
+      biome,
+      by * world.biomeGrid.width,
+      (by + 1) * world.biomeGrid.width,
+    );
   }
 }
 
-function discoverStart(world: World, config: MapGenConfig, crater: CraterArea | null) {
+function discoverStart(
+  world: World,
+  config: MapGenConfig,
+  crater: CraterArea | null,
+) {
   if (!crater) {
     world.setDiscovered(config.crater.chunk);
     return;
@@ -194,9 +339,16 @@ function discoverStart(world: World, config: MapGenConfig, crater: CraterArea | 
     y: Math.max(0, Math.floor(crater.bounds.min.y / chunkInTiles.height)),
   };
   const to = {
-    x: Math.min(config.mapInChunks.width - 1, Math.floor(crater.bounds.max.x / chunkInTiles.width)),
-    y: Math.min(config.mapInChunks.height - 1, Math.floor(crater.bounds.max.y / chunkInTiles.height)),
+    x: Math.min(
+      config.mapInChunks.width - 1,
+      Math.floor(crater.bounds.max.x / chunkInTiles.width),
+    ),
+    y: Math.min(
+      config.mapInChunks.height - 1,
+      Math.floor(crater.bounds.max.y / chunkInTiles.height),
+    ),
   };
   for (let cy = from.y; cy <= to.y; cy++)
-    for (let cx = from.x; cx <= to.x; cx++) world.setDiscovered(world.chunkIndex(cx, cy));
+    for (let cx = from.x; cx <= to.x; cx++)
+      world.setDiscovered(world.chunkIndex(cx, cy));
 }

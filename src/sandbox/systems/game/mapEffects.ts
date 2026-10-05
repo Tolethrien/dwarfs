@@ -1,4 +1,6 @@
 import Aurora from "@aurora/core";
+import AxiomMath from "@axiom/math";
+import Vec2 from "@axiom/vec2";
 import PragmaSystem from "@pragma/system";
 import { Draw } from "@aurora/urp/draw/draw";
 import { Camera } from "@engine/camera/camera";
@@ -6,43 +8,76 @@ import { getVariantCrop } from "@sandbox/content/blocks";
 import { SPRITES } from "@sandbox/content/sprites";
 import { RENDER_ORDER } from "@sandbox/configs";
 import Materials from "@sandbox/shaders/materials";
+import TileMask from "@sandbox/shaders/tileMask";
 import type World from "@sandbox/world/world";
 import SoundBank from "@sandbox/audio/soundBank";
 import { SoundsID } from "@sandbox/content/sounds";
-import Terrain, { type TileDamagedEvent, type TileMinedEvent } from "./terrain";
+import Terrain, {
+  type TileContact,
+  type TileDamagedEvent,
+  type TileDeflectedEvent,
+  type TileMinedEvent,
+} from "./terrain";
 
 const EFFECTS = {
-  dissolveSeconds: 0.4,
-  sparkSeconds: 0.3,
-  // the sparks quad, in tiles around the hit: must hold the furthest spark (sparks.wgsl)
-  sparkTiles: 3,
+  // the particles quad, in tiles around the hit: holds nearly all of a burst (particles.wgsl),
+  // a chip falling out of it is cut off while it fades
+  particleTiles: 6,
   // tiles this far outside the view still get their effect (camera moving towards them)
   marginTiles: 2,
   // frame.time wraps at this (sharedBinds.ts TIME_WRAP)
   timeWrap: 3600,
 };
 
-interface Spark {
+// speeds in world units per second, away from the final hit; small shards fly faster
+const SHARDS = {
+  seconds: 0.8,
+  // last share of the life spent fading out
+  fade: 0.4,
+  speed: [140, 320],
+  smallBoost: 0.8,
+  kick: [60, 180],
+  // radians per second, either way
+  spin: 5,
+  gravity: 1500,
+} as const;
+
+type BurstKind = "sparks" | "chips" | "rubble" | "dust";
+const BURST_SECONDS: Record<BurstKind, number> = { sparks: 0.45, chips: 0.8, rubble: 0.9, dust: 0.7 };
+// a hit that did nothing: the damage sound, quieter, until it has its own
+const DEFLECT_VOLUME = 0.3;
+
+interface Burst {
+  kind: BurstKind;
   x: number;
   y: number;
   bornAt: number;
   seed: number;
+  // radians, the surface normal the particles fly along
+  angle: number;
 }
 
-interface DyingTile {
+interface FlyingShard {
   gx: number;
   gy: number;
   type: number;
   variant: number;
-  diedAt: number;
+  // crack cell lattice coords (tileShard params)
+  cell: Position2D;
+  // where its middle sat in the world
+  center: Position2D;
+  velocity: Position2D;
+  spin: number;
+  bornAt: number;
 }
 
 // presentation: what happens to tiles on screen, no actors. A mined tile is air in the World at
-// once, here it is still drawn falling apart for a moment; a hit throws sparks; both make sound
+// once, here it still breaks along its cracks into shards flying off the final hit; a hit knocks
+// off chips and a few sparks; both make sound
 export default class MapEffects extends PragmaSystem {
   declare private world: World;
-  private dying: DyingTile[] = [];
-  private sparks: Spark[] = [];
+  private shards: FlyingShard[] = [];
+  private bursts: Burst[] = [];
 
   constructor(internal: InternalPSProps) {
     super(internal);
@@ -51,6 +86,7 @@ export default class MapEffects extends PragmaSystem {
   awake(): void {
     this.onSceneEvent<TileMinedEvent>("tileMined", (event) => this.onMined(event));
     this.onSceneEvent<TileDamagedEvent>("tileDamaged", (event) => this.onDamaged(event));
+    this.onSceneEvent<TileDeflectedEvent>("tileDeflected", (event) => this.onDeflected(event));
   }
 
   start(): void {
@@ -59,74 +95,144 @@ export default class MapEffects extends PragmaSystem {
 
   render(): void {
     const now = Aurora.getGameTime;
-    let kept = 0;
-    for (const tile of this.dying) {
-      let age = now - tile.diedAt;
-      if (age < 0) age += EFFECTS.timeWrap;
-      if (age >= EFFECTS.dissolveSeconds) continue;
-      this.dying[kept++] = tile;
+    this.renderShards(now);
+    this.renderBursts(now);
+  }
 
-      const crop = getVariantCrop(tile.type, tile.variant);
-      const position = this.world.tileToWorld({ x: tile.gx, y: tile.gy });
+  // a shard turns around its own middle, the sprite around the tile's: the sprite is moved by
+  // what the turn shifts the shard's middle
+  private renderShards(now: number) {
+    let kept = 0;
+    for (const shard of this.shards) {
+      let age = now - shard.bornAt;
+      if (age < 0) age += EFFECTS.timeWrap;
+      if (age >= SHARDS.seconds) continue;
+      this.shards[kept++] = shard;
+
+      const tileCenter = this.world.tileCenterToWorld({ x: shard.gx, y: shard.gy });
+      const fromTile = { x: shard.center.x - tileCenter.x, y: shard.center.y - tileCenter.y };
+      const angle = shard.spin * age;
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      const moved = {
+        x: shard.velocity.x * age + fromTile.x - (fromTile.x * cos - fromTile.y * sin),
+        y: shard.velocity.y * age + 0.5 * SHARDS.gravity * age * age + fromTile.y - (fromTile.x * sin + fromTile.y * cos),
+      };
+      const alpha = AxiomMath.clamp((1 - age / SHARDS.seconds) / SHARDS.fade, 0, 1);
+      const corner = this.world.tileToWorld({ x: shard.gx, y: shard.gy });
+      const crop = getVariantCrop(shard.type, shard.variant);
       Draw.sprite({
-        position: { x: position.x, y: position.y, z: RENDER_ORDER.solidTiles },
+        position: { x: corner.x + moved.x, y: corner.y + moved.y, z: RENDER_ORDER.main },
         crop,
         texture: SPRITES.blocks,
         size: { width: crop.width, height: crop.height },
-        material: Materials.tileDissolve,
-        params: [tile.diedAt, EFFECTS.dissolveSeconds, 0, 0],
+        rotation: angle,
+        tint: [255, 255, 255, Math.round(255 * alpha)],
+        material: TileMask.shard,
+        params: [shard.gx, shard.gy, shard.cell.x, shard.cell.y],
       });
     }
-    this.dying.length = kept;
-    this.renderSparks(now);
+    this.shards.length = kept;
   }
 
-  private renderSparks(now: number) {
+  private renderBursts(now: number) {
     const tile = this.world.meta.tileInPixels;
-    const size = { width: tile.width * EFFECTS.sparkTiles, height: tile.height * EFFECTS.sparkTiles };
+    const size = { width: tile.width * EFFECTS.particleTiles, height: tile.height * EFFECTS.particleTiles };
     let kept = 0;
-    for (const spark of this.sparks) {
-      let age = now - spark.bornAt;
+    for (const burst of this.bursts) {
+      const seconds = BURST_SECONDS[burst.kind];
+      let age = now - burst.bornAt;
       if (age < 0) age += EFFECTS.timeWrap;
-      if (age >= EFFECTS.sparkSeconds) continue;
-      this.sparks[kept++] = spark;
+      if (age >= seconds) continue;
+      this.bursts[kept++] = burst;
       Draw.rect({
         position: {
-          x: spark.x - size.width / 2,
-          y: spark.y - size.height / 2,
+          x: burst.x - size.width / 2,
+          y: burst.y - size.height / 2,
           z: RENDER_ORDER.decoFront,
         },
         size,
-        material: Materials.sparks,
-        params: [spark.bornAt, EFFECTS.sparkSeconds, spark.seed, 0],
+        material: Materials[burst.kind],
+        params: [burst.bornAt, seconds, burst.seed, burst.angle],
       });
     }
-    this.sparks.length = kept;
+    this.bursts.length = kept;
   }
 
   private onDamaged(event: TileDamagedEvent) {
     if (!this.onScreen(event.gx, event.gy)) return;
-    const center = this.world.tileCenterToWorld({ x: event.gx, y: event.gy });
-    this.sparks.push({
-      x: center.x,
-      y: center.y,
+    const hit = this.hitOf(event.gx, event.gy, event.contact);
+    this.pushBurst("chips", hit.point, hit.angle);
+    this.pushBurst("sparks", hit.point, hit.angle);
+    SoundBank.playSound(SoundsID.blockDamage, { position: hit.point });
+  }
+
+  private onDeflected(event: TileDeflectedEvent) {
+    if (!this.onScreen(event.gx, event.gy)) return;
+    const hit = this.hitOf(event.gx, event.gy, event.contact);
+    this.pushBurst("dust", hit.point, hit.angle);
+    SoundBank.playSound(SoundsID.blockDamage, { position: hit.point, volume: DEFLECT_VOLUME });
+  }
+
+  // not hit by a ball: from the middle, upwards
+  private hitOf(gx: number, gy: number, contact?: TileContact) {
+    const point = contact?.point ?? this.world.tileCenterToWorld({ x: gx, y: gy });
+    const normal = contact?.normal ?? { x: 0, y: -1 };
+    return { point, angle: Math.atan2(normal.y, normal.x) };
+  }
+
+  // not mined by a ball: blown apart from the middle, the kick still sends the shards up
+  private onMined(event: TileMinedEvent) {
+    if (!this.onScreen(event.gx, event.gy)) return;
+    const tile = { x: event.gx, y: event.gy };
+    const tileCenter = this.world.tileCenterToWorld(tile);
+    const impact = event.impact ?? tileCenter;
+    const size = this.world.meta.tileInPixels;
+    const corner = this.world.tileToWorld(tile);
+    const bornAt = Aurora.getGameTime;
+
+    for (const shard of TileMask.shardsOf(event.gx, event.gy)) {
+      const center = {
+        x: corner.x + shard.center.x * size.width,
+        y: corner.y + shard.center.y * size.height,
+      };
+      const away = Vec2.create(center.x - impact.x, center.y - impact.y);
+      if (away.isZero()) away.set(0, -1);
+      away.normalize();
+      const speed =
+        AxiomMath.randomFloat(SHARDS.speed[0], SHARDS.speed[1]) * (1 + (1 - shard.share) * SHARDS.smallBoost);
+      this.shards.push({
+        gx: event.gx,
+        gy: event.gy,
+        type: event.type,
+        variant: event.variant,
+        cell: shard.cell,
+        center,
+        velocity: {
+          x: away.x * speed,
+          y: away.y * speed - AxiomMath.randomFloat(SHARDS.kick[0], SHARDS.kick[1]),
+        },
+        spin: AxiomMath.randomFloat(-SHARDS.spin, SHARDS.spin),
+        bornAt,
+      });
+    }
+
+    // the rubble flies on, away from the hit
+    const angle = event.impact ? Math.atan2(tileCenter.y - impact.y, tileCenter.x - impact.x) : -Math.PI / 2;
+    this.pushBurst("rubble", impact, angle);
+    SoundBank.playSound(SoundsID.blockDestroy, { volume: 0.5 });
+  }
+
+  private pushBurst(kind: BurstKind, point: Position2D, angle: number) {
+    this.bursts.push({
+      kind,
+      x: point.x,
+      y: point.y,
       bornAt: Aurora.getGameTime,
       // look only, no need for the world seed
       seed: Math.floor(Math.random() * 100000),
+      angle,
     });
-    SoundBank.playSound(SoundsID.blockDamage, { position: center });
-  }
-
-  private onMined(event: TileMinedEvent) {
-    if (!this.onScreen(event.gx, event.gy)) return;
-    this.dying.push({
-      gx: event.gx,
-      gy: event.gy,
-      type: event.type,
-      variant: event.variant,
-      diedAt: Aurora.getGameTime,
-    });
-    SoundBank.playSound(SoundsID.blockDestroy, { volume: 0.5 });
   }
 
   private onScreen(gx: number, gy: number) {
