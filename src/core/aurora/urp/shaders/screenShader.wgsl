@@ -77,9 +77,19 @@ fn vertexMain(@builtin(vertex_index) index: u32) -> VertexOut {
   return out;
 }
 
+// display calibration of the scene only, the gui keeps its colours: on the straight color, black
+// and white stay put; premultiplied back for the composite
+fn calibrated(scene: vec4f) -> vec4f {
+  if (scene.a <= 0.0) {
+    return scene;
+  }
+  let straight = pow(min(scene.rgb / scene.a, vec3f(1.0)), vec3f(screen.invGamma));
+  return vec4f(straight * scene.a, scene.a);
+}
+
 @fragment
 fn fragmentMain(in: VertexOut) -> @location(0) vec4f {
-  let scene = sceneColor(in.uv);
+  let scene = calibrated(sceneColor(in.uv));
   let overlay = textureLoad(gui, vec2u(in.position.xy), 0);
   // both premultiplied and linear, composed before the single srgb encode
   let color = clamp(overlay + scene * (1.0 - overlay.a), vec4f(0.0), vec4f(1.0));
@@ -87,8 +97,7 @@ fn fragmentMain(in: VertexOut) -> @location(0) vec4f {
     return vec4f(0.0);
   }
   // srgb encode is non-linear, so it runs on straight color, the canvas wants premultiplied back
-  // display calibration on the straight color, before the encode: black and white stay put
-  let straight = pow(min(color.rgb / color.a, vec3f(1.0)), vec3f(screen.invGamma));
+  let straight = color.rgb / color.a;
   // after the encode: the noise must be one step of what the canvas stores
   let encoded = clamp(outputColor(straight) + dither(in.position.xy), vec3f(0.0), vec3f(1.0));
   return vec4f(encoded * color.a, color.a);

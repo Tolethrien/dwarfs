@@ -69,7 +69,7 @@ export default class LightPass extends RenderPass {
       }),
       Aurora.createRenderPipeline(targets, {
         label: "LightPass:lights",
-        shader: lightShader,
+        shader: lightShader.replace("// LIGHT_OCCLUSION", lightDraw.getOcclusion),
         buffers: [LIGHT_LAYOUT.layout],
         blend: Blend.additivePremultiplied,
         constants: { linearColors: Aurora.isLinear },

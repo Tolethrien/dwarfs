@@ -1,6 +1,11 @@
 import Material from "@aurora/material";
+import ScreenEffect from "@aurora/urp/effects/screenEffect";
 import tileBurnShader from "./tileBurn.wgsl?raw";
 import particlesShader from "./particles.wgsl?raw";
+import fogShader from "./fog.wgsl?raw";
+import motesShader from "./motes.wgsl?raw";
+import clockSkyShader from "./clockSky.wgsl?raw";
+import embersShader from "./embers.wgsl?raw";
 
 interface ParticleStyle {
   count: number;
@@ -29,7 +34,10 @@ const PARTICLES = {
     lifeMin: 0.4,
     grain: 3,
     sizeSteps: 1,
-    colors: [[1, 0.95, 0.8], [1, 0.6, 0.25]],
+    colors: [
+      [1, 0.95, 0.8],
+      [1, 0.6, 0.25],
+    ],
     brightness: 5,
     selfLit: 1,
     glows: true,
@@ -43,7 +51,10 @@ const PARTICLES = {
     lifeMin: 0.6,
     grain: 3,
     sizeSteps: 3,
-    colors: [[0.4, 0.3, 0.2], [0.19, 0.14, 0.1]],
+    colors: [
+      [0.4, 0.3, 0.2],
+      [0.19, 0.14, 0.1],
+    ],
     brightness: 1,
     selfLit: 0.6,
     glows: false,
@@ -57,9 +68,29 @@ const PARTICLES = {
     lifeMin: 0.6,
     grain: 3,
     sizeSteps: 2,
-    colors: [[0.36, 0.34, 0.31], [0.2, 0.19, 0.18]],
+    colors: [
+      [0.36, 0.34, 0.31],
+      [0.2, 0.19, 0.18],
+    ],
     brightness: 1,
     selfLit: 0.5,
+    glows: false,
+  },
+  // dust sifting down from the ceiling over a new hole: slow, pale, falling straight
+  sift: {
+    count: 12,
+    spread: 0.35,
+    speed: [5, 40],
+    gravity: 380,
+    lifeMin: 0.5,
+    grain: 3,
+    sizeSteps: 1,
+    colors: [
+      [0.36, 0.33, 0.29],
+      [0.22, 0.2, 0.18],
+    ],
+    brightness: 1,
+    selfLit: 0.4,
     glows: false,
   },
   // what is left of a mined tile besides its shards
@@ -71,22 +102,72 @@ const PARTICLES = {
     lifeMin: 0.5,
     grain: 3,
     sizeSteps: 3,
-    colors: [[0.4, 0.3, 0.2], [0.19, 0.14, 0.1]],
+    colors: [
+      [0.4, 0.3, 0.2],
+      [0.19, 0.14, 0.1],
+    ],
     brightness: 1,
     selfLit: 0.6,
     glows: false,
   },
 } satisfies Record<string, ParticleStyle>;
 
-// materials of the game, created once at start (before the render graph is built)
+// materials and screen effects of the game, created once at start (before the render graph is built)
 export default class Materials {
+  declare public static fog: ScreenEffect;
+  declare public static motes: ScreenEffect;
+  declare public static clockSky: Material;
+  declare public static embers: Material;
+  declare public static trail: Material;
   declare public static tileBurn: Material;
   declare public static sparks: Material;
   declare public static chips: Material;
   declare public static rubble: Material;
   declare public static dust: Material;
+  declare public static sift: Material;
 
   public static register() {
+    this.fog = ScreenEffect.create({
+      name: "fog",
+      fragment: fogShader,
+      params: { density: 0.2, bottom: 0.6, billow: 0.7, speed: 1 },
+      ranges: {
+        density: [0, 1],
+        bottom: [0, 1],
+        billow: [0, 1],
+        speed: [0, 5],
+      },
+    });
+    this.motes = ScreenEffect.create({
+      name: "motes",
+      fragment: motesShader,
+      params: { amount: 0.15, size: 5, speed: 1, twinkle: 0.5 },
+      ranges: { amount: [0, 1], size: [2, 16], speed: [0, 5], twinkle: [0, 1] },
+    });
+    // gui: sun and moon of the clock
+    this.clockSky = Material.create({
+      name: "clockSky",
+      fragment: clockSkyShader,
+      transparent: true,
+      params: { sunAngle: 0, scale: 1 },
+    });
+    // plain colour, but see-through and not darkened by the light map: faint streaks that read in the dark
+    this.trail = Material.create({
+      name: "trail",
+      fragment:
+        "fn material(in: MaterialInput) -> vec4f { return in.color * in.texel; }",
+      transparent: true,
+      emissive: true,
+      gui: false,
+    });
+    this.embers = Material.create({
+      name: "embers",
+      fragment: embersShader,
+      blend: "additive",
+      emissive: true,
+      gui: false,
+      params: { seed: 0 },
+    });
     this.tileBurn = Material.create({
       name: "tileBurn",
       fragment: tileBurnShader,
@@ -121,6 +202,13 @@ export default class Materials {
       transparent: true,
       gui: false,
       params: { bornAt: -1000, duration: 1, seed: 0, angle: -Math.PI / 2 },
+    });
+    this.sift = Material.create({
+      name: "sift",
+      fragment: particleShader(PARTICLES.sift),
+      transparent: true,
+      gui: false,
+      params: { bornAt: -1000, duration: 1, seed: 0, angle: Math.PI / 2 },
     });
   }
 }

@@ -31,7 +31,7 @@ export interface AuroraConfig {
     normalMaps: boolean;
     heightMaps: boolean;
     colorSpace: ColorSpace;
-    // player display calibration: > 1 lifts the shadows, black and white stay; applied to the whole image
+    // player display calibration: > 1 lifts the shadows, black and white stay; the scene only, not the gui
     gamma: number;
   };
   // viewHeight: world units the view shows top to bottom at zoom 1, the width follows the canvas

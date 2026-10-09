@@ -11,6 +11,9 @@ import MapBuilder from "../systems/game/mapBuilder";
 import CameraController from "../systems/game/cameraController";
 import PlayerInput from "../systems/game/playerInput";
 import PlayerResources from "../systems/game/resources";
+import GameClock from "../systems/game/gameClock";
+import MinimapView from "../systems/game/minimapView";
+import Minimap from "../shaders/minimap";
 import InteractiveElements from "../systems/game/interactiveElements";
 import PauseMenu from "../systems/game/pauseMenu";
 import TileMask from "../shaders/tileMask";
@@ -52,6 +55,7 @@ export default class GameScene {
   // any time: a fresh scene for this world, the previous game scene is destroyed by addScene
   public static start(world: World, state?: GameState) {
     TileMask.bind(world);
+    Minimap.bind(world);
     new GameScene(world);
     if (state) GameScene.restore(state);
   }
@@ -112,6 +116,8 @@ export default class GameScene {
     world.addSystem(CameraController);
     world.addSystem(PlayerInput);
     world.addSystem(PlayerResources);
+    world.addSystem(GameClock);
+    world.addSystem(MinimapView);
     world.addSystem(InteractiveElements);
     world.addSystem(PauseMenu);
     GameScene.setupCamera(map);

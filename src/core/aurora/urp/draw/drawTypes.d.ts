@@ -158,9 +158,11 @@ export interface LightBase {
   intensity?: number;
   falloff?: number;
 }
+// occluded: stopped by what Light.setOcclusion says stands in the way
 export interface PointLight extends LightBase {
   position: Position2D;
   radius: number;
+  occluded?: boolean;
 }
 export interface RectLight extends LightBase {
   position: Position2D;
@@ -174,6 +176,17 @@ export interface EllipseLight extends LightBase {
   size: Size2D;
   rotation?: number;
   softness?: number;
+}
+// a beam from position (the apex) along direction (radians), length world units long; spread is the
+// half angle, at most PI / 2; softness: share of the spread that fades out at its sides, 0-1;
+// occluded: stopped by what Light.setOcclusion says stands in the way
+export interface ConeLight extends LightBase {
+  position: Position2D;
+  direction: number;
+  length: number;
+  spread: number;
+  softness?: number;
+  occluded?: boolean;
 }
 
 export interface DiffusionProps {

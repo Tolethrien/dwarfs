@@ -15,6 +15,9 @@ export default class Sprite extends PragmaComponent {
   public crop: SpriteProps["crop"];
   public tint: SpriteProps["tint"];
   public zIndex: SpriteProps["zIndex"];
+  // mirrored, before the actor's rotation
+  public flipX = false;
+  public flipY = false;
   declare private transform: Transform;
   constructor(internal: InternalPCProps, props: SpriteProps) {
     super(internal);
@@ -58,6 +61,9 @@ export default class Sprite extends PragmaComponent {
       size: { height: height, width: width },
       texture: this.sprite,
       tint: this.tint,
+      rotation: this.transform.getRenderRotation(),
+      flipX: this.flipX,
+      flipY: this.flipY,
     });
   }
 }

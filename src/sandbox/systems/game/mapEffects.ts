@@ -2,9 +2,9 @@ import Aurora from "@aurora/core";
 import AxiomMath from "@axiom/math";
 import Vec2 from "@axiom/vec2";
 import PragmaSystem from "@pragma/system";
-import { Draw } from "@aurora/urp/draw/draw";
+import { Draw, Light } from "@aurora/urp/draw/draw";
 import { Camera } from "@engine/camera/camera";
-import { getVariantCrop } from "@sandbox/content/blocks";
+import { getVariantCrop, hasGraphics } from "@sandbox/content/blocks";
 import { SPRITES } from "@sandbox/content/sprites";
 import { RENDER_ORDER } from "@sandbox/configs";
 import Materials from "@sandbox/shaders/materials";
@@ -25,6 +25,11 @@ const EFFECTS = {
   particleTiles: 6,
   // tiles this far outside the view still get their effect (camera moving towards them)
   marginTiles: 2,
+  // camera trauma of a mined tile: a small knock, several in a row add up
+  mineShake: 0.12,
+  // the ambient loop, it fades out when the game scene closes
+  ambientVolume: 0.5,
+  ambientFadeSeconds: 1,
   // frame.time wraps at this (sharedBinds.ts TIME_WRAP)
   timeWrap: 3600,
 };
@@ -42,8 +47,30 @@ const SHARDS = {
   gravity: 1500,
 } as const;
 
-type BurstKind = "sparks" | "chips" | "rubble" | "dust";
-const BURST_SECONDS: Record<BurstKind, number> = { sparks: 0.45, chips: 0.8, rubble: 0.9, dust: 0.7 };
+type BurstKind = "sparks" | "chips" | "rubble" | "dust" | "sift";
+const BURST_SECONDS: Record<BurstKind, number> = {
+  sparks: 0.45,
+  chips: 0.8,
+  rubble: 0.9,
+  dust: 0.7,
+  sift: 1.4,
+};
+
+// a short warm light where a tile was hit, gone in a moment: the cave walls pulse while digging
+type FlashKind = "hit" | "mined" | "deflected";
+const FLASH: Record<FlashKind, { radius: number; intensity: number; seconds: number }> = {
+  hit: { radius: 260, intensity: 1.3, seconds: 0.22 },
+  mined: { radius: 360, intensity: 2.2, seconds: 0.3 },
+  deflected: { radius: 160, intensity: 0.6, seconds: 0.15 },
+};
+const FLASH_COLOR: RGBA = [255, 200, 140, 255];
+
+interface Flash {
+  kind: FlashKind;
+  x: number;
+  y: number;
+  bornAt: number;
+}
 // a hit that did nothing: the damage sound, quieter, until it has its own
 const DEFLECT_VOLUME = 0.3;
 
@@ -78,6 +105,9 @@ export default class MapEffects extends PragmaSystem {
   declare private world: World;
   private shards: FlyingShard[] = [];
   private bursts: Burst[] = [];
+  private flashes: Flash[] = [];
+  // the mine's ambient loop, for as long as the game scene lives
+  private ambient: ReturnType<typeof SoundBank.loopSound>;
 
   constructor(internal: InternalPSProps) {
     super(internal);
@@ -87,6 +117,11 @@ export default class MapEffects extends PragmaSystem {
     this.onSceneEvent<TileMinedEvent>("tileMined", (event) => this.onMined(event));
     this.onSceneEvent<TileDamagedEvent>("tileDamaged", (event) => this.onDamaged(event));
     this.onSceneEvent<TileDeflectedEvent>("tileDeflected", (event) => this.onDeflected(event));
+    this.ambient = SoundBank.loopSound(SoundsID.ambientNew, { volume: EFFECTS.ambientVolume });
+  }
+
+  destroy(): void {
+    this.ambient?.fadeOutAndStop(EFFECTS.ambientFadeSeconds);
   }
 
   start(): void {
@@ -97,6 +132,31 @@ export default class MapEffects extends PragmaSystem {
     const now = Aurora.getGameTime;
     this.renderShards(now);
     this.renderBursts(now);
+    this.renderFlashes(now);
+  }
+
+  // fades on a square curve: bright at once, a quick tail
+  private renderFlashes(now: number) {
+    let kept = 0;
+    for (const flash of this.flashes) {
+      const look = FLASH[flash.kind];
+      let age = now - flash.bornAt;
+      if (age < 0) age += EFFECTS.timeWrap;
+      if (age >= look.seconds) continue;
+      this.flashes[kept++] = flash;
+      const left = 1 - age / look.seconds;
+      Light.point({
+        position: { x: flash.x, y: flash.y },
+        radius: look.radius,
+        color: FLASH_COLOR,
+        intensity: look.intensity * left * left,
+      });
+    }
+    this.flashes.length = kept;
+  }
+
+  private pushFlash(kind: FlashKind, point: Position2D) {
+    this.flashes.push({ kind, x: point.x, y: point.y, bornAt: Aurora.getGameTime });
   }
 
   // a shard turns around its own middle, the sprite around the tile's: the sprite is moved by
@@ -164,6 +224,7 @@ export default class MapEffects extends PragmaSystem {
     const hit = this.hitOf(event.gx, event.gy, event.contact);
     this.pushBurst("chips", hit.point, hit.angle);
     this.pushBurst("sparks", hit.point, hit.angle);
+    this.pushFlash("hit", hit.point);
     SoundBank.playSound(SoundsID.blockDamage, { position: hit.point });
   }
 
@@ -171,6 +232,7 @@ export default class MapEffects extends PragmaSystem {
     if (!this.onScreen(event.gx, event.gy)) return;
     const hit = this.hitOf(event.gx, event.gy, event.contact);
     this.pushBurst("dust", hit.point, hit.angle);
+    this.pushFlash("deflected", hit.point);
     SoundBank.playSound(SoundsID.blockDamage, { position: hit.point, volume: DEFLECT_VOLUME });
   }
 
@@ -220,6 +282,11 @@ export default class MapEffects extends PragmaSystem {
     // the rubble flies on, away from the hit
     const angle = event.impact ? Math.atan2(tileCenter.y - impact.y, tileCenter.x - impact.x) : -Math.PI / 2;
     this.pushBurst("rubble", impact, angle);
+    this.pushFlash("mined", tileCenter);
+    // the rock over the new hole sheds a little dust
+    if (hasGraphics(this.world.getType(event.gx, event.gy - 1)))
+      this.pushBurst("sift", { x: tileCenter.x, y: corner.y }, Math.PI / 2);
+    Camera.shake(EFFECTS.mineShake);
     SoundBank.playSound(SoundsID.blockDestroy, { volume: 0.5 });
   }
 

@@ -151,6 +151,8 @@ export const MAP_GEN_CONFIG: MapGenConfig = {
     minArea: 60,
     minRockArea: 12,
   },
+  // temporary, for recording: the precious ores (silver, gold, sapphire, diamonds) packed into the
+  // top tenth of the map around the start, normally they lie deep
   veins: [
     {
       type: BlocksID.coal,
@@ -195,8 +197,8 @@ export const MAP_GEN_CONFIG: MapGenConfig = {
     {
       type: BlocksID.silver,
       shape: "vein",
-      perChunk: 0.5,
-      depth: [0.3, 0.9],
+      perChunk: 0.6,
+      depth: [0, 0.1],
       size: [10, 20],
       density: 0.85,
       wallBias: 0.2,
@@ -205,8 +207,8 @@ export const MAP_GEN_CONFIG: MapGenConfig = {
     {
       type: BlocksID.gold,
       shape: "vein",
-      perChunk: 0.3,
-      depth: [0.5, 1],
+      perChunk: 0.5,
+      depth: [0, 0.1],
       size: [6, 12],
       density: 0.75,
       wallBias: 0.4,
@@ -215,8 +217,8 @@ export const MAP_GEN_CONFIG: MapGenConfig = {
     {
       type: BlocksID.sapphire,
       shape: "cluster",
-      perChunk: 0.25,
-      depth: [0.6, 1],
+      perChunk: 0.4,
+      depth: [0, 0.1],
       size: [1, 2],
       density: 0.6,
       wallBias: 0.6,
@@ -225,8 +227,8 @@ export const MAP_GEN_CONFIG: MapGenConfig = {
     {
       type: BlocksID.diamonds,
       shape: "geode",
-      perChunk: 0.08,
-      depth: [0.8, 1],
+      perChunk: 0.25,
+      depth: [0, 0.1],
       size: [2, 4],
       density: 0.6,
       wallBias: 0.7,

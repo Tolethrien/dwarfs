@@ -9,6 +9,11 @@ import { Camera } from "@engine/camera/camera";
 import { DwarfsID } from "@sandbox/content/dwarfs";
 import { RENDER_ORDER } from "@sandbox/configs";
 import type { GameModeChangedEvent } from "./gameMode";
+
+export interface DwarfLaunchedEvent {
+  dwarf: Dwarf;
+}
+
 export default class PlayerInput extends PragmaSystem {
   private mouseLocked: boolean = false;
   private mousePos: Position2D = { x: 0, y: 0 };
@@ -44,14 +49,14 @@ export default class PlayerInput extends PragmaSystem {
     const dragDistance = delta.length();
     const direction = delta.clone().normalize();
     const speed = AxiomMath.clamp(dragDistance, 500, 3500);
-    this.scene.spawnActor(
-      new Dwarf({
-        position: this.mousePos,
-        launchSpeed: speed,
-        velocity: direction,
-        dwarfID: DwarfsID.scout,
-      }),
-    );
+    const dwarf = new Dwarf({
+      position: this.mousePos,
+      launchSpeed: speed,
+      velocity: direction,
+      dwarfID: DwarfsID.scout,
+    });
+    this.scene.spawnActor(dwarf);
+    this.emitSceneEvent<DwarfLaunchedEvent>("dwarfLaunched", { dwarf });
     this.mouseLocked = false;
   }
   render(): void {

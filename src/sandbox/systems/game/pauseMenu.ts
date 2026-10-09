@@ -5,7 +5,7 @@ import { ACTION } from "../../inputActions";
 import MenuPanel from "../../ui/menuPanel";
 import SaveGame from "../../world/saveGame";
 import GameMode from "./gameMode";
-import CameraController from "./cameraController";
+import CameraController, { CAMERA_LOCKS } from "./cameraController";
 import MapBuilder from "./mapBuilder";
 import PlayerInput from "./playerInput";
 import InteractiveElements from "./interactiveElements";
@@ -30,8 +30,9 @@ export default class PauseMenu extends PragmaSystem {
 
   preUpdate(): void {
     if (InputManager.onActionPressed(ACTION.pause)) {
+      // a followed dwarf is let go first, the next press pauses
       if (this.panel) this.close();
-      else this.open();
+      else if (!this.scene.getSystem(CameraController).release()) this.open();
     }
     this.panel?.update();
   }
@@ -52,6 +53,11 @@ export default class PauseMenu extends PragmaSystem {
     this.panel = new MenuPanel({ blur: 8 });
     this.panel.title("Pauza");
     this.panel.button("Wznów", () => this.close());
+    const camera = this.scene.getSystem(CameraController);
+    this.panel.button(
+      () => `Kamera: ${CAMERA_LOCKS[camera.currentLock]}`,
+      () => camera.cycleLock(),
+    );
     this.panel.button(() => this.saveLabel, () => void this.save());
     this.panel.button("Wyjdź do menu", () => {
       this.close();

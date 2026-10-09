@@ -7,6 +7,7 @@ import { DecosID, getDecoCrop } from "../content/decos";
 import { SPRITES } from "../content/sprites";
 import Sprite from "../components/sprite";
 import PointLight from "../components/pointLight";
+import Embers from "../components/embers";
 import { RENDER_ORDER } from "../configs";
 
 interface TorchProps {
@@ -18,7 +19,14 @@ interface TorchProps {
 const FLAME = {
   seconds: { min: 0.05, max: 0.15 },
   light: { radius: 320, intensity: { min: 0.8, max: 1.2 } },
+  embers: { width: 60, height: 120 },
 };
+// per variant (decos.ts): where the fire is on the sprite, from the tile centre; only an open
+// flame throws embers, the lantern's glass keeps them in
+const FIRE: { at: Position2D; embers: boolean }[] = [
+  { at: { x: 0, y: -26 }, embers: true },
+  { at: { x: -3, y: 20 }, embers: false },
+];
 
 // the view of a torch deco: exists only while its chunk is shown, keeps nothing worth saving
 export default class Torch extends PragmaActor {
@@ -30,11 +38,20 @@ export default class Torch extends PragmaActor {
     const crop = getDecoCrop(DecosID.torch, props.variant);
     assert(crop !== undefined, "Torch: the torch deco has no graphics");
     this.addComponent(Sprite, { sprite: SPRITES.deco, crop, zIndex: RENDER_ORDER.decoBackTiles });
+    const fire = FIRE[props.variant] ?? FIRE[0];
     this.light = this.addComponent(PointLight, {
       radius: FLAME.light.radius,
       color: COLOR.AMBER,
       intensity: FLAME.light.intensity.max,
+      offset: fire.at,
+      occluded: true,
     });
+    if (fire.embers)
+      this.addComponent(Embers, {
+        from: fire.at,
+        size: { width: FLAME.embers.width, height: FLAME.embers.height },
+        zIndex: RENDER_ORDER.decoBack,
+      });
   }
 
   public onStart() {

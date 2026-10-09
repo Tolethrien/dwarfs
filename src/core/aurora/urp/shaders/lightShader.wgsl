@@ -21,6 +21,9 @@ override linearColors: bool = true;
 // must match LightShape in draw/drawLight.ts
 const SHAPE_BOX: u32 = 0u;
 const SHAPE_ELLIPSE: u32 = 1u;
+const SHAPE_CONE: u32 = 2u;
+// a box (point light) asking lightVisibility from its centre
+const SHAPE_BOX_OCCLUDED: u32 = 3u;
 
 // must match LIGHT_LAYOUT in draw/drawLight.ts, locations in field order
 struct InstanceIn {
@@ -32,7 +35,8 @@ struct InstanceIn {
   @location(5) shape: u32,
   @location(6) softness: f32,
   @location(7) falloff: f32,
-  // box: corner radii
+  // box: corner radii; cone: spread (half angle), softness (share of it fading at the sides),
+  // occluded (1: asks lightVisibility)
   @location(8) shapeData: vec4f,
 };
 struct VertexOut {
@@ -45,8 +49,16 @@ struct VertexOut {
   @location(3) @interpolate(flat) shape: u32,
   @location(4) @interpolate(flat) softness: f32,
   @location(5) @interpolate(flat) falloff: f32,
+  // box: corner radii clamped to the size; cone: shapeData as it came
   @location(6) @interpolate(flat) corners: vec4f,
+  // the pixel in the world and where the light comes from (cone: apex, box: centre), for lightVisibility
+  @location(7) world: vec2f,
+  @location(8) @interpolate(flat) apex: vec2f,
 };
+
+// replaced by Light.setOcclusion: fn lightVisibility(light: vec2f, pixel: vec2f) -> f32, world points,
+// 1 lit, 0 something stands between; an occluded cone asks it for every pixel
+// LIGHT_OCCLUSION
 
 // same transform as drawWorldShader.wgsl; a soft light needs no snapped anchor
 fn worldToPixel(anchor: vec2f, offset: vec2f) -> vec2f {
@@ -106,7 +118,10 @@ fn vertexMain(@builtin(vertex_index) index: u32, instance: InstanceIn) -> Vertex
   out.softness = clamp(instance.softness, 0.5, min(halfSize.x, halfSize.y));
   out.falloff = instance.falloff;
   let maxRadius = vec4f(min(halfSize.x, halfSize.y));
-  out.corners = min(instance.shapeData, maxRadius);
+  out.corners = select(min(instance.shapeData, maxRadius), instance.shapeData, instance.shape == SHAPE_CONE);
+  let center = instance.position + halfSize;
+  out.world = center + rotated;
+  out.apex = select(center, center - vec2f(c, s) * halfSize.x, instance.shape == SHAPE_CONE);
   return out;
 }
 
@@ -114,7 +129,19 @@ fn vertexMain(@builtin(vertex_index) index: u32, instance: InstanceIn) -> Vertex
 fn fragmentMain(in: VertexOut) -> @location(0) vec4f {
   // d: 0 in full light, 1 on the edge
   var d: f32;
-  if (in.shape == SHAPE_ELLIPSE) {
+  // cone only: 1 inside the beam, fading to 0 at its sides
+  var beam = 1.0;
+  if (in.shape == SHAPE_CONE) {
+    // the apex sits in the middle of the quad's left side, the beam runs along +x
+    let fromApex = in.local + vec2f(in.halfSize.x, 0.0);
+    d = length(fromApex) / (in.halfSize.x * 2.0);
+    let side = abs(atan2(fromApex.y, fromApex.x)) / max(in.corners.x, 0.0001);
+    let softness = max(in.corners.y, 0.0001);
+    beam = 1.0 - smoothstep(1.0 - softness, 1.0, side);
+    if (in.corners.z > 0.5 && beam > 0.0) {
+      beam *= lightVisibility(in.apex, in.world);
+    }
+  } else if (in.shape == SHAPE_ELLIPSE) {
     // normalized radius: concentric ellipses, an sdf of the ellipse bulges inside
     let fraction = in.softness / min(in.halfSize.x, in.halfSize.y);
     d = (length(in.local / in.halfSize) - (1.0 - fraction)) / fraction;
@@ -130,7 +157,10 @@ fn fragmentMain(in: VertexOut) -> @location(0) vec4f {
   let core = 1.0 / (1.0 + in.falloff * d * d);
   // takes the tail to 0 at the edge well before it, srgb encoding would lift a late fade into a ring
   let fade = 1.0 - d * d;
-  let light = core * fade * fade;
+  var light = core * fade * fade * beam;
+  if (in.shape == SHAPE_BOX_OCCLUDED && light > 0.0) {
+    light *= lightVisibility(in.apex, in.world);
+  }
   // alpha is left alone by the additive blend
   return vec4f(in.color * light, 0.0);
 }

@@ -1,10 +1,12 @@
 import { COLOR } from "@axiom/color";
 import { debug } from "@debug";
 import VertexLayout from "@aurora/utils/vertexLayout";
+import RenderGraph from "@aurora/renderGraph";
 import type LightPass from "../passes/lightPass";
 import { clearShapeData, writeCorners } from "./drawInternal";
 import type {
   AmbientLight,
+  ConeLight,
   EllipseLight,
   LightBase,
   PointLight,
@@ -22,7 +24,7 @@ export const LIGHT_LAYOUT = new VertexLayout(
     shape: "uint32",
     softness: "float32",
     falloff: "float32",
-    // box: corner radii, like shapeData of a draw instance
+    // box: corner radii, like shapeData of a draw instance; cone: spread, softness
     shapeData: "float32x4",
   },
   { stepMode: "instance" },
@@ -33,8 +35,11 @@ export type LightWriter = ReturnType<typeof LIGHT_LAYOUT.createWriter>;
 export enum LightShape {
   Box = 0,
   Ellipse = 1,
+  Cone = 2,
+  OccludedBox = 3,
 }
 const DEFAULT_FALLOFF = 4;
+const CONE = { softness: 0.35, maxSpread: Math.PI / 2 };
 
 export class LightDraw {
   private target: LightPass | null = null;
@@ -46,6 +51,7 @@ export class LightDraw {
     angle: 0,
     intensity: 1,
   };
+  private occlusion = "fn lightVisibility(light: vec2f, pixel: vec2f) -> f32 { return 1.0; }";
 
   public setTarget(target: LightPass) {
     this.target = target;
@@ -67,7 +73,7 @@ export class LightDraw {
     if (!view) return;
     view.position(position.x - radius, position.y - radius);
     view.rotation(0);
-    view.shape(LightShape.Box);
+    view.shape(props.occluded ? LightShape.OccludedBox : LightShape.Box);
     view.softness(radius);
     writeCorners(view, radius);
   }
@@ -90,6 +96,34 @@ export class LightDraw {
     view.shape(LightShape.Ellipse);
     view.softness(props.softness ?? Math.min(size.width, size.height) / 2);
     clearShapeData(view);
+  }
+  // the quad holds just the beam: length along the direction, as wide as the spread opens
+  public cone(props: ConeLight) {
+    const { position, direction, length } = props;
+    const spread = Math.min(props.spread, CONE.maxSpread);
+    const width = length;
+    const height = 2 * length * Math.sin(spread);
+    const view = this.writeLight(props, width, height);
+    if (!view) return;
+    const center = {
+      x: position.x + (Math.cos(direction) * length) / 2,
+      y: position.y + (Math.sin(direction) * length) / 2,
+    };
+    view.position(center.x - width / 2, center.y - height / 2);
+    view.rotation(direction);
+    view.shape(LightShape.Cone);
+    view.softness(0);
+    view.shapeData(spread, props.softness ?? CONE.softness, props.occluded ? 1 : 0, 0);
+  }
+
+  // what blocks occluded lights: WGSL defining fn lightVisibility(light: vec2f, pixel: vec2f) -> f32
+  // (world points, 1 lit, 0 blocked); it may read the globals (Aurora.addGlobal)
+  public setOcclusion(code: string) {
+    this.occlusion = code;
+    if (RenderGraph.isBuilt) void RenderGraph.rebuild();
+  }
+  public get getOcclusion() {
+    return this.occlusion;
   }
 
   private writeLight(props: LightBase, width: number, height: number) {

@@ -6,6 +6,8 @@ import { assert } from "@axiom/utils";
 import { MAP_GEN_CONFIG } from "@sandbox/mapGen/mapGenerator";
 import type World from "@sandbox/world/world";
 import tileSolidShader from "@sandbox/shaders/tileSolid.wgsl?raw";
+import tileOcclusionShader from "@sandbox/shaders/tileOcclusion.wgsl?raw";
+import { Light } from "@aurora/urp/draw/draw";
 
 // r8, one texel per map tile: rock where the solid layer draws a tile, air elsewhere
 const MASK = { binding: 4, rock: 255, air: 0 };
@@ -30,8 +32,10 @@ export default class TileMask {
   declare private static chunkBytes: Uint8Array;
   declare public static solid: Material;
   declare public static shard: Material;
+  declare public static ore: Material;
 
-  // once at start, before Aurora.build: the global (1×1 until a world is bound) and the material.
+  // once at start, before Aurora.build: the global (1×1 until a world is bound), the material and
+  // the light occlusion (occluded lights stop at rock).
   // Origin and tile size are baked into the shader, every world has to share them
   public static register() {
     this.texture = this.createTexture({ width: 1, height: 1 });
@@ -48,6 +52,7 @@ export default class TileMask {
       `const TILE_ORIGIN = vec2f(${origin.x.toFixed(1)}, ${origin.y.toFixed(1)});`,
       `const TILE_SIZE = vec2f(${tileInPixels.width.toFixed(1)}, ${tileInPixels.height.toFixed(1)});`,
     ].join("\n");
+    Light.setOcclusion(tileOcclusionShader.replace("// TILE_MAP", map));
     const shader = tileSolidShader.replace("// TILE_MAP", map);
     const entry = (name: string) =>
       shader.replace("// TILE_ENTRY", `fn material(in: MaterialInput) -> vec4f { return ${name}(in); }`);
@@ -58,6 +63,13 @@ export default class TileMask {
       // damage 0-1, game time of the last hit (far in the past = no flash), where it hit (packImpact),
       // heat 0-1 of the hit: 0 a pick on cold stone, 1 a blast (the cracks around glow); -1 a
       // deflected hit (nothing done, the cracks stay as they are)
+      params: { damage: 0, hitTime: -1000, impact: this.packImpact({ x: 0.5, y: 0.5 }), heat: 0 },
+    });
+    // the same params as solid: a tile swaps between them only through a chunk rebuild
+    this.ore = Material.create({
+      name: "tileOre",
+      fragment: entry("oreMaterial"),
+      gui: false,
       params: { damage: 0, hitTime: -1000, impact: this.packImpact({ x: 0.5, y: 0.5 }), heat: 0 },
     });
     this.shard = Material.create({

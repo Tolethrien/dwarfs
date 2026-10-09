@@ -39,6 +39,8 @@ export interface BlockData {
   reveals?: ObjectsID;
   // no hit ever does anything to it, not even shows it was hit
   unbreakable?: boolean;
+  // ore that catches the light: a glint runs over it now and then (TileMask.ore)
+  glint?: boolean;
 }
 
 export const BLOCKS: Record<BlocksID, BlockData> = {
@@ -93,6 +95,7 @@ export const BLOCKS: Record<BlocksID, BlockData> = {
     collides: COLLIDES.ball | COLLIDES.monster,
     category: "terrain",
     resource: GameResourcesID.gold,
+    glint: true,
   },
   [BlocksID.diamonds]: {
     variants: [{ x: 288, y: 96, width: 96, height: 96 }],
@@ -100,6 +103,7 @@ export const BLOCKS: Record<BlocksID, BlockData> = {
     collides: COLLIDES.ball | COLLIDES.monster,
     category: "terrain",
     resource: GameResourcesID.diamonds,
+    glint: true,
   },
   [BlocksID.silver]: {
     variants: [{ x: 384, y: 96, width: 96, height: 96 }],
@@ -107,6 +111,7 @@ export const BLOCKS: Record<BlocksID, BlockData> = {
     collides: COLLIDES.ball | COLLIDES.monster,
     category: "terrain",
     resource: GameResourcesID.silver,
+    glint: true,
   },
   [BlocksID.sapphire]: {
     variants: [{ x: 480, y: 96, width: 96, height: 96 }],
@@ -114,6 +119,7 @@ export const BLOCKS: Record<BlocksID, BlockData> = {
     collides: COLLIDES.ball | COLLIDES.monster,
     category: "terrain",
     resource: GameResourcesID.sapphire,
+    glint: true,
   },
   [BlocksID.copper]: {
     variants: [{ x: 0, y: 192, width: 96, height: 96 }],

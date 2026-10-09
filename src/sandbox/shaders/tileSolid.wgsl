@@ -15,6 +15,9 @@ const TILE_CHIP_MIN_GRAINS: f32 = 1.0;
 const TILE_CHIP_MAX_GRAINS: f32 = 3.0;
 const TILE_CHIP_FREQUENCY: f32 = 1.0 / 9.0;
 const TILE_CHIP_CHAMFER: f32 = 0.5;
+// rock darkens toward an edge facing air: depth without graphics; width in tiles
+const TILE_RIM_WIDTH: f32 = 0.2;
+const TILE_RIM_SHADE: f32 = 0.3;
 
 // damage (in.params.x, 0-1): cracks are cell borders in a jittered grid of TILE_CRACK_CELLS
 // cells per tile, a border shows once the damage passes its cell's own threshold; the tile also
@@ -183,7 +186,8 @@ fn solidMaterial(in: MaterialInput) -> vec4f {
   let gap = length(local - tileImpact(in.params.z));
   // premultiplied: the flash adds light in proportion to coverage
   let flash = tileFlash(since, gap);
-  let shade = 1.0 - damage * TILE_DAMAGE_SHADE;
+  let rim = mix(1.0 - TILE_RIM_SHADE, 1.0, smoothstep(0.0, TILE_RIM_WIDTH, edge));
+  let shade = (1.0 - damage * TILE_DAMAGE_SHADE) * rim;
   if (!tileCrack(position, damage)) {
     return vec4f(base.rgb * shade + flash * base.a, base.a);
   }
@@ -214,5 +218,49 @@ fn shardMaterial(in: MaterialInput) -> vec4f {
   return vec4f(base.rgb * (1.0 - TILE_DAMAGE_SHADE) * rim, base.a);
 }
 
-// replaced by TileMask.register with the material entry: solidMaterial or shardMaterial
+// ore (TileMask.ore, blocks with glint): a solid tile whose bright texels, the ore itself, glow a
+// little in the dark and catch a light sweep running across the tile now and then, each tile at
+// its own moment, while single grains flash on their own; both go over 1 and bloom
+const ORE_GLINT_PERIOD: f32 = 2.2;
+// share of the period the sweep takes to cross, the rest it rests
+const ORE_GLINT_CROSS: f32 = 0.35;
+// in tiles, half the width of the sweep across the diagonal
+const ORE_GLINT_WIDTH: f32 = 0.22;
+const ORE_GLINT_GAIN: f32 = 5.0;
+const ORE_SELF_LIT: f32 = 0.55;
+// single ore grains flash on their own: changes per second, share of the grains lit at a time, gain
+const ORE_SPARKLE_RATE: f32 = 7.0;
+const ORE_SPARKLE_SHARE: f32 = 0.04;
+const ORE_SPARKLE_GAIN: f32 = 6.0;
+// linear brightness of a texel from which it counts as ore, and where it fully does
+const ORE_BRIGHT: vec2f = vec2f(0.3, 0.6);
+
+fn oreMaterial(in: MaterialInput) -> vec4f {
+  let base = solidMaterial(in);
+  if (base.a <= 0.0) {
+    return base;
+  }
+  let position = (floor((in.world - TILE_ORIGIN) / TILE_GRAIN) + 0.5) * TILE_GRAIN / TILE_SIZE;
+  let cell = floor(position);
+  let local = position - cell;
+  let texel = in.texel.rgb / max(in.texel.a, 0.0001);
+  let bright = smoothstep(ORE_BRIGHT.x, ORE_BRIGHT.y, max(texel.r, max(texel.g, texel.b)));
+
+  let phase = fract(frame.time / ORE_GLINT_PERIOD + tileHash(cell + vec2f(91.0, 17.0)));
+  // the band runs along the diagonal from past one corner to past the other
+  let sweep = mix(-ORE_GLINT_WIDTH, 1.0 + ORE_GLINT_WIDTH, phase / ORE_GLINT_CROSS);
+  let along = (local.x + local.y) * 0.5;
+  let glint = select(0.0, 1.0 - smoothstep(0.0, ORE_GLINT_WIDTH, abs(along - sweep)), phase < ORE_GLINT_CROSS);
+
+  // a grain of the pixel art step, flashing in its own random moments
+  let grain = floor((in.world - TILE_ORIGIN) / TILE_GRAIN);
+  let moment = floor(frame.time * ORE_SPARKLE_RATE);
+  let sparkle = select(0.0, 1.0, tileHash(grain + vec2f(moment * 7.0, moment * 13.0)) < ORE_SPARKLE_SHARE);
+
+  materialGlow = max(materialGlow, bright * ORE_SELF_LIT);
+  let gain = 1.0 + bright * (glint * ORE_GLINT_GAIN + sparkle * ORE_SPARKLE_GAIN);
+  return vec4f(base.rgb * gain, base.a);
+}
+
+// replaced by TileMask.register with the material entry: solidMaterial, oreMaterial or shardMaterial
 // TILE_ENTRY

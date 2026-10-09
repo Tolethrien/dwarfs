@@ -13,6 +13,7 @@ export enum SoundsID {
   blockDamage,
   blockDestroy,
   ambientOne,
+  ambientNew,
 }
 
 export const SOUND_CATEGORIES: Record<string, CategoryTree> = {
@@ -42,4 +43,5 @@ export const SOUNDS: Record<SoundsID, SoundData> = {
     maxConcurrent: 3,
   },
   [SoundsID.ambientOne]: { categories: ["ambient"], name: "mineAmbient" },
+  [SoundsID.ambientNew]: { categories: ["ambient"], name: "mineAmbientNew" },
 };

@@ -18,6 +18,11 @@ export default class AxiomMath {
   static lerp(a: number, b: number, t: number) {
     return a + (b - a) * t;
   }
+  // 0 below from, 1 above to, a smooth S between (GLSL/WGSL smoothstep)
+  static smoothstep(from: number, to: number, value: number) {
+    const t = AxiomMath.clamp((value - from) / (to - from), 0, 1);
+    return t * t * (3 - 2 * t);
+  }
   static damp(rate: number, delta: number) {
     return rate <= 0 ? 1 : 1 - Math.exp(-rate * delta);
   }

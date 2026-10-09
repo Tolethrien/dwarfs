@@ -65,6 +65,9 @@ const DEPENDENTS: { dy: number; attached: DecoAttached }[] = [
   { dy: 1, attached: "above" },
 ];
 
+// temporary, for recording: no dwarf needs more hits than this for any block, a strong one still penetrates
+const RECORDING = { hitsToBreak: 2 };
+
 // what comes out of a revealed tile, only some objects do
 const REVEALED: Partial<Record<ObjectsID, (position: Position2D) => PragmaActor>> = {
   [ObjectsID.chest]: (position) => new Chest({ position }),
@@ -103,6 +106,11 @@ export default class Terrain extends PragmaSystem {
     if (result.outcome === "penetrate") {
       this.mine(gx, gy, contact?.point);
       return "penetrate";
+    }
+    // temporary, for recording: a weak hit still takes at least 1/RECORDING.hitsToBreak of the block
+    if (!block.unbreakable && result.outcome !== "break") {
+      result.outcome = "damage";
+      result.damage = Math.max(result.damage, 1 / RECORDING.hitsToBreak);
     }
     const damage = Math.round(result.damage * MAX_DAMAGE);
     if (result.outcome === "break") this.mine(gx, gy, contact?.point);

@@ -7,12 +7,113 @@ import Navi from "@navi/navi";
 import UINode from "@navi/node";
 import { auto, px } from "@navi/units";
 import UIText from "@navi/elements/text";
-import AxiomColor, { COLOR } from "@axiom/color";
+import type { Tween } from "@navi/tween";
+import AxiomColor from "@axiom/color";
+import { DrawGui } from "@aurora/urp/draw/draw";
+
 const RESOURCE_COUNT =
   Object.keys(GameResourcesID).filter((k) => isNaN(Number(k))).length - 1; // no none - all class need to -1 index
+
+// what the panel shows: what the mine gives, the rest has no source yet
+const SHOWN: GameResourcesID[] = [
+  GameResourcesID.stone,
+  GameResourcesID.bones,
+  GameResourcesID.coal,
+  GameResourcesID.copper,
+  GameResourcesID.silver,
+  GameResourcesID.gold,
+  GameResourcesID.sapphire,
+  GameResourcesID.diamonds,
+];
+
+const LOOK = {
+  plate: [22, 17, 14, 205] as RGBA,
+  rim: [120, 88, 56, 220] as RGBA,
+  number: [242, 228, 204, 255] as RGBA,
+  shadow: AxiomColor.withAlpha([0, 0, 0, 255], 140),
+  icon: 30,
+  textSize: 19,
+  // an empty slot stays faint
+  emptyAlpha: 0.35,
+  // a slot bumps up when it gains
+  pop: { ms: 220, amount: 0.35 },
+  // a precious one also flares gold behind its icon
+  flare: { seconds: 0.7, color: [255, 200, 90, 255] as RGBA, radius: 20 },
+};
+const PRECIOUS: GameResourcesID[] = [
+  GameResourcesID.silver,
+  GameResourcesID.gold,
+  GameResourcesID.sapphire,
+  GameResourcesID.diamonds,
+];
+
+// one resource in the panel: icon and amount
+class ResourceSlot extends UINode {
+  // 1 right after a precious gain, down to 0
+  private flare = 0;
+
+  constructor(
+    private readonly amount: () => number,
+    private readonly precious: boolean,
+  ) {
+    super({
+      size: { width: auto(), height: auto() },
+      input: "absorb",
+      style: {
+        backgroundColor: [0, 0, 0, 0],
+        layout: "stack",
+        direction: "row",
+        alignCross: "center",
+        gap: 6,
+        origin: { x: 0.5, y: 0.5 },
+      },
+    });
+  }
+
+  public tick(dt: number) {
+    if (!this.isTweening) this.motion.alpha = this.amount() > 0 ? 1 : LOOK.emptyAlpha;
+    this.flare = Math.max(0, this.flare - dt / LOOK.flare.seconds);
+  }
+
+  // the glow under the icon (the row's first child, as tall as the row)
+  public draw(box: Box) {
+    if (this.flare > 0) {
+      const scale = Navi.getScale;
+      const strength = this.flare * this.flare;
+      DrawGui.circle({
+        position: { x: box.x + box.h / 2, y: box.y + box.h / 2 },
+        radius: LOOK.flare.radius * scale,
+        color: AxiomColor.withAlpha(LOOK.flare.color, 120 * strength),
+        shadow: { color: AxiomColor.withAlpha(LOOK.flare.color, 220 * strength), blur: 18 * scale },
+      });
+    }
+    super.draw(box);
+  }
+
+  public pop() {
+    if (this.precious) this.flare = 1;
+    this.stopAllTweens();
+    const pop: Tween = {
+      ms: LOOK.pop.ms,
+      loop: false,
+      delay: 0,
+      elapsed: 0,
+      onDone: undefined,
+      sample: (t) => {
+        const scale = 1 + Math.sin(t * Math.PI) * LOOK.pop.amount;
+        return { scaleX: scale, scaleY: scale };
+      },
+    };
+    this.play(pop);
+  }
+}
+
 export default class PlayerResources extends PragmaSystem {
   private panel!: UINode;
+  // per resource id, undefined for the ones the panel does not show
+  private slots: (ResourceSlot | undefined)[] = [];
   private resList: number[] = new Array(RESOURCE_COUNT).fill(0);
+
   constructor(internal: InternalPSProps) {
     super(internal);
   }
@@ -47,6 +148,7 @@ export default class PlayerResources extends PragmaSystem {
 
   public addResource(res: GameResourcesID, value: number) {
     this.resList[res - 1] += value;
+    this.slots[res]?.pop();
   }
   public removeResource(res: GameResourcesID, value: number) {
     const amount = this.resList[res - 1];
@@ -61,61 +163,60 @@ export default class PlayerResources extends PragmaSystem {
     if (!res) return;
     this.addResource(res, 1);
   }
+
+  private amount(res: GameResourcesID) {
+    return this.resList[res - 1];
+  }
+
   private buildPanel() {
     const panel = Navi.append(
       new UINode({
-        position: { x: px(10), y: px(10) },
+        position: { x: px(16), y: px(16) },
         size: { width: auto(), height: auto() },
         style: {
           anchorX: "end",
-          backgroundColor: AxiomColor.withAlpha(COLOR.BLACK, 200),
+          backgroundColor: LOOK.plate,
+          rounded: 12,
+          outline: { width: 2, color: LOOK.rim },
+          shadow: { color: LOOK.shadow, offset: { x: 0, y: 4 }, blur: 14 },
           layout: "stack",
-          direction: "col",
-          gap: 15,
-          padding: { top: 8, right: 8, bottom: 8, left: 8 },
-          alignCross: "stretch",
+          direction: "row",
+          alignCross: "center",
+          gap: 18,
+          padding: { top: 8, right: 16, bottom: 8, left: 16 },
         },
       }),
     );
     this.panel = panel;
-    for (let slot = 0; slot < this.resList.length; slot++) {
-      const res = (slot + 1) as GameResourcesID;
-
-      const row = Navi.append(
-        new UINode({
-          size: { width: auto(), height: auto() },
-          input: "absorb",
-          style: {
-            backgroundColor: COLOR.TRANSPARENT,
-            layout: "stack",
-            direction: "row",
-            gap: 5,
-            alignMain: "end",
-          },
-        }),
+    for (const res of SHOWN) {
+      const slot = Navi.append(
+        new ResourceSlot(() => this.amount(res), PRECIOUS.includes(res)),
         panel,
-      );
-
-      Navi.append(
-        new UIText(() => String(this.resList[slot]), {
-          size: { width: auto(), height: auto() },
-          style: {
-            textColor: COLOR.TOMATO,
-            textSize: 14,
-          },
-        }),
-        row,
-      );
+      ) as ResourceSlot;
+      this.slots[res] = slot;
 
       Navi.append(
         new UINode({
-          size: { width: px(25), height: px(25) },
+          size: { width: px(LOOK.icon), height: px(LOOK.icon) },
+          input: "none",
           style: {
             backgroundImage: SPRITES.icons,
             backgroundImageCrop: RESOURCES[res].crop,
           },
         }),
-        row,
+        slot,
+      );
+      Navi.append(
+        new UIText(() => String(this.amount(res)), {
+          size: { width: auto(), height: auto() },
+          input: "none",
+          style: {
+            textColor: LOOK.number,
+            textSize: LOOK.textSize,
+            textShadow: { color: LOOK.shadow, offset: { x: 0, y: 1 }, blur: 2 },
+          },
+        }),
+        slot,
       );
     }
   }

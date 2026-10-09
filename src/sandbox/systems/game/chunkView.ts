@@ -4,7 +4,7 @@ import Aurora from "@aurora/core";
 import { Draw } from "@aurora/urp/draw/draw";
 import DrawBatch from "@aurora/urp/draw/drawBatch";
 import { Camera } from "@engine/camera/camera";
-import { BlocksID, getVariantCrop, hasGraphics } from "@sandbox/content/blocks";
+import { BlocksID, getBlock, getVariantCrop, hasGraphics } from "@sandbox/content/blocks";
 import { BACKGROUNDS, BackgroundsID } from "@sandbox/content/backgrounds";
 import { getDecoCrop, type DecoLayer } from "@sandbox/content/decos";
 import { SPRITES } from "@sandbox/content/sprites";
@@ -232,7 +232,7 @@ export default class ChunkView extends PragmaSystem {
           crop,
           texture: SPRITES.blocks,
           size: { width: crop.width, height: crop.height },
-          material: TileMask.solid,
+          material: getBlock(type).glint ? TileMask.ore : TileMask.solid,
           params: [this.world.getDamage(gx, gy) / MAX_DAMAGE, VIEW.noHit, TileMask.packImpact(VIEW.middle), VIEW.cold],
         });
       }
