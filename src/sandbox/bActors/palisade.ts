@@ -17,6 +17,7 @@ export default class Palisade extends PragmaActor {
     super();
     this.transform.setPosition(props.position.x, props.position.y);
     this.transform.setRotation(props.rotation);
+    this.tags.add("playerBuild");
     const shape = OBJECTS[ObjectsID.palisade].shape;
     this.addComponent(Shape, {
       size: { width: shape.w, height: shape.h },

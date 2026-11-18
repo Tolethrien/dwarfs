@@ -28,6 +28,16 @@ export default class AxiomColor {
       from[3] + (to[3] - from[3]) * t,
     ];
   }
+  // one channel: srgb 0-255 → linear 0-1, what the GPU blends and the shaders work in
+  static srgbToLinear(channel: number): number {
+    const value = channel / 255;
+    return value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
+  }
+  // one channel: linear 0-1 → srgb 0-255, no rounding
+  static linearToSrgb(channel: number): number {
+    const value = Math.min(Math.max(channel, 0), 1);
+    return 255 * (value <= 0.0031308 ? value * 12.92 : 1.055 * Math.pow(value, 1 / 2.4) - 0.055);
+  }
   // a palette color (COLOR.*) with another alpha, 0-255
   static withAlpha(color: Readonly<RGBA>, alpha: number): RGBA {
     return [color[0], color[1], color[2], alpha];

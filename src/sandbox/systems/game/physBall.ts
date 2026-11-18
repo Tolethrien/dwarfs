@@ -2,6 +2,7 @@ import Vec2 from "@axiom/vec2";
 import PragmaSystem from "@pragma/system";
 import SpatialGrid from "@axiom/SpatialGrid";
 import Collision, { type SweepHit } from "@axiom/collision";
+import AABB from "@axiom/AABB";
 import type Physics from "@sandbox/components/physics";
 import type PragmaActor from "@pragma/actor";
 import Time from "@engine/time";
@@ -47,7 +48,8 @@ export interface TriggerEvent {
   other: PragmaActor;
 }
 
-const PHYS = { maxBouncesPerTick: 4, skin: 0.01, decayRate: 1 };
+// overSpeedPower: how much of the speed above baseSpeed turns into power (1 = all of it)
+const PHYS = { maxBouncesPerTick: 4, skin: 0.01, decayRate: 1, overSpeedPower: 0.3 };
 
 // per tile type; the tile cast reads this instead of getBlock(type).collides for every tile
 const BALL_COLLIDES = new Uint8Array(TILE_MASK.type + 1);
@@ -97,6 +99,7 @@ export default class PhysBall extends PragmaSystem {
     const dt = Time.getFixedDeltaTime();
     for (const physics of this.movingBodies) {
       if (physics.type !== "rigid") continue;
+      physics.ghostTime = Math.max(0, physics.ghostTime - dt);
       const speed = physics.velocity.length();
       if (speed === 0) continue;
       const newSpeed =
@@ -183,7 +186,32 @@ export default class PhysBall extends PragmaSystem {
 
     if (this.catchInVoid(physics)) return;
     if (physics.body) this.grid.move(physics.actor.ID, physics.getBounds());
+    if (
+      physics.passThrough &&
+      !AABB.overlaps(physics.getBounds(), physics.passThrough.getBounds())
+    )
+      physics.passThrough = null;
     this.checkChunkChange(physics);
+  }
+
+  // where a shot from start first touches something within length (triggers are crossed); into out
+  public predictHit(
+    ball: Physics,
+    start: Position2D,
+    direction: Vec2,
+    length: number,
+    out: Position2D,
+  ) {
+    const heading = direction.clone().normalize();
+    const crossed = new Set<symbol>();
+    let hit = this.findClosestHit(ball, start, heading, length, crossed);
+    while (hit?.kind === "entity" && hit.physics.isTrigger) {
+      crossed.add(hit.physics.actor.ID);
+      hit = this.findClosestHit(ball, start, heading, length, crossed);
+    }
+    const distance = hit ? Math.max(hit.distance - PHYS.skin, 0) : length;
+    out.x = start.x + heading.x * distance;
+    out.y = start.y + heading.y * distance;
   }
 
   private findClosestHit(
@@ -225,7 +253,9 @@ export default class PhysBall extends PragmaSystem {
     };
 
     for (const candidate of this.grid.query(queryBounds)) {
-      if (candidate === self || entered.has(candidate.actor.ID)) continue;
+      if (candidate === self || candidate === self.passThrough) continue;
+      if (entered.has(candidate.actor.ID)) continue;
+      if (self.ghostTime > 0 && candidate.actor.tags.has("playerBuild")) continue;
       if (!candidate.isTrigger && this.isSameFaction(self, candidate)) continue;
       if (!candidate.sweep(ray, selfRadius, maxDistance, this.sweep)) continue;
       if (closest && this.sweep.distance >= closest.distance) continue;
@@ -313,7 +343,8 @@ export default class PhysBall extends PragmaSystem {
   private power(ball: Physics) {
     const stats = ball.getSibling(Stats);
     if (stats?.data.kind !== "dwarf") return 0;
-    return stats.data.baseDmg * (ball.velocity.length() / ball.baseSpeed);
+    const overSpeed = ball.velocity.length() / ball.baseSpeed - 1;
+    return stats.data.baseDmg * (1 + overSpeed * PHYS.overSpeedPower);
   }
 
   private emitBounce(ball: Physics, hit: Hit, radius: number, power: number) {

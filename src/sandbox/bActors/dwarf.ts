@@ -25,6 +25,7 @@ const HEADLIGHT = {
   glow: { radius: 40, intensity: 3 },
 };
 const FACING = { turnRate: 10 };
+export const DWARF_BODY = { type: "circle", radius: 110 / 2 } as const;
 // a faint warm streak behind the flight, under the dwarf
 const TRAIL = {
   seconds: 0.2,
@@ -35,16 +36,20 @@ const TRAIL = {
 
 interface DwarfProps {
   position: Position2D;
-  velocity: Vec2;
-  launchSpeed: number;
+  // none = waiting for its shot: stands still until launch()
+  velocity?: Vec2;
+  launchSpeed?: number;
   dwarfID: DwarfsID;
   // from a save, a fresh dwarf gets the full amount
   beerLeft?: number;
+  // research (pickaxe); not saved, a loaded dwarf flies on with its base power
+  dmgMultiplier?: number;
 }
 export default class Dwarf extends PragmaActor {
   public readonly dwarfID: DwarfsID;
   private physics: Physics;
   private stats: Stats;
+  private sprite: Sprite;
 
   constructor(props: DwarfProps) {
     super();
@@ -53,14 +58,13 @@ export default class Dwarf extends PragmaActor {
     this.tags.add("dwarf");
     this.tags.add("friendly");
     const data = DWARFS[props.dwarfID];
-    const body = { type: "circle", radius: 110 / 2 } as const;
     this.physics = this.addComponent(Physics, {
       type: "rigid",
-      velocity: props.velocity.scale(props.launchSpeed),
-      body,
+      velocity: props.velocity?.scale(props.launchSpeed ?? 1) ?? Vec2.create(0, 0),
+      body: DWARF_BODY,
       baseSpeed: data.baseSpeed,
     });
-    this.addComponent(Interactive, { body });
+    this.addComponent(Interactive, { body: DWARF_BODY });
     this.events.on("clicked", () =>
       this.scene.events.emit("dwarfClicked", {
         dwarf: this,
@@ -68,14 +72,15 @@ export default class Dwarf extends PragmaActor {
     );
     this.stats = this.addComponent(Stats, {
       kind: "dwarf",
-      baseDmg: data.baseDmg,
+      baseDmg: data.baseDmg * (props.dmgMultiplier ?? 1),
       baseSpeed: 0,
       beerLeft: props.beerLeft ?? 10,
       beerPerMinute: data.bpm,
+      drinking: props.velocity !== undefined,
     });
     // only a look, not saved: a loaded dwarf may come back in another
     const look = randomDwarfLook();
-    this.addComponent(Sprite, {
+    this.sprite = this.addComponent(Sprite, {
       crop: look.crop,
       sprite: SPRITES.dwarfs,
       zIndex: RENDER_ORDER.main,
@@ -91,8 +96,36 @@ export default class Dwarf extends PragmaActor {
     });
   }
 
-  // the rest comes from DWARFS[type]; f64 so a save round trip is exact
+  public get body() {
+    return this.physics;
+  }
+
+  public get launched() {
+    return !this.physics.velocity.isZero();
+  }
+
+  public get beerLeft() {
+    return this.stats.data.beerLeft;
+  }
+
+  // out of beer: the flight ends where it is, upright for the walk home
+  public stop() {
+    this.physics.velocity = Vec2.create(0, 0);
+    this.stats.data.drinking = false;
+    this.transform.setRotation(0);
+    this.sprite.flipY = false;
+  }
+
+  // the beer starts running out with the shot
+  public launch(direction: Vec2, speed: number) {
+    this.physics.velocity = direction.clone().normalize().scale(speed);
+    this.stats.data.drinking = true;
+  }
+
+  // the rest comes from DWARFS[type]; f64 so a save round trip is exact. Not launched yet = still in
+  // the tavern's hands, nothing to keep
   public save(writer: ByteWriter) {
+    if (!this.launched) return false;
     const position = this.transform.getPosition();
     writer.u8(this.dwarfID);
     writer.f64(position.x);
@@ -108,7 +141,6 @@ export default class Dwarf extends PragmaActor {
       dwarfID: reader.u8(),
       position: { x: reader.f64(), y: reader.f64() },
       velocity: Vec2.create(reader.f64(), reader.f64()),
-      launchSpeed: 1,
       beerLeft: reader.f64(),
     });
   }

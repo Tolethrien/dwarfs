@@ -84,6 +84,57 @@ export default class Grid {
       y: Math.floor(index / gridWidth),
     };
   }
+
+  // breadth-first from start to the nearest tile isGoal accepts, through passable tiles, 8 ways but
+  // never across a blocked corner. The tiles on the way, start and goal included; null = no goal
+  // reachable within maxVisited tiles. The start itself need not be passable
+  static findPath(
+    size: Size2D,
+    start: Position2D,
+    passable: (x: number, y: number) => boolean,
+    isGoal: (x: number, y: number) => boolean,
+    maxVisited = Infinity,
+  ): Position2D[] | null {
+    const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < size.width && y < size.height;
+    if (!inside(start.x, start.y)) return null;
+    const width = size.width;
+    const count = width * size.height;
+    // -1 = not reached; the start points at itself
+    const cameFrom = new Int32Array(count).fill(-1);
+    const queue = new Int32Array(count);
+    const startIndex = start.y * width + start.x;
+    cameFrom[startIndex] = startIndex;
+    queue[0] = startIndex;
+    let head = 0;
+    let tail = 1;
+    const open = (x: number, y: number) => inside(x, y) && passable(x, y);
+
+    while (head < tail && head < maxVisited) {
+      const index = queue[head++];
+      const x = index % width;
+      const y = (index - x) / width;
+      if (isGoal(x, y)) {
+        const path: Position2D[] = [];
+        for (let at = index; ; at = cameFrom[at]) {
+          path.push({ x: at % width, y: Math.floor(at / width) });
+          if (at === startIndex) break;
+        }
+        return path.reverse();
+      }
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = x + dx;
+          const ny = y + dy;
+          if (!open(nx, ny) || cameFrom[ny * width + nx] !== -1) continue;
+          if (dx !== 0 && dy !== 0 && (!open(x + dx, y) || !open(x, y + dy))) continue;
+          cameFrom[ny * width + nx] = index;
+          queue[tail++] = ny * width + nx;
+        }
+      }
+    }
+    return null;
+  }
   
   static generateGrid<T = Position2D>({
     gridSize,

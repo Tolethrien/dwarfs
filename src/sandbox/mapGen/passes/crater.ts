@@ -32,6 +32,24 @@ const TUNING = {
   coalAngle: { min: 0.1, max: Math.PI - 0.1 },
 };
 
+// the shaft column in tiles; the game places the shaft actor by it too
+export function shaftTiles(
+  config: CraterConfig,
+  meta: Pick<MapGenConfig, "mapInChunks" | "chunkInTiles">,
+) {
+  const chunk = {
+    x: config.chunk % meta.mapInChunks.width,
+    y: Math.floor(config.chunk / meta.mapInChunks.width),
+  };
+  const top = chunk.y * meta.chunkInTiles.height;
+  return {
+    x: chunk.x * meta.chunkInTiles.width + Math.floor(meta.chunkInTiles.width / 2),
+    top,
+    bottom: top + config.shaft.depth,
+    half: Math.floor(config.shaft.width / 2),
+  };
+}
+
 export function craterPass(
   ctx: GenContext,
   config: CraterConfig,
@@ -39,19 +57,10 @@ export function craterPass(
   tools: PassTools,
 ): CraterArea {
   const random = tools.random;
-  const chunk = {
-    x: config.chunk % meta.mapInChunks.width,
-    y: Math.floor(config.chunk / meta.mapInChunks.width),
-  };
-  const shaft = {
-    x: chunk.x * meta.chunkInTiles.width + Math.floor(meta.chunkInTiles.width / 2),
-    top: chunk.y * meta.chunkInTiles.height,
-    half: Math.floor(config.shaft.width / 2),
-  };
-  const shaftBottom = shaft.top + config.shaft.depth;
+  const shaft = shaftTiles(config, meta);
   const center = {
     x: shaft.x,
-    y: shaftBottom + Math.round(config.radius.height * TUNING.shaftOverlap),
+    y: shaft.bottom + Math.round(config.radius.height * TUNING.shaftOverlap),
   };
 
   const edge = (angle: number) => {
@@ -69,7 +78,7 @@ export function craterPass(
   };
 
   // ---- shaft: a drill leaves clean, straight walls ----
-  for (let gy = shaft.top; gy <= shaftBottom; gy++)
+  for (let gy = shaft.top; gy <= shaft.bottom; gy++)
     for (let dx = -shaft.half; dx <= shaft.half; dx++)
       ctx.set(shaft.x + dx, gy, BlocksID.air);
 

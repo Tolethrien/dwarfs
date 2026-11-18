@@ -75,6 +75,7 @@ export default class Chest extends PragmaActor {
     for (const [resource, amount] of this.loot)
       resources.addResource(resource, amount);
     debug.log.log("chest opened", this.loot);
+    this.scene.events.emit("chestOpened", {});
     this.destroyComponent(Physics);
     this.destroyComponent(Interactive);
     this.startCoroutine((co) => this.playOpen(co));

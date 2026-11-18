@@ -1,0 +1,638 @@
+﻿{
+    "image":  "dwarf-layers.png",
+    "frameWidth":  96,
+    "frameHeight":  96,
+    "columns":  15,
+    "rows":  5,
+    "body":  [
+                 {
+                     "name":  "base",
+                     "file":  "body.png",
+                     "crop":  {
+                                  "x":  0,
+                                  "y":  0,
+                                  "width":  96,
+                                  "height":  96
+                              }
+                 },
+                 {
+                     "name":  "blue-dark",
+                     "file":  "body-blue-dark.png",
+                     "crop":  {
+                                  "x":  96,
+                                  "y":  0,
+                                  "width":  96,
+                                  "height":  96
+                              }
+                 },
+                 {
+                     "name":  "blue-light",
+                     "file":  "body-blue-light.png",
+                     "crop":  {
+                                  "x":  192,
+                                  "y":  0,
+                                  "width":  96,
+                                  "height":  96
+                              }
+                 },
+                 {
+                     "name":  "blue-medium",
+                     "file":  "body-blue-medium.png",
+                     "crop":  {
+                                  "x":  288,
+                                  "y":  0,
+                                  "width":  96,
+                                  "height":  96
+                              }
+                 },
+                 {
+                     "name":  "squint-dark",
+                     "file":  "body-squint-dark.png",
+                     "crop":  {
+                                  "x":  384,
+                                  "y":  0,
+                                  "width":  96,
+                                  "height":  96
+                              }
+                 },
+                 {
+                     "name":  "squint-light",
+                     "file":  "body-squint-light.png",
+                     "crop":  {
+                                  "x":  480,
+                                  "y":  0,
+                                  "width":  96,
+                                  "height":  96
+                              }
+                 },
+                 {
+                     "name":  "squint-medium",
+                     "file":  "body-squint-medium.png",
+                     "crop":  {
+                                  "x":  576,
+                                  "y":  0,
+                                  "width":  96,
+                                  "height":  96
+                              }
+                 }
+             ],
+    "armor":  [
+                  {
+                      "name":  "barrel",
+                      "file":  "armor-barrel.png",
+                      "crop":  {
+                                   "x":  0,
+                                   "y":  96,
+                                   "width":  96,
+                                   "height":  96
+                               }
+                  },
+                  {
+                      "name":  "bone",
+                      "file":  "armor-bone.png",
+                      "crop":  {
+                                   "x":  96,
+                                   "y":  96,
+                                   "width":  96,
+                                   "height":  96
+                               }
+                  },
+                  {
+                      "name":  "bronze",
+                      "file":  "armor-bronze.png",
+                      "crop":  {
+                                   "x":  192,
+                                   "y":  96,
+                                   "width":  96,
+                                   "height":  96
+                               }
+                  },
+                  {
+                      "name":  "demo",
+                      "file":  "armor-demo.png",
+                      "crop":  {
+                                   "x":  288,
+                                   "y":  96,
+                                   "width":  96,
+                                   "height":  96
+                               }
+                  },
+                  {
+                      "name":  "diamond",
+                      "file":  "armor-diamond.png",
+                      "crop":  {
+                                   "x":  384,
+                                   "y":  96,
+                                   "width":  96,
+                                   "height":  96
+                               }
+                  },
+                  {
+                      "name":  "driller",
+                      "file":  "armor-driller.png",
+                      "crop":  {
+                                   "x":  480,
+                                   "y":  96,
+                                   "width":  96,
+                                   "height":  96
+                               }
+                  },
+                  {
+                      "name":  "gilded",
+                      "file":  "armor-gilded.png",
+                      "crop":  {
+                                   "x":  576,
+                                   "y":  96,
+                                   "width":  96,
+                                   "height":  96
+                               }
+                  },
+                  {
+                      "name":  "intern",
+                      "file":  "armor-intern.png",
+                      "crop":  {
+                                   "x":  672,
+                                   "y":  96,
+                                   "width":  96,
+                                   "height":  96
+                               }
+                  },
+                  {
+                      "name":  "iron",
+                      "file":  "armor-iron.png",
+                      "crop":  {
+                                   "x":  768,
+                                   "y":  96,
+                                   "width":  96,
+                                   "height":  96
+                               }
+                  },
+                  {
+                      "name":  "leather",
+                      "file":  "armor-leather.png",
+                      "crop":  {
+                                   "x":  864,
+                                   "y":  96,
+                                   "width":  96,
+                                   "height":  96
+                               }
+                  },
+                  {
+                      "name":  "miner",
+                      "file":  "armor-miner.png",
+                      "crop":  {
+                                   "x":  960,
+                                   "y":  96,
+                                   "width":  96,
+                                   "height":  96
+                               }
+                  },
+                  {
+                      "name":  "padded",
+                      "file":  "armor-padded.png",
+                      "crop":  {
+                                   "x":  1056,
+                                   "y":  96,
+                                   "width":  96,
+                                   "height":  96
+                               }
+                  },
+                  {
+                      "name":  "scout",
+                      "file":  "armor-scout.png",
+                      "crop":  {
+                                   "x":  1152,
+                                   "y":  96,
+                                   "width":  96,
+                                   "height":  96
+                               }
+                  }
+              ],
+    "beard":  [
+                  {
+                      "name":  "braids",
+                      "file":  "beard-braids.png",
+                      "crop":  {
+                                   "x":  0,
+                                   "y":  192,
+                                   "width":  96,
+                                   "height":  96
+                               }
+                  },
+                  {
+                      "name":  "chops",
+                      "file":  "beard-chops.png",
+                      "crop":  {
+                                   "x":  96,
+                                   "y":  192,
+                                   "width":  96,
+                                   "height":  96
+                               }
+                  },
+                  {
+                      "name":  "forked",
+                      "file":  "beard-forked.png",
+                      "crop":  {
+                                   "x":  192,
+                                   "y":  192,
+                                   "width":  96,
+                                   "height":  96
+                               }
+                  },
+                  {
+                      "name":  "full",
+                      "file":  "beard-full.png",
+                      "crop":  {
+                                   "x":  288,
+                                   "y":  192,
+                                   "width":  96,
+                                   "height":  96
+                               }
+                  },
+                  {
+                      "name":  "goatee",
+                      "file":  "beard-goatee.png",
+                      "crop":  {
+                                   "x":  384,
+                                   "y":  192,
+                                   "width":  96,
+                                   "height":  96
+                               }
+                  },
+                  {
+                      "name":  "short-a",
+                      "file":  "beard-short-a.png",
+                      "crop":  {
+                                   "x":  480,
+                                   "y":  192,
+                                   "width":  96,
+                                   "height":  96
+                               }
+                  },
+                  {
+                      "name":  "short-b",
+                      "file":  "beard-short-b.png",
+                      "crop":  {
+                                   "x":  576,
+                                   "y":  192,
+                                   "width":  96,
+                                   "height":  96
+                               }
+                  },
+                  {
+                      "name":  "square",
+                      "file":  "beard-square.png",
+                      "crop":  {
+                                   "x":  672,
+                                   "y":  192,
+                                   "width":  96,
+                                   "height":  96
+                               }
+                  },
+                  {
+                      "name":  "walrus",
+                      "file":  "beard-walrus.png",
+                      "crop":  {
+                                   "x":  768,
+                                   "y":  192,
+                                   "width":  96,
+                                   "height":  96
+                               }
+                  }
+              ],
+    "gloves":  [
+                   {
+                       "name":  "bone",
+                       "file":  "gloves-bone.png",
+                       "crop":  {
+                                    "x":  0,
+                                    "y":  288,
+                                    "width":  96,
+                                    "height":  96
+                                }
+                   },
+                   {
+                       "name":  "bronze",
+                       "file":  "gloves-bronze.png",
+                       "crop":  {
+                                    "x":  96,
+                                    "y":  288,
+                                    "width":  96,
+                                    "height":  96
+                                }
+                   },
+                   {
+                       "name":  "chain",
+                       "file":  "gloves-chain.png",
+                       "crop":  {
+                                    "x":  192,
+                                    "y":  288,
+                                    "width":  96,
+                                    "height":  96
+                                }
+                   },
+                   {
+                       "name":  "demo",
+                       "file":  "gloves-demo.png",
+                       "crop":  {
+                                    "x":  288,
+                                    "y":  288,
+                                    "width":  96,
+                                    "height":  96
+                                }
+                   },
+                   {
+                       "name":  "diamond",
+                       "file":  "gloves-diamond.png",
+                       "crop":  {
+                                    "x":  384,
+                                    "y":  288,
+                                    "width":  96,
+                                    "height":  96
+                                }
+                   },
+                   {
+                       "name":  "driller",
+                       "file":  "gloves-driller.png",
+                       "crop":  {
+                                    "x":  480,
+                                    "y":  288,
+                                    "width":  96,
+                                    "height":  96
+                                }
+                   },
+                   {
+                       "name":  "gilded",
+                       "file":  "gloves-gilded.png",
+                       "crop":  {
+                                    "x":  576,
+                                    "y":  288,
+                                    "width":  96,
+                                    "height":  96
+                                }
+                   },
+                   {
+                       "name":  "iron",
+                       "file":  "gloves-iron.png",
+                       "crop":  {
+                                    "x":  672,
+                                    "y":  288,
+                                    "width":  96,
+                                    "height":  96
+                                }
+                   },
+                   {
+                       "name":  "leather",
+                       "file":  "gloves-leather.png",
+                       "crop":  {
+                                    "x":  768,
+                                    "y":  288,
+                                    "width":  96,
+                                    "height":  96
+                                }
+                   },
+                   {
+                       "name":  "padded",
+                       "file":  "gloves-padded.png",
+                       "crop":  {
+                                    "x":  864,
+                                    "y":  288,
+                                    "width":  96,
+                                    "height":  96
+                                }
+                   },
+                   {
+                       "name":  "runic",
+                       "file":  "gloves-runic.png",
+                       "crop":  {
+                                    "x":  960,
+                                    "y":  288,
+                                    "width":  96,
+                                    "height":  96
+                                }
+                   },
+                   {
+                       "name":  "wraps",
+                       "file":  "gloves-wraps.png",
+                       "crop":  {
+                                    "x":  1056,
+                                    "y":  288,
+                                    "width":  96,
+                                    "height":  96
+                                }
+                   }
+               ],
+    "helmet":  [
+                   {
+                       "name":  "bronze",
+                       "file":  "helmet-bronze.png",
+                       "crop":  {
+                                    "x":  0,
+                                    "y":  384,
+                                    "width":  96,
+                                    "height":  96
+                                },
+                       "light":  {
+                                     "x":  71,
+                                     "y":  16
+                                 }
+                   },
+                   {
+                       "name":  "candle",
+                       "file":  "helmet-candle.png",
+                       "crop":  {
+                                    "x":  96,
+                                    "y":  384,
+                                    "width":  96,
+                                    "height":  96
+                                },
+                       "light":  {
+                                     "x":  66,
+                                     "y":  8
+                                 }
+                   },
+                   {
+                       "name":  "crown",
+                       "file":  "helmet-crown.png",
+                       "crop":  {
+                                    "x":  192,
+                                    "y":  384,
+                                    "width":  96,
+                                    "height":  96
+                                },
+                       "light":  {
+                                     "x":  65,
+                                     "y":  20
+                                 }
+                   },
+                   {
+                       "name":  "crystal",
+                       "file":  "helmet-crystal.png",
+                       "crop":  {
+                                    "x":  288,
+                                    "y":  384,
+                                    "width":  96,
+                                    "height":  96
+                                },
+                       "light":  {
+                                     "x":  65,
+                                     "y":  12
+                                 }
+                   },
+                   {
+                       "name":  "goggles",
+                       "file":  "helmet-goggles.png",
+                       "crop":  {
+                                    "x":  384,
+                                    "y":  384,
+                                    "width":  96,
+                                    "height":  96
+                                },
+                       "light":  {
+                                     "x":  69,
+                                     "y":  19
+                                 }
+                   },
+                   {
+                       "name":  "hood",
+                       "file":  "helmet-hood.png",
+                       "crop":  {
+                                    "x":  480,
+                                    "y":  384,
+                                    "width":  96,
+                                    "height":  96
+                                },
+                       "light":  {
+                                     "x":  73,
+                                     "y":  24
+                                 }
+                   },
+                   {
+                       "name":  "iron",
+                       "file":  "helmet-iron.png",
+                       "crop":  {
+                                    "x":  576,
+                                    "y":  384,
+                                    "width":  96,
+                                    "height":  96
+                                },
+                       "light":  {
+                                     "x":  66,
+                                     "y":  22
+                                 }
+                   },
+                   {
+                       "name":  "leather",
+                       "file":  "helmet-leather.png",
+                       "crop":  {
+                                    "x":  672,
+                                    "y":  384,
+                                    "width":  96,
+                                    "height":  96
+                                },
+                       "light":  {
+                                     "x":  65,
+                                     "y":  21
+                                 }
+                   },
+                   {
+                       "name":  "mask",
+                       "file":  "helmet-mask.png",
+                       "crop":  {
+                                    "x":  768,
+                                    "y":  384,
+                                    "width":  96,
+                                    "height":  96
+                                },
+                       "light":  {
+                                     "x":  67,
+                                     "y":  15
+                                 }
+                   },
+                   {
+                       "name":  "mushroom",
+                       "file":  "helmet-mushroom.png",
+                       "crop":  {
+                                    "x":  864,
+                                    "y":  384,
+                                    "width":  96,
+                                    "height":  96
+                                },
+                       "light":  {
+                                     "x":  66,
+                                     "y":  12
+                                 }
+                   },
+                   {
+                       "name":  "overman",
+                       "file":  "helmet-overman.png",
+                       "crop":  {
+                                    "x":  960,
+                                    "y":  384,
+                                    "width":  96,
+                                    "height":  96
+                                },
+                       "light":  {
+                                     "x":  66,
+                                     "y":  16
+                                 }
+                   },
+                   {
+                       "name":  "pot",
+                       "file":  "helmet-pot.png",
+                       "crop":  {
+                                    "x":  1056,
+                                    "y":  384,
+                                    "width":  96,
+                                    "height":  96
+                                },
+                       "light":  {
+                                     "x":  71,
+                                     "y":  8
+                                 }
+                   },
+                   {
+                       "name":  "runic",
+                       "file":  "helmet-runic.png",
+                       "crop":  {
+                                    "x":  1152,
+                                    "y":  384,
+                                    "width":  96,
+                                    "height":  96
+                                },
+                       "light":  {
+                                     "x":  65,
+                                     "y":  21
+                                 }
+                   },
+                   {
+                       "name":  "skull",
+                       "file":  "helmet-skull.png",
+                       "crop":  {
+                                    "x":  1248,
+                                    "y":  384,
+                                    "width":  96,
+                                    "height":  96
+                                },
+                       "light":  {
+                                     "x":  70,
+                                     "y":  18
+                                 }
+                   },
+                   {
+                       "name":  "visor",
+                       "file":  "helmet-visor.png",
+                       "crop":  {
+                                    "x":  1344,
+                                    "y":  384,
+                                    "width":  96,
+                                    "height":  96
+                                },
+                       "light":  {
+                                     "x":  70,
+                                     "y":  12
+                                 }
+                   }
+               ],
+    "rendering":  "All cells share one 96x96 canvas: draw one cell per row at the same position, in row order (body, armor, beard, tool, hand, gloves, helmet). Hair layers (beard-*) are grayscale; tint by multiply. Beards include eyebrows. Armor is full color. Helmet entries have light: the light source center in cell pixels, computed from the image."
+}

@@ -4,6 +4,7 @@ import { COLOR } from "@axiom/color";
 import Engine from "@engine/engine";
 import chars from "@sandbox/assets/chars.png";
 import stones from "@sandbox/assets/stones.png";
+import rocks from "@sandbox/assets/rocks-neutral.png";
 import blockDamage from "@sandbox/assets/blockDamage.mp3";
 import blockDestroy from "@sandbox/assets/blockDestroy.mp3";
 import mineAmbient from "@sandbox/assets/mineAmbient1.mp3";
@@ -32,6 +33,7 @@ async function preload() {
     userTextures: [
       { name: "chars", albedo: chars },
       { name: "stones", albedo: stones },
+      { name: "rocks", albedo: rocks },
       { name: "bg", albedo: bg },
       { name: "anims", albedo: anims },
       { name: "decos", albedo: decos },
@@ -51,7 +53,7 @@ async function preload() {
     lighting: { enabled: true },
     pixelSnap: "world",
   });
-  TileMask.register();
+  await TileMask.register(rocks);
   Minimap.register();
   Materials.register();
 

@@ -4,6 +4,7 @@ import MenuScene from "../scenes/menuScene";
 import { SAVES } from "../configs";
 import { BlocksID, tileNames } from "../content/blocks";
 import { MAP_GEN_CONFIG } from "../mapGen/mapGenerator";
+import { GameResourcesID, RESOURCES } from "../content/resources";
 import { runWorker } from "@axiom/worker";
 import {
   generateJob,
@@ -115,9 +116,21 @@ export default class SaveGame {
         }),
       check: () => SaveGame.check(),
       showAllChunks: (show = true) => GameScene.showAllChunks(show),
+      beer: (amount = 10) => GameScene.give(GameResourcesID.beer, amount),
+      giveAll: (amount = 10) => {
+        for (const id of Object.keys(RESOURCES).map(Number))
+          if (id !== GameResourcesID.none) GameScene.give(id, amount);
+      },
+      // name as in the enum ("wood") or as shown ("drewno"), or the id
+      res: (name: string | number, amount = 10) => {
+        const res = resourceByName(name);
+        if (res === undefined)
+          return `unknown resource, one of: ${Object.values(RESOURCES).map((data) => data.name).join(", ")}`;
+        GameScene.give(res, amount);
+      },
     });
     debug.command.expose("game", () => commands, {
-      hint: "game.save(name?) | saves() | load(gameId?, file?) | newGame(seed?, chunksWide?, chunksHigh?) | check() | showAllChunks(show?)",
+      hint: "game.save(name?) | saves() | load(gameId?, file?) | newGame(seed?, chunksWide?, chunksHigh?) | check() | showAllChunks(show?) | beer(amount?) | res(name, amount?) | giveAll(amount?)",
     });
   }
 
@@ -185,4 +198,12 @@ function compare(original: SaveData, loaded: SaveData) {
     );
   if (!actorsSame) differences.push("actors");
   return differences;
+}
+
+function resourceByName(name: string | number): GameResourcesID | undefined {
+  if (typeof name === "number") return RESOURCES[name as GameResourcesID] ? name : undefined;
+  const wanted = name.toLowerCase();
+  for (const [id, data] of Object.entries(RESOURCES))
+    if (data.name === wanted || data.label === wanted) return Number(id) as GameResourcesID;
+  return undefined;
 }

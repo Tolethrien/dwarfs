@@ -1,0 +1,1213 @@
+{
+  "image": "buffs-100-96.png",
+  "width": 960,
+  "height": 960,
+  "frameWidth": 96,
+  "frameHeight": 96,
+  "columns": 10,
+  "rows": 10,
+  "count": 100,
+  "unusedCells": 0,
+  "frames": {
+    "buff-001": {
+      "number": 1,
+      "label": "Górniczy zapał",
+      "motif": "Kilof z żółtymi smugami ruchu",
+      "proposedEffect": "Szybsze kopanie",
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-002": {
+      "number": 2,
+      "label": "Kruszyciel skał",
+      "motif": "Ciężki kilof rozłupujący kamień",
+      "proposedEffect": "Większa siła wydobycia",
+      "crop": {
+        "x": 96,
+        "y": 0,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-003": {
+      "number": 3,
+      "label": "Diamentowe ostrze",
+      "motif": "Kilof z błękitnym ostrzem i odpryskami",
+      "proposedEffect": "Łatwiejsze przebijanie twardych skał",
+      "crop": {
+        "x": 192,
+        "y": 0,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-004": {
+      "number": 4,
+      "label": "Piorunujący kilof",
+      "motif": "Żelazny kilof opleciony błyskawicami",
+      "proposedEffect": "Szansa na dodatkowe uderzenie",
+      "crop": {
+        "x": 288,
+        "y": 0,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-005": {
+      "number": 5,
+      "label": "Żar głębin",
+      "motif": "Kilof z pomarańczowymi pęknięciami",
+      "proposedEffect": "Obrażenia od ognia",
+      "crop": {
+        "x": 384,
+        "y": 0,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-006": {
+      "number": 6,
+      "label": "Runiczne uderzenie",
+      "motif": "Kilof z fioletowymi runami",
+      "proposedEffect": "Mocniejsze uderzenie co kilka zamachów",
+      "crop": {
+        "x": 480,
+        "y": 0,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-007": {
+      "number": 7,
+      "label": "Drugie śniadanie",
+      "motif": "Spieniony kufel z unoszącymi się bąbelkami",
+      "proposedEffect": "Regeneracja energii",
+      "crop": {
+        "x": 576,
+        "y": 0,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-008": {
+      "number": 8,
+      "label": "Piwo siłacza",
+      "motif": "Kufel z mocarnym uchem i czerwoną poświatą",
+      "proposedEffect": "Większa siła",
+      "crop": {
+        "x": 672,
+        "y": 0,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-009": {
+      "number": 9,
+      "label": "Złoty lager",
+      "motif": "Złoty kufel z monetami w pianie",
+      "proposedEffect": "Więcej złota z wydobycia",
+      "crop": {
+        "x": 768,
+        "y": 0,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-010": {
+      "number": 10,
+      "label": "Lodowy porter",
+      "motif": "Ośnieżony kufel z błękitnymi bąbelkami",
+      "proposedEffect": "Odporność na gorąco",
+      "crop": {
+        "x": 864,
+        "y": 0,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-011": {
+      "number": 11,
+      "label": "Grzybowy ale",
+      "motif": "Kufel z zieloną pianą i małym grzybem",
+      "proposedEffect": "Odporność na trucizny",
+      "crop": {
+        "x": 0,
+        "y": 96,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-012": {
+      "number": 12,
+      "label": "Ostatnia kolejka",
+      "motif": "Dwa stukające się kufle, rozprysk piany",
+      "proposedEffect": "Wzmocnienie pobliskich krasnoludów",
+      "crop": {
+        "x": 96,
+        "y": 96,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-013": {
+      "number": 13,
+      "label": "Żelazna skóra",
+      "motif": "Nitowany napierśnik ze srebrnym błyskiem",
+      "proposedEffect": "Większy pancerz",
+      "crop": {
+        "x": 192,
+        "y": 96,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-014": {
+      "number": 14,
+      "label": "Kamienna pierś",
+      "motif": "Pancerz z grubych kamiennych płyt",
+      "proposedEffect": "Redukcja otrzymywanych obrażeń",
+      "crop": {
+        "x": 288,
+        "y": 96,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-015": {
+      "number": 15,
+      "label": "Runiczna osłona",
+      "motif": "Napierśnik otoczony niebieskimi runami",
+      "proposedEffect": "Tymczasowa tarcza",
+      "crop": {
+        "x": 384,
+        "y": 96,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-016": {
+      "number": 16,
+      "label": "Żaroodporna zbroja",
+      "motif": "Ciemny napierśnik z płomieniami przy krawędzi",
+      "proposedEffect": "Odporność na ogień",
+      "crop": {
+        "x": 480,
+        "y": 96,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-017": {
+      "number": 17,
+      "label": "Cierniowe nity",
+      "motif": "Pancerz z krótkimi stalowymi kolcami",
+      "proposedEffect": "Odbijanie części obrażeń",
+      "crop": {
+        "x": 576,
+        "y": 96,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-018": {
+      "number": 18,
+      "label": "Szczęśliwy hełm",
+      "motif": "Hełm z koniczyną i złotą iskierką",
+      "proposedEffect": "Mniejsza szansa na uraz",
+      "crop": {
+        "x": 672,
+        "y": 96,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-019": {
+      "number": 19,
+      "label": "Chyże buciory",
+      "motif": "Ciężkie buty ze smugami kurzu",
+      "proposedEffect": "Szybszy ruch",
+      "crop": {
+        "x": 768,
+        "y": 96,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-020": {
+      "number": 20,
+      "label": "Pewny krok",
+      "motif": "Podkuty but wbity w pękniętą skałę",
+      "proposedEffect": "Odporność na odrzucenie",
+      "crop": {
+        "x": 864,
+        "y": 96,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-021": {
+      "number": 21,
+      "label": "Mocny chwyt",
+      "motif": "Skórzana rękawica zaciśnięta na trzonku",
+      "proposedEffect": "Szybsza praca narzędziami",
+      "crop": {
+        "x": 0,
+        "y": 192,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-022": {
+      "number": 22,
+      "label": "Plecy tragarza",
+      "motif": "Wypchany plecak z rudą i strzałką w górę",
+      "proposedEffect": "Większy udźwig",
+      "crop": {
+        "x": 96,
+        "y": 192,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-023": {
+      "number": 23,
+      "label": "Rozpędzony wózek",
+      "motif": "Wózek z rudą i iskrami spod kół",
+      "proposedEffect": "Szybszy transport",
+      "crop": {
+        "x": 192,
+        "y": 192,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-024": {
+      "number": 24,
+      "label": "Dobrze naoliwione",
+      "motif": "Oliwiarka nad złotym kołem zębatym",
+      "proposedEffect": "Szybsza praca maszyn",
+      "crop": {
+        "x": 288,
+        "y": 192,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-025": {
+      "number": 25,
+      "label": "Oko poszukiwacza",
+      "motif": "Lupa nad błyszczącą żyłą złota",
+      "proposedEffect": "Częstsze znajdowanie cennych rud",
+      "crop": {
+        "x": 384,
+        "y": 192,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-026": {
+      "number": 26,
+      "label": "Kryształowy rezonans",
+      "motif": "Błękitny kryształ z rozchodzącymi się falami",
+      "proposedEffect": "Więcej wydobywanych klejnotów",
+      "crop": {
+        "x": 480,
+        "y": 192,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-027": {
+      "number": 27,
+      "label": "Światło przodków",
+      "motif": "Górnicza latarnia ze złotą aureolą",
+      "proposedEffect": "Większy zasięg widzenia",
+      "crop": {
+        "x": 576,
+        "y": 192,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-028": {
+      "number": 28,
+      "label": "Solidna obudowa",
+      "motif": "Drewniana podpora z metalowymi obejmami",
+      "proposedEffect": "Ochrona przed zawałami",
+      "crop": {
+        "x": 672,
+        "y": 192,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-029": {
+      "number": 29,
+      "label": "Wybuchowa robota",
+      "motif": "Wiązka dynamitu z iskrzącym lontem",
+      "proposedEffect": "Większy obszar niszczenia skał",
+      "crop": {
+        "x": 768,
+        "y": 192,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-030": {
+      "number": 30,
+      "label": "Róg sztygara",
+      "motif": "Mosiężny róg z czerwonym sztandarkiem",
+      "proposedEffect": "Szybsza praca całej załogi",
+      "crop": {
+        "x": 864,
+        "y": 192,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-031": {
+      "number": 31,
+      "label": "Większe bum",
+      "motif": "Pękata bomba na tle pomarańczowej eksplozji",
+      "proposedEffect": "Większy promień wybuchu",
+      "crop": {
+        "x": 0,
+        "y": 288,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-032": {
+      "number": 32,
+      "label": "Ładunek przebijający",
+      "motif": "Stalowa bomba z ostrym czubkiem, wbita w skałę",
+      "proposedEffect": "Większe obrażenia wybuchowe przeciw twardym blokom",
+      "crop": {
+        "x": 96,
+        "y": 288,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-033": {
+      "number": 33,
+      "label": "Reakcja łańcuchowa",
+      "motif": "Trzy laski dynamitu połączone iskrzącym lontem",
+      "proposedEffect": "Wybuch wywołuje dodatkowe, mniejsze detonacje",
+      "crop": {
+        "x": 192,
+        "y": 288,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-034": {
+      "number": 34,
+      "label": "Demolka z opóźnieniem",
+      "motif": "Bomba z mosiężnym zegarem i żarzącym lontem",
+      "proposedEffect": "Mocniejszy wybuch po odliczeniu",
+      "crop": {
+        "x": 288,
+        "y": 288,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-035": {
+      "number": 35,
+      "label": "Wybuchowe odbicie",
+      "motif": "Nitowany hełm odbijający się od skały, za nim błysk eksplozji",
+      "proposedEffect": "Kilka kolejnych zderzeń krasnoluda powoduje małe wybuchy",
+      "crop": {
+        "x": 384,
+        "y": 288,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-036": {
+      "number": 36,
+      "label": "Proch z centrali",
+      "motif": "Beczka prochu z czerwoną pieczęcią i iskrami",
+      "proposedEffect": "Silniejsze ładunki dla wszystkich Demolek",
+      "crop": {
+        "x": 480,
+        "y": 288,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-037": {
+      "number": 37,
+      "label": "Norma przekroczona",
+      "motif": "Bryła rudy pod złotą strzałką wystrzeloną w górę",
+      "proposedEffect": "Chwilowo większy uzysk z wydobycia",
+      "crop": {
+        "x": 576,
+        "y": 288,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-038": {
+      "number": 38,
+      "label": "Podpisano. Kopać.",
+      "motif": "Wielki mosiężny stempel uderzający w pergamin",
+      "proposedEffect": "Szybsza praca całej załogi",
+      "crop": {
+        "x": 672,
+        "y": 288,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-039": {
+      "number": 39,
+      "label": "Budżet zatwierdzony",
+      "motif": "Rozwiązany worek monet z woskową pieczęcią",
+      "proposedEffect": "Tańsza budowa torów, stacji i platform",
+      "crop": {
+        "x": 768,
+        "y": 288,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-040": {
+      "number": 40,
+      "label": "Płynność finansowa",
+      "motif": "Kufel przelewający piwo na stos monet",
+      "proposedEffect": "Korzystniejsza wymiana surowców",
+      "crop": {
+        "x": 864,
+        "y": 288,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-041": {
+      "number": 41,
+      "label": "Pakiet benefitów",
+      "motif": "Kufel przewiązany czerwoną wstążką",
+      "proposedEffect": "Przydzielone piwo wystarcza krasnoludom na dłużej",
+      "crop": {
+        "x": 0,
+        "y": 384,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-042": {
+      "number": 42,
+      "label": "Przyspieszony onboarding",
+      "motif": "Hełm na zwiniętej broszurze, obok dwie smugi ruchu",
+      "proposedEffect": "Szybsze uzupełnianie dostępnych rekrutów",
+      "crop": {
+        "x": 96,
+        "y": 384,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-043": {
+      "number": 43,
+      "label": "Synergia działów",
+      "motif": "Dwa zazębione koła: jedno z kilofem, drugie z kuflem",
+      "proposedEffect": "Większy zasięg buffa nakładanego przez Tragarza",
+      "crop": {
+        "x": 192,
+        "y": 384,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-044": {
+      "number": 44,
+      "label": "Obieg dokumentów",
+      "motif": "Skrzydlaty pergamin z pieczęcią w kształcie wagonika",
+      "proposedEffect": "Krótszy czas dotarcia wydobytych surowców do stacji",
+      "crop": {
+        "x": 288,
+        "y": 384,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-045": {
+      "number": 45,
+      "label": "Dekret pięcioletni",
+      "motif": "Królewski zwój ze złotą koroną i skrzyżowanymi kilofami",
+      "proposedEffect": "Silna premia do wydobycia wybranego surowca",
+      "crop": {
+        "x": 384,
+        "y": 384,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-046": {
+      "number": 46,
+      "label": "Akademia Kilofa",
+      "motif": "Otwarta księga ze skrzyżowanymi kilofami",
+      "proposedEffect": "Szybsze prowadzenie badań",
+      "crop": {
+        "x": 480,
+        "y": 384,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-047": {
+      "number": 47,
+      "label": "Olśnienie pod ziemią",
+      "motif": "Kryształ świecący nad otwartą księgą",
+      "proposedEffect": "Dodatkowe punkty badań przy odkrywaniu złóż",
+      "crop": {
+        "x": 576,
+        "y": 384,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-048": {
+      "number": 48,
+      "label": "Geologia stosowana",
+      "motif": "Lupa nad przekrojem skały z kolorowymi żyłami",
+      "proposedEffect": "Skuteczniejsze wydobycie przebadanych minerałów",
+      "crop": {
+        "x": 672,
+        "y": 384,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-049": {
+      "number": 49,
+      "label": "Doktorat z rozbijania",
+      "motif": "Biret z małym kilofem zamiast chwosta",
+      "proposedEffect": "Większa siła uderzeń wyszkolonych górników",
+      "crop": {
+        "x": 768,
+        "y": 384,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-050": {
+      "number": 50,
+      "label": "Praktyki zawodowe",
+      "motif": "Mały i duży kilof na tle pergaminu",
+      "proposedEffect": "Szybsze szkolenie Internów",
+      "crop": {
+        "x": 864,
+        "y": 384,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-051": {
+      "number": 51,
+      "label": "Notatki starego sztygara",
+      "motif": "Zużyty notes, ołówek i zakładka z runą",
+      "proposedEffect": "Niższy koszt kolejnego badania",
+      "crop": {
+        "x": 0,
+        "y": 480,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-052": {
+      "number": 52,
+      "label": "Mechanika odbić",
+      "motif": "Mosiężny kątomierz i kulka ze strzałkami odbicia",
+      "proposedEffect": "Większa celność wystrzału",
+      "crop": {
+        "x": 96,
+        "y": 480,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-053": {
+      "number": 53,
+      "label": "Badania terenowe",
+      "motif": "Skórzana torba z próbkami skał i zwojem",
+      "proposedEffect": "Punkty badań za odkrywanie nowych obszarów",
+      "crop": {
+        "x": 192,
+        "y": 480,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-054": {
+      "number": 54,
+      "label": "Patent kopalniany",
+      "motif": "Zapieczętowany schemat koła zębatego",
+      "proposedEffect": "Większa wydajność maszyn",
+      "crop": {
+        "x": 288,
+        "y": 480,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-055": {
+      "number": 55,
+      "label": "Stypendium PIWO",
+      "motif": "Księga, sakiewka i mały spieniony kufel",
+      "proposedEffect": "Tańsze badania i szkolenia",
+      "crop": {
+        "x": 384,
+        "y": 480,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-056": {
+      "number": 56,
+      "label": "Złota rezerwa",
+      "motif": "Trzy ciężkie sztabki ze złotym błyskiem",
+      "proposedEffect": "Większa produkcja monet w mennicy",
+      "crop": {
+        "x": 480,
+        "y": 480,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-057": {
+      "number": 57,
+      "label": "Żelazny sejf",
+      "motif": "Nitowany sejf z wielkim pokrętłem",
+      "proposedEffect": "Większa pojemność magazynu monet",
+      "crop": {
+        "x": 576,
+        "y": 480,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-058": {
+      "number": 58,
+      "label": "Procent składany",
+      "motif": "Stos rosnących monet otoczony okrężną strzałką",
+      "proposedEffect": "Okresowa premia zależna od zgromadzonych oszczędności",
+      "crop": {
+        "x": 672,
+        "y": 480,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-059": {
+      "number": 59,
+      "label": "Twarde negocjacje",
+      "motif": "Krasnoludzka dłoń ściskająca sakiewkę",
+      "proposedEffect": "Korzystniejsze ceny zakupu surowców",
+      "crop": {
+        "x": 768,
+        "y": 480,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-060": {
+      "number": 60,
+      "label": "Kontrakt stulecia",
+      "motif": "Pergamin ze złotą pieczęcią i monetami",
+      "proposedEffect": "Większe nagrody za kontrakty",
+      "crop": {
+        "x": 864,
+        "y": 480,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-061": {
+      "number": 61,
+      "label": "Pełne beczki",
+      "motif": "Dwie okute beczki z obfitą pianą",
+      "proposedEffect": "Większa produkcja piwa",
+      "crop": {
+        "x": 0,
+        "y": 576,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-062": {
+      "number": 62,
+      "label": "Zapasy strategiczne",
+      "motif": "Zamknięta beczka pod małą metalową tarczą",
+      "proposedEffect": "Wolniejsze zużywanie zapasów piwa",
+      "crop": {
+        "x": 96,
+        "y": 576,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-063": {
+      "number": 63,
+      "label": "Krypta bez dna",
+      "motif": "Uchylone drzwi krypty, za nimi skrzynie i sztabki",
+      "proposedEffect": "Większa pojemność magazynu zasobów",
+      "crop": {
+        "x": 192,
+        "y": 576,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-064": {
+      "number": 64,
+      "label": "Dostawa hurtowa",
+      "motif": "Skrzynia z rudą, beczka i gruba lina spinająca ładunek",
+      "proposedEffect": "Większa pojemność wagoników",
+      "crop": {
+        "x": 288,
+        "y": 576,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-065": {
+      "number": 65,
+      "label": "Nic się nie zmarnuje",
+      "motif": "Bryłki rudy i metalowe ścinki otoczone strzałkami",
+      "proposedEffect": "Szansa na odzyskanie części surowców zużytych na budowę",
+      "crop": {
+        "x": 384,
+        "y": 576,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-066": {
+      "number": 66,
+      "label": "Momentum",
+      "motif": "Stalowa kulka przebijająca trzy kamienne płytki ze złotą smugą",
+      "proposedEffect": "Przebijanie bloków dzięki rozpędowi",
+      "crop": {
+        "x": 480,
+        "y": 576,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-067": {
+      "number": 67,
+      "label": "Ciężko mnie zatrzymać",
+      "motif": "Żelazna kula z czerwonym ogonem iskier",
+      "proposedEffect": "Wolniejsza utrata dodatkowej prędkości",
+      "crop": {
+        "x": 576,
+        "y": 576,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-068": {
+      "number": 68,
+      "label": "Naciąg mistrzowski",
+      "motif": "Drewniana proca z napiętą skórą i błyskiem",
+      "proposedEffect": "Większa prędkość początkowa",
+      "crop": {
+        "x": 672,
+        "y": 576,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-069": {
+      "number": 69,
+      "label": "Szychta pod kontrolą",
+      "motif": "Mosiężny zegar na tabliczce harmonogramu",
+      "proposedEffect": "Premia do zaplanowanych wystrzałów",
+      "crop": {
+        "x": 768,
+        "y": 576,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-070": {
+      "number": 70,
+      "label": "Pierwszeństwo przejazdu",
+      "motif": "Chorągiewka sztygara nad rozjazdem torów",
+      "proposedEffect": "Priorytet obsługi stacji lub transportu",
+      "crop": {
+        "x": 864,
+        "y": 576,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-071": {
+      "number": 71,
+      "label": "Zmiana bez przestoju",
+      "motif": "Dwa hełmy otoczone okrężnymi strzałkami",
+      "proposedEffect": "Sprawniejsza rotacja załogi",
+      "crop": {
+        "x": 0,
+        "y": 672,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-072": {
+      "number": 72,
+      "label": "Zasłużona drzemka",
+      "motif": "Hełm na miękkiej poduszce",
+      "proposedEffect": "Szybsza regeneracja zmęczenia",
+      "crop": {
+        "x": 96,
+        "y": 672,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-073": {
+      "number": 73,
+      "label": "Autorytet sztygara",
+      "motif": "Hełm z czerwonym grzebieniem i mosiężną odznaką",
+      "proposedEffect": "Wzmocnienie związane z obecnością sztygara",
+      "crop": {
+        "x": 192,
+        "y": 672,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-074": {
+      "number": 74,
+      "label": "Ekspres do przodka",
+      "motif": "Kabina windy ze smugami w dół",
+      "proposedEffect": "Szybszy dojazd do pracy",
+      "crop": {
+        "x": 288,
+        "y": 672,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-075": {
+      "number": 75,
+      "label": "Dodatkowa kabina",
+      "motif": "Dwie kabiny na grubej linie",
+      "proposedEffect": "Większa pojemność windy",
+      "crop": {
+        "x": 384,
+        "y": 672,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-076": {
+      "number": 76,
+      "label": "Droga wolna",
+      "motif": "Zwrotnica z zieloną lampą",
+      "proposedEffect": "Większa przepustowość szlaku",
+      "crop": {
+        "x": 480,
+        "y": 672,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-077": {
+      "number": 77,
+      "label": "Pogotowie torowe",
+      "motif": "Klucz i młotek nad pękniętą szyną",
+      "proposedEffect": "Naprawy po awarii lub sabotażu",
+      "crop": {
+        "x": 576,
+        "y": 672,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-078": {
+      "number": 78,
+      "label": "Rozpalony tygiel",
+      "motif": "Tygiel wylewający pomarańczowy metal",
+      "proposedEffect": "Szybsze przetapianie",
+      "crop": {
+        "x": 672,
+        "y": 672,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-079": {
+      "number": 79,
+      "label": "Oszczędny palacz",
+      "motif": "Węgiel z intensywnym złotym płomieniem",
+      "proposedEffect": "Mniejsze zużycie paliwa",
+      "crop": {
+        "x": 768,
+        "y": 672,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-080": {
+      "number": 80,
+      "label": "Czysty wytop",
+      "motif": "Srebrzysta sztabka w ciemnym żużlu",
+      "proposedEffect": "Większy uzysk z rudy",
+      "crop": {
+        "x": 864,
+        "y": 672,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-081": {
+      "number": 81,
+      "label": "Mistrzowski stop",
+      "motif": "Dwukolorowa sztabka ze świetlistym połączeniem",
+      "proposedEffect": "Rafinacja i zaawansowane materiały",
+      "crop": {
+        "x": 0,
+        "y": 768,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-082": {
+      "number": 82,
+      "label": "Rzemieślniczy kolektyw",
+      "motif": "Trzy młotki nad kowadłem",
+      "proposedEffect": "Sprawniejsza realizacja zadań izby",
+      "crop": {
+        "x": 96,
+        "y": 768,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-083": {
+      "number": 83,
+      "label": "Zamówienie legendarne",
+      "motif": "Szczypce trzymające fioletowy napierśnik",
+      "proposedEffect": "Wyjątkowy ekwipunek sztygarów",
+      "crop": {
+        "x": 192,
+        "y": 768,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-084": {
+      "number": 84,
+      "label": "Chmielowa esencja",
+      "motif": "Szyszka chmielu z bursztynową kroplą",
+      "proposedEffect": "Wzmocnienie głównego efektu receptury",
+      "crop": {
+        "x": 288,
+        "y": 768,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-085": {
+      "number": 85,
+      "label": "Woda z głębin",
+      "motif": "Błękitna kropla z kryształkami minerałów",
+      "proposedEffect": "Mineralizacja piwa",
+      "crop": {
+        "x": 384,
+        "y": 768,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-086": {
+      "number": 86,
+      "label": "Zimne warzenie",
+      "motif": "Lód obejmujący miedzianą kadź",
+      "proposedEffect": "Receptury wykorzystujące lód",
+      "crop": {
+        "x": 480,
+        "y": 768,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-087": {
+      "number": 87,
+      "label": "Bukiet jaskiniowy",
+      "motif": "Świecący kwiat, grzyb i jagody",
+      "proposedEffect": "Akcenty zbierane w biomach",
+      "crop": {
+        "x": 576,
+        "y": 768,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-088": {
+      "number": 88,
+      "label": "Dębowe leżakowanie",
+      "motif": "Beczka z liściem dębu i klepsydrą",
+      "proposedEffect": "Premie zależne od wyboru beczki",
+      "crop": {
+        "x": 672,
+        "y": 768,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-089": {
+      "number": 89,
+      "label": "Happy hour",
+      "motif": "Kufel premium z zegarem i promieniami",
+      "proposedEffect": "Globalny buff po uwarzeniu piwa premium",
+      "crop": {
+        "x": 768,
+        "y": 768,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-090": {
+      "number": 90,
+      "label": "Kredyt zaufania",
+      "motif": "Beczka i zwój z bankową pieczęcią",
+      "proposedEffect": "Pożyczka lub korzystniejsze warunki kredytu",
+      "crop": {
+        "x": 864,
+        "y": 768,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-091": {
+      "number": 91,
+      "label": "Wakacje od rat",
+      "motif": "Klepsydra z otwartym łańcuchem",
+      "proposedEffect": "Czasowe odroczenie spłaty",
+      "crop": {
+        "x": 0,
+        "y": 864,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-092": {
+      "number": 92,
+      "label": "Ulga królewska",
+      "motif": "Korona nad pergaminem i sakiewka z tarczą",
+      "proposedEffect": "Niższy podatek",
+      "crop": {
+        "x": 96,
+        "y": 864,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-093": {
+      "number": 93,
+      "label": "Lokata beczkowa",
+      "motif": "Beczka z kłódką i złotymi kufelkami",
+      "proposedEffect": "Zysk z zamrożonego piwa",
+      "crop": {
+        "x": 192,
+        "y": 864,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-094": {
+      "number": 94,
+      "label": "Kupiecka karawana",
+      "motif": "Obładowany wóz z daszkiem i latarnią",
+      "proposedEffect": "Specjalna dostawa lub przyjezdny kupiec",
+      "crop": {
+        "x": 288,
+        "y": 864,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-095": {
+      "number": 95,
+      "label": "Audyt na medal",
+      "motif": "Medal z kuflem na czerwonej wstędze",
+      "proposedEffect": "Premia po pozytywnej inspekcji",
+      "crop": {
+        "x": 384,
+        "y": 864,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-096": {
+      "number": 96,
+      "label": "Kanarek na szychcie",
+      "motif": "Żółty kanarek w górniczej klatce z nutką",
+      "proposedEffect": "Morale i ostrzeganie przed zagrożeniami",
+      "crop": {
+        "x": 480,
+        "y": 864,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-097": {
+      "number": 97,
+      "label": "Pajęczyny mi niestraszne",
+      "motif": "Kulka rozrywająca pajęczynę",
+      "proposedEffect": "Odporność na spowolnienie",
+      "crop": {
+        "x": 576,
+        "y": 864,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-098": {
+      "number": 98,
+      "label": "Flara zwiadowcy",
+      "motif": "Czerwona flara rozcinająca ciemną mgłę",
+      "proposedEffect": "Odkrywanie mapy",
+      "crop": {
+        "x": 672,
+        "y": 864,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-099": {
+      "number": 99,
+      "label": "Polisa od nieszczęść",
+      "motif": "Pergamin z tarczą, płomieniem i pękniętą szyną",
+      "proposedEffect": "Ograniczanie strat po zdarzeniach",
+      "crop": {
+        "x": 768,
+        "y": 864,
+        "width": 96,
+        "height": 96
+      }
+    },
+    "buff-100": {
+      "number": 100,
+      "label": "Czujna warta",
+      "motif": "Hełm strażnika nad kluczami i czerwone oko w cieniu",
+      "proposedEffect": "Ochrona przed kradzieżą i sabotażem",
+      "crop": {
+        "x": 864,
+        "y": 864,
+        "width": 96,
+        "height": 96
+      }
+    }
+  }
+}

@@ -9,7 +9,12 @@ import MapEffects from "../systems/game/mapEffects";
 import Discovery from "../systems/game/discovery";
 import MapBuilder from "../systems/game/mapBuilder";
 import CameraController from "../systems/game/cameraController";
-import PlayerInput from "../systems/game/playerInput";
+import Launcher from "../systems/game/launcher";
+import Camp from "../systems/game/camp";
+import Research from "../systems/game/research";
+import Contracts from "../systems/game/contracts";
+import { MAP_GEN_CONFIG } from "../mapGen/mapGenerator";
+import { shaftTiles } from "../mapGen/passes/crater";
 import PlayerResources from "../systems/game/resources";
 import GameClock from "../systems/game/gameClock";
 import MinimapView from "../systems/game/minimapView";
@@ -18,6 +23,7 @@ import InteractiveElements from "../systems/game/interactiveElements";
 import PauseMenu from "../systems/game/pauseMenu";
 import TileMask from "../shaders/tileMask";
 import type World from "../world/world";
+import { GameResourcesID } from "../content/resources";
 import type { ActorSave, GameState } from "../world/saveCodec";
 import Dwarf from "../bActors/dwarf";
 import Chest from "../bActors/chest";
@@ -29,7 +35,7 @@ import { debug } from "@debug";
 const GAME = {
   scene: "game",
   // camera room above the map
-  skyMargin: 300,
+  skyMargin: 1500,
 };
 
 // save: false = nothing to keep (e.g. only finishing an animation)
@@ -76,12 +82,30 @@ export default class GameScene {
       const writer = new ByteWriter(64);
       if ((actor as SavedActor).save(writer)) actors.push({ kind, data: writer.finish() });
     }
-    return { resources: scene.getSystem(PlayerResources).snapshot(), actors };
+    // each system in its own block with its length: one that grows does not shift the others
+    const progress = new ByteWriter(256);
+    for (const system of [scene.getSystem(Camp), scene.getSystem(Research), scene.getSystem(Contracts)]) {
+      const length = progress.reserveU32();
+      const start = progress.offset;
+      system.save(progress);
+      progress.patchU32(length, progress.offset - start);
+    }
+    return {
+      resources: scene.getSystem(PlayerResources).snapshot(),
+      actors,
+      progress: progress.finish(),
+    };
   }
 
   private static restore(state: GameState) {
     const scene = Pragma.getScene(GAME.scene)!;
     scene.getSystem(PlayerResources).restore(state.resources);
+    // the systems have not started yet: the camp builds itself from this
+    if (state.progress) {
+      const progress = new ByteReader(state.progress);
+      for (const system of [scene.getSystem(Camp), scene.getSystem(Research), scene.getSystem(Contracts)])
+        system.load(new ByteReader(progress.u8Array(progress.u32()).buffer));
+    }
     for (const saved of state.actors) {
       const actorClass = SAVED_ACTORS[saved.kind];
       if (!actorClass) {
@@ -96,6 +120,12 @@ export default class GameScene {
     const scene = Pragma.getScene(GAME.scene);
     assert(scene !== undefined, "GameScene.showAllChunks: no game running");
     scene.getSystem(ChunkView).setShowAll(show);
+  }
+
+  public static give(res: GameResourcesID, amount: number) {
+    const scene = Pragma.getScene(GAME.scene);
+    assert(scene !== undefined, "GameScene.give: no game running");
+    scene.getSystem(PlayerResources).addResource(res, amount);
   }
 
   public static close() {
@@ -114,7 +144,10 @@ export default class GameScene {
     world.addSystem(Discovery);
     world.addSystem(MapBuilder);
     world.addSystem(CameraController);
-    world.addSystem(PlayerInput);
+    world.addSystem(Research);
+    world.addSystem(Contracts);
+    world.addSystem(Camp);
+    world.addSystem(Launcher);
     world.addSystem(PlayerResources);
     world.addSystem(GameClock);
     world.addSystem(MinimapView);
@@ -137,6 +170,8 @@ export default class GameScene {
       max: { x: bounds.x + bounds.w, y: bounds.y + bounds.h },
     });
     Camera.setZoom(0.5);
-    Camera.teleport({ x: 9216, y: 1500 });
+    // the camp, on top of the shaft
+    const shaft = shaftTiles(MAP_GEN_CONFIG.crater, map.meta);
+    Camera.teleport(map.tileCenterToWorld({ x: shaft.x, y: shaft.top }));
   }
 }

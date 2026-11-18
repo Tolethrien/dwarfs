@@ -33,6 +33,8 @@ export const LOOT = {
     rolls: { min: 2, max: 4 },
     table: [
       { resource: GameResourcesID.stone, weight: 5, amount: { min: 20, max: 60 } },
+      { resource: GameResourcesID.wood, weight: 4, amount: { min: 3, max: 8 } },
+      { resource: GameResourcesID.hops, weight: 3, amount: { min: 1, max: 3 } },
       { resource: GameResourcesID.coal, weight: 4, amount: { min: 10, max: 30 } },
       { resource: GameResourcesID.copper, weight: 3, amount: { min: 5, max: 20 } },
       { resource: GameResourcesID.silver, weight: 2, amount: { min: 3, max: 10 } },

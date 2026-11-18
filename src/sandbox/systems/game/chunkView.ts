@@ -4,7 +4,7 @@ import Aurora from "@aurora/core";
 import { Draw } from "@aurora/urp/draw/draw";
 import DrawBatch from "@aurora/urp/draw/drawBatch";
 import { Camera } from "@engine/camera/camera";
-import { BlocksID, getBlock, getVariantCrop, hasGraphics } from "@sandbox/content/blocks";
+import { BlocksID, getBlock } from "@sandbox/content/blocks";
 import { BACKGROUNDS, BackgroundsID } from "@sandbox/content/backgrounds";
 import { getDecoCrop, type DecoLayer } from "@sandbox/content/decos";
 import { SPRITES } from "@sandbox/content/sprites";
@@ -51,6 +51,8 @@ interface ChunkDraw {
   version: number;
   background: DrawBatch;
   solid: DrawBatch;
+  // deposit overlays over their rock, same keys as solid
+  overlays: DrawBatch;
   decos: Record<DecoLayer, DrawBatch>;
 }
 type ChunkRange = { minX: number; minY: number; maxX: number; maxY: number };
@@ -128,6 +130,7 @@ export default class ChunkView extends PragmaSystem {
       Draw.batch(draw.background);
       Draw.batch(draw.decos.back);
       Draw.batch(draw.solid);
+      Draw.batch(draw.overlays);
       Draw.batch(draw.decos.front);
     }
   }
@@ -189,6 +192,7 @@ export default class ChunkView extends PragmaSystem {
       version: 0,
       background: new DrawBatch("chunk:background", { capacity }),
       solid: new DrawBatch("chunk:solid", { capacity }),
+      overlays: new DrawBatch("chunk:overlays", { capacity }),
       decos: {
         back: new DrawBatch("chunk:decoBack", { capacity }),
         front: new DrawBatch("chunk:decoFront", { capacity }),
@@ -212,6 +216,7 @@ export default class ChunkView extends PragmaSystem {
     const mapWidth = this.world.mapInTiles.width;
     const pixels = this.world.chunkToWorld(draw.chunk);
 
+    const overlays: { key: number; position: Position2D; crop: Crop; tint: RGBA; glint: boolean; damage: number }[] = [];
     draw.solid.begin();
     for (let ly = 0; ly < chunkInTiles.height; ly++) {
       for (let lx = 0; lx < chunkInTiles.width; lx++) {
@@ -220,24 +225,41 @@ export default class ChunkView extends PragmaSystem {
         // inline index instead of world.getType: per tile of every rebuilt chunk
         const raw = this.world.solid[gx + gy * mapWidth];
         const type = tileType(raw);
-        if (!hasGraphics(type)) continue;
-        const crop = getVariantCrop(type, tileVariant(raw));
-        draw.solid.key(lx + ly * chunkInTiles.width);
+        const look = TileMask.lookOf(gx, gy, type, tileVariant(raw));
+        if (!look) continue;
+        const key = lx + ly * chunkInTiles.width;
+        const position = { x: pixels.x + lx * tile.width, y: pixels.y + ly * tile.height };
+        const damage = this.world.getDamage(gx, gy) / MAX_DAMAGE;
+        draw.solid.key(key);
         Draw.sprite({
-          position: {
-            x: pixels.x + lx * tile.width,
-            y: pixels.y + ly * tile.height,
-            z: RENDER_ORDER.solidTiles,
-          },
-          crop,
-          texture: SPRITES.blocks,
-          size: { width: crop.width, height: crop.height },
-          material: getBlock(type).glint ? TileMask.ore : TileMask.solid,
-          params: [this.world.getDamage(gx, gy) / MAX_DAMAGE, VIEW.noHit, TileMask.packImpact(VIEW.middle), VIEW.cold],
+          position: { ...position, z: RENDER_ORDER.solidTiles },
+          crop: look.crop,
+          texture: look.texture,
+          size: { width: look.crop.width, height: look.crop.height },
+          material: look.texture === SPRITES.rocks ? TileMask.rock : TileMask.solid,
+          params: [damage, VIEW.noHit, TileMask.packImpact(VIEW.middle), VIEW.cold],
         });
+        if (look.overlay)
+          overlays.push({ key, position, ...look.overlay, glint: !!getBlock(type).glint, damage });
       }
     }
     draw.solid.end();
+
+    // a batch records one at a time, the overlays go after the whole solid layer
+    draw.overlays.begin();
+    for (const overlay of overlays) {
+      draw.overlays.key(overlay.key);
+      Draw.sprite({
+        position: { ...overlay.position, z: RENDER_ORDER.solidTiles },
+        crop: overlay.crop,
+        texture: SPRITES.rocks,
+        size: { width: overlay.crop.width, height: overlay.crop.height },
+        tint: overlay.tint,
+        material: overlay.glint ? TileMask.ore : TileMask.overlay,
+        params: [overlay.damage, VIEW.noHit, TileMask.packImpact(VIEW.middle), VIEW.cold],
+      });
+    }
+    draw.overlays.end();
   }
 
   // the variant's crop over the whole tile, nothing for a deco without graphics yet
@@ -328,14 +350,14 @@ export default class ChunkView extends PragmaSystem {
     const impact = contact
       ? this.world.worldToTileFraction({ x: gx, y: gy }, contact.point)
       : VIEW.middle;
-    draw.solid
-      .edit(local)
-      ?.params(damage / MAX_DAMAGE, Aurora.getGameTime, TileMask.packImpact(impact), heat);
+    for (const batch of [draw.solid, draw.overlays])
+      batch.edit(local)?.params(damage / MAX_DAMAGE, Aurora.getGameTime, TileMask.packImpact(impact), heat);
   }
 
   private destroyDraw(draw: ChunkDraw) {
     draw.background.destroy();
     draw.solid.destroy();
+    draw.overlays.destroy();
     draw.decos.back.destroy();
     draw.decos.front.destroy();
   }

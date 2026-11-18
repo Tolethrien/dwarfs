@@ -1,0 +1,98 @@
+{
+  "image": "mine-elevator-spritesheet.png",
+  "width": 584,
+  "height": 560,
+  "padding": 2,
+  "coordinateOrigin": "top-left",
+  "units": "pixels",
+  "trimmed": false,
+  "rotated": false,
+  "frames": {
+    "shaft_top": {
+      "crop": {
+        "x": 2,
+        "y": 2,
+        "width": 288,
+        "height": 288
+      }
+    },
+    "station": {
+      "crop": {
+        "x": 294,
+        "y": 2,
+        "width": 288,
+        "height": 480
+      }
+    },
+    "shaft_segment": {
+      "crop": {
+        "x": 2,
+        "y": 294,
+        "width": 288,
+        "height": 96
+      }
+    },
+    "elevator_platform": {
+      "crop": {
+        "x": 2,
+        "y": 394,
+        "width": 288,
+        "height": 64
+      },
+      "hookCentersX": [
+        36,
+        252
+      ]
+    },
+    "chain_strip": {
+      "crop": {
+        "x": 2,
+        "y": 462,
+        "width": 24,
+        "height": 96
+      }
+    },
+    "chain_wheel": {
+      "crop": {
+        "x": 30,
+        "y": 462,
+        "width": 64,
+        "height": 64
+      },
+      "pivot": {
+        "x": 32,
+        "y": 32
+      }
+    }
+  },
+  "assembly": {
+    "tileSize": 96,
+    "shaftWidth": 288,
+    "chainCentersX": [
+      36,
+      252
+    ],
+    "chainStripDrawX": [
+      24,
+      240
+    ],
+    "chainRepeatY": 24,
+    "stationLaunchPoint": {
+      "x": 144,
+      "y": 240
+    },
+    "platformBottomAtStationY": 60,
+    "platformTopAtStationY": -4,
+    "stationCradleSeatY": 260,
+    "launchAngleDegrees": [
+      -50,
+      50
+    ],
+    "layerOrder": [
+      "shaft_structure",
+      "moving_chains",
+      "platform",
+      "dwarfs"
+    ]
+  }
+}

@@ -11,4 +11,6 @@ export const SAVE_SECTION = {
   resources: 7,
   actors: 9,
   decos: 10,
+  // camp, research, contracts: one blob, read back by GameScene
+  progress: 11,
 };

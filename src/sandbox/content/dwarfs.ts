@@ -32,6 +32,9 @@ export const DWARF_LOOKS: DwarfLook[] = [
 ];
 
 export interface DwarfData {
+  name: string;
+  // shown in the tavern
+  description: string;
   baseSpeed: number;
   baseDmg: number;
   bpm: number; // beer per minute
@@ -39,34 +42,46 @@ export interface DwarfData {
 
 export const DWARFS: Record<DwarfsID, DwarfData> = {
   [DwarfsID.intern]: {
+    name: "Stażysta",
+    description: "Rozbija tylko podstawowy blok. Tani i szybki.",
     baseDmg: 10,
     baseSpeed: 400,
-    bpm: 5,
+    bpm: 4,
   },
   [DwarfsID.miner]: {
-    baseDmg: 50,
-    baseSpeed: 400,
-    bpm: 5,
+    name: "Miner",
+    description: "2,4× silniejszy od skauta, wolniejszy, pije 6 piwa/min. Na twarde skały i rudy.",
+    baseDmg: 12,
+    baseSpeed: 300,
+    bpm: 6,
   },
   [DwarfsID.carrier]: {
+    name: "Tragarz",
+    description: "Kulki, które przelecą przez jego zasięg, kopią z większym zyskiem.",
     baseDmg: 5,
     baseSpeed: 400,
-    bpm: 5,
+    bpm: 4,
   },
   [DwarfsID.pyro]: {
+    name: "Demolka",
+    description: "Wybucha przy pierwszym uderzeniu albo po czasie i rozwala kilka bloków naraz.",
     baseDmg: 75,
     baseSpeed: 400,
-    bpm: 5,
+    bpm: 4,
   },
   [DwarfsID.driller]: {
+    name: "Wiertacz",
+    description: "Leci po prostej, zamiast odbijać się chaotycznie.",
     baseDmg: 999,
     baseSpeed: 400,
-    bpm: 5,
+    bpm: 4,
   },
   [DwarfsID.scout]: {
+    name: "Skaut",
+    description: "Tani i szybki, słaby: kruszy kamień, rudy ledwo rysuje. Pije 4 piwa/min.",
     baseDmg: 5,
     baseSpeed: 400,
-    bpm: 5,
+    bpm: 4,
   },
 };
 

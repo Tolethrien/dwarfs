@@ -1,0 +1,296 @@
+{
+  "image": "buildings-spritesheet.png",
+  "width": 4575,
+  "height": 4575,
+  "padding": 2,
+  "scale": 1,
+  "coordinates": "Pixels, origin at top-left. Crops exclude padding. sourceCrop records the offset within the original image.",
+  "frames": {
+    "01-kuznia": {
+      "crop": {
+        "width": 1522,
+        "y": 1867,
+        "height": 1024,
+        "x": 2
+      },
+      "source": "sources/01-kuznia.png",
+      "sourceSize": {
+        "height": 1024,
+        "width": 1536
+      },
+      "sourceCrop": {
+        "width": 1522,
+        "y": 0,
+        "height": 1024,
+        "x": 0
+      },
+      "scale": 1.0,
+      "trimmed": true,
+      "rotated": false
+    },
+    "02-krypta": {
+      "crop": {
+        "width": 1656,
+        "y": 2,
+        "height": 940,
+        "x": 1768
+      },
+      "source": "sources/02-krypta.png",
+      "sourceSize": {
+        "height": 940,
+        "width": 1672
+      },
+      "sourceCrop": {
+        "width": 1656,
+        "y": 0,
+        "height": 940,
+        "x": 0
+      },
+      "scale": 1.0,
+      "trimmed": true,
+      "rotated": false
+    },
+    "03-tawerna": {
+      "crop": {
+        "width": 1522,
+        "y": 2895,
+        "height": 996,
+        "x": 2
+      },
+      "source": "sources/03-tawerna.png",
+      "sourceSize": {
+        "height": 1024,
+        "width": 1536
+      },
+      "sourceCrop": {
+        "width": 1522,
+        "y": 9,
+        "height": 996,
+        "x": 0
+      },
+      "scale": 1.0,
+      "trimmed": true,
+      "rotated": false
+    },
+    "04-biuro-kontraktow": {
+      "crop": {
+        "width": 1504,
+        "y": 3344,
+        "height": 981,
+        "x": 3053
+      },
+      "source": "sources/04-biuro-kontraktow.png",
+      "sourceSize": {
+        "height": 1024,
+        "width": 1536
+      },
+      "sourceCrop": {
+        "width": 1504,
+        "y": 23,
+        "height": 981,
+        "x": 0
+      },
+      "scale": 1.0,
+      "trimmed": true,
+      "rotated": false
+    },
+    "05-mennica": {
+      "crop": {
+        "width": 1521,
+        "y": 2939,
+        "height": 984,
+        "x": 1528
+      },
+      "source": "sources/05-mennica.png",
+      "sourceSize": {
+        "height": 1024,
+        "width": 1536
+      },
+      "sourceCrop": {
+        "width": 1521,
+        "y": 0,
+        "height": 984,
+        "x": 0
+      },
+      "scale": 1.0,
+      "trimmed": true,
+      "rotated": false
+    },
+    "06-wielki-szyb": {
+      "crop": {
+        "width": 1052,
+        "y": 2,
+        "height": 1390,
+        "x": 3428
+      },
+      "source": "sources/06-wielki-szyb.png",
+      "sourceSize": {
+        "height": 1484,
+        "width": 1060
+      },
+      "sourceCrop": {
+        "width": 1052,
+        "y": 43,
+        "height": 1390,
+        "x": 0
+      },
+      "scale": 1.0,
+      "trimmed": true,
+      "rotated": false
+    },
+    "07-huta": {
+      "crop": {
+        "width": 1511,
+        "y": 2369,
+        "height": 971,
+        "x": 3054
+      },
+      "source": "sources/07-huta.png",
+      "sourceSize": {
+        "height": 1024,
+        "width": 1536
+      },
+      "sourceCrop": {
+        "width": 1511,
+        "y": 8,
+        "height": 971,
+        "x": 25
+      },
+      "scale": 1.0,
+      "trimmed": true,
+      "rotated": false
+    },
+    "08-szkola-gornicza": {
+      "crop": {
+        "width": 1536,
+        "y": 946,
+        "height": 961,
+        "x": 1542
+      },
+      "source": "sources/08-szkola-gornicza.png",
+      "sourceSize": {
+        "height": 1024,
+        "width": 1536
+      },
+      "sourceCrop": {
+        "width": 1536,
+        "y": 0,
+        "height": 961,
+        "x": 0
+      },
+      "scale": 1.0,
+      "trimmed": true,
+      "rotated": false
+    },
+    "09-oboz-werbunkowy": {
+      "crop": {
+        "width": 1536,
+        "y": 861,
+        "height": 1002,
+        "x": 2
+      },
+      "source": "sources/09-oboz-werbunkowy.png",
+      "sourceSize": {
+        "height": 1024,
+        "width": 1536
+      },
+      "sourceCrop": {
+        "width": 1536,
+        "y": 22,
+        "height": 1002,
+        "x": 0
+      },
+      "scale": 1.0,
+      "trimmed": true,
+      "rotated": false
+    },
+    "10-punkt-wymiany": {
+      "crop": {
+        "width": 1491,
+        "y": 1396,
+        "height": 969,
+        "x": 3082
+      },
+      "source": "sources/10-punkt-wymiany.png",
+      "sourceSize": {
+        "height": 1024,
+        "width": 1536
+      },
+      "sourceCrop": {
+        "width": 1491,
+        "y": 21,
+        "height": 969,
+        "x": 25
+      },
+      "scale": 1.0,
+      "trimmed": true,
+      "rotated": false
+    },
+    "11-barak": {
+      "crop": {
+        "width": 1762,
+        "y": 2,
+        "height": 855,
+        "x": 2
+      },
+      "source": "sources/11-barak.png",
+      "sourceSize": {
+        "height": 887,
+        "width": 1774
+      },
+      "sourceCrop": {
+        "width": 1762,
+        "y": 0,
+        "height": 855,
+        "x": 0
+      },
+      "scale": 1.0,
+      "trimmed": true,
+      "rotated": false
+    },
+    "12-browar": {
+      "crop": {
+        "width": 1522,
+        "y": 1911,
+        "height": 1024,
+        "x": 1528
+      },
+      "source": "sources/12-browar.png",
+      "sourceSize": {
+        "height": 1024,
+        "width": 1536
+      },
+      "sourceCrop": {
+        "width": 1522,
+        "y": 0,
+        "height": 1024,
+        "x": 0
+      },
+      "scale": 1.0,
+      "trimmed": true,
+      "rotated": false
+    },
+    "13-parcela": {
+      "crop": {
+        "width": 1511,
+        "y": 4084,
+        "height": 489,
+        "x": 2
+      },
+      "source": "sources/13-parcela.png",
+      "sourceSize": {
+        "height": 724,
+        "width": 2172
+      },
+      "sourceCrop": {
+        "width": 2159,
+        "y": 25,
+        "height": 699,
+        "x": 0
+      },
+      "scale": 0.7,
+      "trimmed": true,
+      "rotated": false
+    }
+  }
+}

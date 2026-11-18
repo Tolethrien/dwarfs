@@ -7,15 +7,16 @@ import SaveGame from "../../world/saveGame";
 import GameMode from "./gameMode";
 import CameraController, { CAMERA_LOCKS } from "./cameraController";
 import MapBuilder from "./mapBuilder";
-import PlayerInput from "./playerInput";
+import Launcher from "./launcher";
 import InteractiveElements from "./interactiveElements";
+import Camp from "./camp";
 
 // the modal takes the mouse; these read the keyboard, so they sleep while paused
 const INPUT_SYSTEMS = [
   GameMode,
   CameraController,
   MapBuilder,
-  PlayerInput,
+  Launcher,
   InteractiveElements,
 ];
 
@@ -32,6 +33,8 @@ export default class PauseMenu extends PragmaSystem {
     if (InputManager.onActionPressed(ACTION.pause)) {
       // a followed dwarf is let go first, the next press pauses
       if (this.panel) this.close();
+      else if (this.scene.getSystem(Camp).closeMenu()) return;
+      else if (this.scene.getSystem(GameMode).is("build")) this.scene.getSystem(MapBuilder).leave();
       else if (!this.scene.getSystem(CameraController).release()) this.open();
     }
     this.panel?.update();
@@ -47,7 +50,7 @@ export default class PauseMenu extends PragmaSystem {
       this.scene.getSystem(system).getEnabled(),
     );
     for (const system of INPUT_SYSTEMS) this.scene.getSystem(system).setEnabled(false);
-    this.scene.getSystem(PlayerInput).cancelAim();
+    this.scene.getSystem(Launcher).cancelAim();
 
     this.saveLabel = "Zapisz";
     this.panel = new MenuPanel({ blur: 8 });

@@ -4,6 +4,10 @@
 
 // replaced by TileMask.register: tileMask binding, TILE_ORIGIN, TILE_SIZE
 // TILE_MAP
+// replaced by TileMask.register: TILE_RAMPS (linear: rock ramps, the rock under each deposit stained
+// by it, obsidian), TILE_RAMP_ROCKS (how many mix with each other: all but obsidian), TILE_RAMP_OBSIDIAN;
+// the tilePlates binding (TileMask PLATES) and TILE_PLATE_TILE / COLUMNS / STEP / NONE
+// TILE_RAMPS
 
 // grain in world units must divide the tile size, the cut keeps that pixel art step;
 // share of the edge that is chipped, the rest stays straight; chips in grains, whole steps from
@@ -19,14 +23,35 @@ const TILE_CHIP_CHAMFER: f32 = 0.5;
 const TILE_RIM_WIDTH: f32 = 0.2;
 const TILE_RIM_SHADE: f32 = 0.3;
 
+// the rock atlas is grey: its linear brightness picks a colour on the ramp of the rock there.
+// TOP = brightness that reaches the light colour, MID (share of TOP) = where the mid colour sits;
+// both from the atlas (p95 ~0.59, p50 ~0.29). Palettes of the 4 nearest tiles mix across a tile,
+// the point is pushed by noise of JITTER tiles at FREQUENCY per tile so the border wanders;
+// VARIATION = ± brightness of slow patches over the rock
+const TILE_RAMP_TOP: f32 = 0.6;
+const TILE_RAMP_MID: f32 = 0.48;
+const TILE_RAMP_JITTER: f32 = 0.8;
+const TILE_RAMP_JITTER_FREQUENCY: f32 = 0.7;
+const TILE_RAMP_VARIATION: f32 = 0.1;
+const TILE_RAMP_VARIATION_FREQUENCY: f32 = 0.18;
+// tileMask .g of a tile with no palette (air, void)
+const TILE_RAMP_NONE: u32 = 255u;
+
+struct TileRamp {
+  shadow: vec3f,
+  mid: vec3f,
+  light: vec3f,
+};
+
 // damage (in.params.x, 0-1): cracks are cell borders in a jittered grid of TILE_CRACK_CELLS
 // cells per tile, a border shows once the damage passes its cell's own threshold; the tile also
-// darkens up to TILE_DAMAGE_SHADE. Hit (in.params.y, game time) at the impact packed in in.params.z
+// darkens up to TILE_DAMAGE_SHADE. A stone plate of the rock atlas belongs whole to the cell of its
+// middle (tilePlates), so the borders run along the seams; a crack is the grain on the shown cell's
+// side. Hit (in.params.y, game time) at the impact packed in in.params.z
 // (TileMask.packImpact): a light ring runs out of it, the cracks around it light up pale and fade;
 // with heat (in.params.w, a blast) they glow instead and cool down (bloom, same ember as tileBurn.wgsl);
 // heat below 0 = a deflected hit, the ring alone
 const TILE_CRACK_CELLS: f32 = 2.5;
-const TILE_CRACK_WIDTH: f32 = 0.07;
 const TILE_CRACK_SHADE: f32 = 0.4;
 const TILE_DAMAGE_SHADE: f32 = 0.3;
 // reach and width in tiles
@@ -73,6 +98,58 @@ fn tileIsAir(cell: vec2i) -> bool {
   return textureLoad(tileMask, cell, 0).r < 0.5;
 }
 
+fn tilePalette(cell: vec2i) -> u32 {
+  let size = vec2i(textureDimensions(tileMask));
+  if (any(cell < vec2i(0)) || any(cell >= size)) {
+    return TILE_RAMP_NONE;
+  }
+  return u32(round(textureLoad(tileMask, cell, 0).g * 255.0));
+}
+
+fn tileRampColor(ramp: TileRamp, brightness: f32) -> vec3f {
+  let t = clamp(brightness / TILE_RAMP_TOP, 0.0, 1.0);
+  let low = mix(ramp.shadow, ramp.mid, t / TILE_RAMP_MID);
+  let high = mix(ramp.mid, ramp.light, (t - TILE_RAMP_MID) / (1.0 - TILE_RAMP_MID));
+  return select(high, low, t < TILE_RAMP_MID);
+}
+
+// position in tiles (grain snapped); returns premultiplied like the texel. Obsidian keeps its own
+// ramp, rock mixes the rock palettes around and never takes obsidian's
+fn tileRamp(position: vec2f, texel: vec4f) -> vec4f {
+  let brightness = dot(texel.rgb / max(texel.a, 0.0001), vec3f(0.2126, 0.7152, 0.0722));
+  let own = tilePalette(vec2i(floor(position)));
+  if (own == TILE_RAMP_OBSIDIAN) {
+    return vec4f(tileRampColor(TILE_RAMPS[own], brightness) * texel.a, texel.a);
+  }
+
+  let wander = position * TILE_RAMP_JITTER_FREQUENCY;
+  let jitter = vec2f(tileNoise(wander), tileNoise(wander + vec2f(37.0, 11.0))) - 0.5;
+  let point = position - 0.5 + jitter * TILE_RAMP_JITTER;
+  let base = floor(point);
+  let fraction = point - base;
+  var color = vec3f(0.0);
+  var total = 0.0;
+  for (var y = 0; y <= 1; y++) {
+    for (var x = 0; x <= 1; x++) {
+      let palette = tilePalette(vec2i(base) + vec2i(x, y));
+      if (palette >= TILE_RAMP_ROCKS) {
+        continue;
+      }
+      let weight = select(1.0 - fraction.x, fraction.x, x == 1) * select(1.0 - fraction.y, fraction.y, y == 1);
+      color += tileRampColor(TILE_RAMPS[palette], brightness) * weight;
+      total += weight;
+    }
+  }
+  // the jitter pushed the point past the tile and no rock is around: the tile's own palette
+  if (total < 0.0001) {
+    color = tileRampColor(TILE_RAMPS[min(own, TILE_RAMP_ROCKS - 1u)], brightness);
+    total = 1.0;
+  }
+  let patches = tileNoise(position * TILE_RAMP_VARIATION_FREQUENCY + vec2f(71.0, 3.0));
+  let variation = 1.0 + (patches - 0.5) * 2.0 * TILE_RAMP_VARIATION;
+  return vec4f(color / total * variation * texel.a, texel.a);
+}
+
 struct TileCell {
   // lattice coords of the cell the point belongs to
   nearest: vec2f,
@@ -104,13 +181,55 @@ fn tileCell(position: vec2f) -> TileCell {
   return TileCell(nearest, second - first);
 }
 
+// the middle (in tiles) of the stone plate under a point in tiles; off the rock atlas (no crop) the
+// point itself, the cells stay plain jittered grid there
+fn tilePlateMiddle(position: vec2f) -> vec2f {
+  let tile = vec2i(floor(position));
+  let size = vec2i(textureDimensions(tileMask));
+  if (any(tile < vec2i(0)) || any(tile >= size)) {
+    return position;
+  }
+  let crop = u32(round(textureLoad(tileMask, tile, 0).b * 255.0));
+  if (crop == TILE_PLATE_NONE) {
+    return position;
+  }
+  let pixel = min(vec2i(floor((position - vec2f(tile)) * TILE_PLATE_TILE)), vec2i(i32(TILE_PLATE_TILE) - 1));
+  let origin = vec2i(i32(crop % TILE_PLATE_COLUMNS), i32(crop / TILE_PLATE_COLUMNS)) * i32(TILE_PLATE_TILE);
+  let offset = (round(textureLoad(tilePlates, origin + pixel, 0).rg * 255.0) - 128.0) * TILE_PLATE_STEP;
+  return (vec2f(tile) * TILE_PLATE_TILE + vec2f(pixel) + 0.5 + offset) / TILE_PLATE_TILE;
+}
+
+fn tilePlateCell(position: vec2f) -> vec2f {
+  return tileCell(tilePlateMiddle(position)).nearest;
+}
+
+// a grain next to it (one grain away) lies in another cell
+fn tileCellEdge(position: vec2f, cell: vec2f) -> bool {
+  let middle = tilePlateMiddle(position);
+  let step = TILE_GRAIN / TILE_SIZE.x;
+  var sides = array<vec2f, 4>(vec2f(step, 0.0), vec2f(-step, 0.0), vec2f(0.0, step), vec2f(0.0, -step));
+  for (var index = 0; index < 4; index++) {
+    let near = tilePlateMiddle(position + sides[index]);
+    // the same plate, the same cell: skips the cell search inside a plate
+    if (all(abs(near - middle) < vec2f(0.001))) {
+      continue;
+    }
+    if (any(tileCell(near).nearest != cell)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 fn tileCrack(position: vec2f, damage: f32) -> bool {
   if (damage <= 0.0) {
     return false;
   }
-  let cell = tileCell(position);
-  let shown = tileHash(cell.nearest + vec2f(53.0, 7.0)) < damage;
-  return shown && cell.border < TILE_CRACK_WIDTH;
+  let cell = tilePlateCell(position);
+  if (tileHash(cell + vec2f(53.0, 7.0)) >= damage) {
+    return false;
+  }
+  return tileCellEdge(position, cell);
 }
 
 // seconds from a game time stamp to now, negative while it is still ahead; handles the wrap
@@ -152,7 +271,8 @@ fn tileImpact(packed: f32) -> vec2f {
   return vec2f(packed - row * TILE_IMPACT_ROW, row) / TILE_IMPACT_STEPS;
 }
 
-fn solidMaterial(in: MaterialInput) -> vec4f {
+// ramp: the grey rock atlas coloured by tileRamp, else the texel times the tint as drawn
+fn tileSolid(in: MaterialInput, ramp: bool) -> vec4f {
   // the pixel snapped to the grain, in tiles from the map origin
   let position = (floor((in.world - TILE_ORIGIN) / TILE_GRAIN) + 0.5) * TILE_GRAIN / TILE_SIZE;
   let cell = vec2i(floor(position));
@@ -180,7 +300,11 @@ fn solidMaterial(in: MaterialInput) -> vec4f {
   }
 
   let outline = in.outlineColor * in.ring;
-  let base = outline + in.color * in.texel * (1.0 - outline.a);
+  var fill = in.color * in.texel;
+  if (ramp) {
+    fill = tileRamp(position, in.texel) * in.color.a;
+  }
+  let base = outline + fill * (1.0 - outline.a);
   let damage = in.params.x;
   let since = tileSince(in.params.y);
   let gap = length(local - tileImpact(in.params.z));
@@ -203,18 +327,27 @@ fn solidMaterial(in: MaterialInput) -> vec4f {
   return vec4f(mix(crack, hot, heated) + flash * base.a, base.a);
 }
 
+// the old atlas and the deposit overlays: drawn as they are, times the tint
+fn solidMaterial(in: MaterialInput) -> vec4f {
+  return tileSolid(in, false);
+}
+
+fn rockMaterial(in: MaterialInput) -> vec4f {
+  return tileSolid(in, true);
+}
+
 // a shard of a mined tile, flying off on its own sprite (whole tile crop, moved and rotated): only
 // the tile's pixels in one crack cell, so the tile breaks along the cracks it had. in.params: xy =
 // the tile in map tiles, zw = the cell's lattice coords (TileMask.shardsOf); fades with the tint
 fn shardMaterial(in: MaterialInput) -> vec4f {
   // local is before the rotation: the pixel where it sat in the tile, snapped like the tile
   let pixel = (floor((in.local + in.size * 0.5) / TILE_GRAIN) + 0.5) * TILE_GRAIN;
-  let cell = tileCell(in.params.xy + pixel / TILE_SIZE);
-  if (any(cell.nearest != in.params.zw)) {
+  let position = in.params.xy + pixel / TILE_SIZE;
+  if (any(tilePlateCell(position) != in.params.zw)) {
     return vec4f(0.0);
   }
   let base = in.color * in.texel;
-  let rim = select(1.0, TILE_CRACK_SHADE, cell.border < TILE_CRACK_WIDTH);
+  let rim = select(1.0, TILE_CRACK_SHADE, tileCellEdge(position, in.params.zw));
   return vec4f(base.rgb * (1.0 - TILE_DAMAGE_SHADE) * rim, base.a);
 }
 
@@ -262,5 +395,6 @@ fn oreMaterial(in: MaterialInput) -> vec4f {
   return vec4f(base.rgb * gain, base.a);
 }
 
-// replaced by TileMask.register with the material entry: solidMaterial, oreMaterial or shardMaterial
+// replaced by TileMask.register with the material entry: rockMaterial, solidMaterial, oreMaterial or
+// shardMaterial
 // TILE_ENTRY

@@ -18,6 +18,8 @@ export interface ActorSave {
 export interface GameState {
   resources: [number, number][];
   actors: ActorSave[];
+  // none in a save from before the camp
+  progress?: ArrayBuffer;
 }
 
 export interface SaveData {
@@ -190,6 +192,20 @@ const SECTIONS: Section[] = [
         const kind = reader.u16();
         decoded.state.actors.push({ kind, data: reader.u8Array(reader.u32()).buffer });
       }
+    },
+  },
+  {
+    // prototype: no versions inside, GameScene reads it in the order it wrote it
+    id: SAVE_SECTION.progress,
+    version: 1,
+    write(writer, save) {
+      const progress = save.state.progress ?? new ArrayBuffer(0);
+      writer.u32(progress.byteLength);
+      writer.array(new Uint8Array(progress));
+    },
+    read(reader, _version, decoded) {
+      const length = reader.u32();
+      if (length > 0) decoded.state.progress = reader.u8Array(length).buffer;
     },
   },
 ];

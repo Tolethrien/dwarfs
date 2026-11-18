@@ -1,14 +1,16 @@
 import Aurora from "@aurora/core";
+import AxiomColor from "@axiom/color";
 import AxiomMath from "@axiom/math";
+import { assert } from "@axiom/utils";
 import Vec2 from "@axiom/vec2";
 import PragmaSystem from "@pragma/system";
 import { Draw, Light } from "@aurora/urp/draw/draw";
 import { Camera } from "@engine/camera/camera";
-import { getVariantCrop, hasGraphics } from "@sandbox/content/blocks";
+import { hasGraphics } from "@sandbox/content/blocks";
 import { SPRITES } from "@sandbox/content/sprites";
 import { RENDER_ORDER } from "@sandbox/configs";
 import Materials from "@sandbox/shaders/materials";
-import TileMask from "@sandbox/shaders/tileMask";
+import TileMask, { type TileLook } from "@sandbox/shaders/tileMask";
 import type World from "@sandbox/world/world";
 import SoundBank from "@sandbox/audio/soundBank";
 import { SoundsID } from "@sandbox/content/sounds";
@@ -25,8 +27,6 @@ const EFFECTS = {
   particleTiles: 6,
   // tiles this far outside the view still get their effect (camera moving towards them)
   marginTiles: 2,
-  // camera trauma of a mined tile: a small knock, several in a row add up
-  mineShake: 0.12,
   // the ambient loop, it fades out when the game scene closes
   ambientVolume: 0.5,
   ambientFadeSeconds: 1,
@@ -87,8 +87,9 @@ interface Burst {
 interface FlyingShard {
   gx: number;
   gy: number;
-  type: number;
-  variant: number;
+  // the mined tile as it was drawn; its tint copies the ramp, a shard cannot run it
+  look: TileLook;
+  tint: RGBA;
   // crack cell lattice coords (tileShard params)
   cell: Position2D;
   // where its middle sat in the world
@@ -180,17 +181,19 @@ export default class MapEffects extends PragmaSystem {
       };
       const alpha = AxiomMath.clamp((1 - age / SHARDS.seconds) / SHARDS.fade, 0, 1);
       const corner = this.world.tileToWorld({ x: shard.gx, y: shard.gy });
-      const crop = getVariantCrop(shard.type, shard.variant);
-      Draw.sprite({
-        position: { x: corner.x + moved.x, y: corner.y + moved.y, z: RENDER_ORDER.main },
-        crop,
-        texture: SPRITES.blocks,
-        size: { width: crop.width, height: crop.height },
-        rotation: angle,
-        tint: [255, 255, 255, Math.round(255 * alpha)],
-        material: TileMask.shard,
-        params: [shard.gx, shard.gy, shard.cell.x, shard.cell.y],
-      });
+      const layers = [{ crop: shard.look.crop, texture: shard.look.texture, tint: shard.tint }];
+      if (shard.look.overlay) layers.push({ ...shard.look.overlay, texture: SPRITES.rocks });
+      for (const layer of layers)
+        Draw.sprite({
+          position: { x: corner.x + moved.x, y: corner.y + moved.y, z: RENDER_ORDER.main },
+          crop: layer.crop,
+          texture: layer.texture,
+          size: { width: layer.crop.width, height: layer.crop.height },
+          rotation: angle,
+          tint: AxiomColor.withAlpha(layer.tint, Math.round(255 * alpha)),
+          material: TileMask.shard,
+          params: [shard.gx, shard.gy, shard.cell.x, shard.cell.y],
+        });
     }
     this.shards.length = kept;
   }
@@ -252,8 +255,11 @@ export default class MapEffects extends PragmaSystem {
     const size = this.world.meta.tileInPixels;
     const corner = this.world.tileToWorld(tile);
     const bornAt = Aurora.getGameTime;
+    const look = TileMask.lookOf(event.gx, event.gy, event.type, event.variant);
+    assert(look !== null, "MapEffects: a mined tile has no graphics");
+    const tint = TileMask.tintOf(look.palette);
 
-    for (const shard of TileMask.shardsOf(event.gx, event.gy)) {
+    for (const shard of TileMask.shardsOf(event.gx, event.gy, look.plates)) {
       const center = {
         x: corner.x + shard.center.x * size.width,
         y: corner.y + shard.center.y * size.height,
@@ -266,8 +272,8 @@ export default class MapEffects extends PragmaSystem {
       this.shards.push({
         gx: event.gx,
         gy: event.gy,
-        type: event.type,
-        variant: event.variant,
+        look,
+        tint,
         cell: shard.cell,
         center,
         velocity: {
@@ -286,7 +292,6 @@ export default class MapEffects extends PragmaSystem {
     // the rock over the new hole sheds a little dust
     if (hasGraphics(this.world.getType(event.gx, event.gy - 1)))
       this.pushBurst("sift", { x: tileCenter.x, y: corner.y }, Math.PI / 2);
-    Camera.shake(EFFECTS.mineShake);
     SoundBank.playSound(SoundsID.blockDestroy, { volume: 0.5 });
   }
 

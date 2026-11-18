@@ -3,11 +3,11 @@ import PragmaSystem from "@pragma/system";
 import { ACTION } from "../../inputActions";
 import InteractiveElements from "./interactiveElements";
 import MapBuilder from "./mapBuilder";
-import PlayerInput from "./playerInput";
+import Launcher from "./launcher";
 
 // systems enabled only in their mode
 const MODE_SYSTEMS = {
-  game: [PlayerInput, InteractiveElements],
+  game: [Launcher, InteractiveElements],
   build: [MapBuilder],
 };
 export type Mode = keyof typeof MODE_SYSTEMS;
@@ -28,7 +28,9 @@ export default class GameMode extends PragmaSystem {
   }
 
   preUpdate(): void {
-    if (InputManager.onActionPressed(ACTION.changeMode)) this.toggle();
+    // not in the middle of a dwarf's scene: it would stop half way with the camera held
+    if (InputManager.onActionPressed(ACTION.changeMode) && this.scene.getSystem(Launcher).isIdle)
+      this.toggle();
   }
 
   public get current() {

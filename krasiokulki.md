@@ -302,6 +302,9 @@ Pomysł: wplecenie korpo-sztampy (stanowiska, żargon, procedury) przerobionej n
 
 - Pomysł: koboldy jako swego rodzaju "surowiec"/zasób — łapane na mapie, używane potem jako zwierzątka do różnych rzeczy w kopalni.
 - Nieustalone, do przemyślenia później (jakie konkretnie zastosowania, jak się je łapie).
+- Pomysł na zastosowanie: kobold z pasem Ahmeda (materiał wybuchowy przypięty do kobolda). Steruje się nim jak Super Sheepem w Worms — po wypuszczeniu gracz kieruje nim w locie, a potem go detonuje, żeby rozwalić bloki.
+- To wyjątek od zasady "krasnolud leci sam, bez kontroli w locie" — sterowanie dotyczy tylko kobolda, nie krasnoludów.
+- Do ustalenia: czy lot jest ograniczony czasem/paliwem, czy detonacja jest na żądanie gracza, czy też automatyczna po kontakcie z blokiem, jaki jest promień i siła wybuchu, czy kobold ginie na stałe (zasób jednorazowy).
 
 ### Krypta — magazyn surowców (zamiast listy w rogu ekranu)
 

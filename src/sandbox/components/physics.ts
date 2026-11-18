@@ -29,6 +29,10 @@ export default class Physics extends PragmaComponent {
   public velocity: Vec2;
   public isTrigger: boolean;
   public baseSpeed: number;
+  // not collided with until the body first stops overlapping it (a dwarf leaving the shaft)
+  public passThrough: Physics | null = null;
+  // seconds left of flying through the player's builds (actors tagged "playerBuild")
+  public ghostTime = 0;
   declare private transform: Transform;
   constructor(internal: InternalPCProps, props: PhysicsProps) {
     super(internal);

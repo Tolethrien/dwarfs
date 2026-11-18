@@ -1,7 +1,7 @@
 import Navi from "@navi/navi";
 import UINode from "@navi/node";
 import UIText from "@navi/elements/text";
-import { auto, ph, pw } from "@navi/units";
+import { auto, ph, pw, px } from "@navi/units";
 import AxiomColor, { COLOR } from "@axiom/color";
 
 const LOOK = {
@@ -13,14 +13,41 @@ const LOOK = {
   muted: COLOR.SILVER,
 };
 
-// full screen modal: blurs and dims what is behind, takes the mouse from the game.
+// full screen modal: blurs and dims what is behind, takes the mouse from the game. Docked: a small
+// box in the bottom-left corner, the game goes on around it (only the box takes the mouse).
 // Raw look until the menu design exists
 export default class MenuPanel {
   private readonly root: UINode;
   private readonly box: UINode;
   private readonly actions = new Map<UINode, () => void>();
 
-  constructor(props: { blur: number }) {
+  constructor(props: { blur: number; docked?: boolean }) {
+    const boxStyle = {
+      backgroundColor: LOOK.box,
+      rounded: 0.05,
+      layout: "stack",
+      direction: "col",
+      alignCross: "stretch",
+      gap: 10,
+      padding: { top: 24, right: 32, bottom: 24, left: 32 },
+    } as const;
+    if (props.docked) {
+      this.box = Navi.append(
+        new UINode({
+          position: { x: px(16), y: px(16) },
+          size: { width: auto(), height: auto() },
+          style: {
+            ...boxStyle,
+            anchorY: "end",
+            gap: 6,
+            padding: { top: 12, right: 12, bottom: 12, left: 12 },
+            zIndex: 50,
+          },
+        }),
+      );
+      this.root = this.box;
+      return;
+    }
     this.root = Navi.append(
       new UINode({
         size: { width: pw(100), height: ph(100) },
@@ -38,15 +65,7 @@ export default class MenuPanel {
     this.box = Navi.append(
       new UINode({
         size: { width: auto(), height: auto() },
-        style: {
-          backgroundColor: LOOK.box,
-          rounded: 0.05,
-          layout: "stack",
-          direction: "col",
-          alignCross: "stretch",
-          gap: 10,
-          padding: { top: 24, right: 32, bottom: 24, left: 32 },
-        },
+        style: boxStyle,
       }),
       this.root,
     );
@@ -61,6 +80,37 @@ export default class MenuPanel {
   }
 
   button(label: string | (() => string), onClick: () => void) {
+    this.addButton(label, onClick, this.box);
+  }
+
+  // a line: a label, then small buttons side by side
+  row(label: string, buttons: [string, () => void][]) {
+    const row = Navi.append(
+      new UINode({
+        size: { width: auto(), height: auto() },
+        input: "none",
+        style: {
+          backgroundColor: COLOR.TRANSPARENT,
+          layout: "stack",
+          direction: "row",
+          alignCross: "center",
+          gap: 8,
+        },
+      }),
+      this.box,
+    );
+    Navi.append(
+      new UIText(() => label, {
+        size: { width: auto(), height: auto() },
+        input: "none",
+        style: { textColor: LOOK.text, textSize: 15 },
+      }),
+      row,
+    );
+    for (const [text, onClick] of buttons) this.addButton(text, onClick, row);
+  }
+
+  private addButton(label: string | (() => string), onClick: () => void, parent: UINode) {
     const button = Navi.append(
       new UINode({
         size: { width: auto(), height: auto() },
@@ -76,7 +126,7 @@ export default class MenuPanel {
         },
         states: { hovered: { backgroundColor: LOOK.buttonHover } },
       }),
-      this.box,
+      parent,
     );
     const source = typeof label === "string" ? () => label : label;
     Navi.append(

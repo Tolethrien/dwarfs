@@ -6,7 +6,7 @@ import PragmaSystem from "@pragma/system";
 import { ACTION } from "@sandbox/inputActions";
 import type Dwarf from "@sandbox/bActors/dwarf";
 import type { DwarfClickedEvent } from "@sandbox/bActors/dwarf";
-import type { DwarfLaunchedEvent } from "./playerInput";
+import type { DwarfLaunchedEvent } from "./launcher";
 
 const ZOOM = {
   keyOctaves: 0.25,
@@ -30,6 +30,8 @@ export default class CameraController extends PragmaSystem {
   private lastZoom: number = -1;
   private lock: CameraLock = "free";
   private followed: Dwarf | null = null;
+  // a scene (Launcher) has the camera: no panning, no letting go, no click follow
+  private inScene = false;
   // the zoom before a click zoomed in, NaN = nothing to go back to
   private zoomBefore = NaN;
 
@@ -42,7 +44,7 @@ export default class CameraController extends PragmaSystem {
       if (this.lock === "onShot") this.follow(event.dwarf);
     });
     this.onSceneEvent<DwarfClickedEvent>("dwarfClicked", (event) => {
-      if (this.lock !== "click") return;
+      if (this.lock !== "click" || this.inScene) return;
       if (Number.isNaN(this.zoomBefore)) this.zoomBefore = Camera.getZoomTarget;
       Camera.setZoom(FOLLOW.clickZoom);
       this.follow(event.dwarf);
@@ -70,6 +72,17 @@ export default class CameraController extends PragmaSystem {
     Camera.setMode("follow");
   }
 
+  public followScene(dwarf: Dwarf) {
+    this.inScene = true;
+    this.zoomBefore = NaN;
+    this.follow(dwarf);
+  }
+
+  public endScene() {
+    this.inScene = false;
+    this.stopFollow();
+  }
+
   // the view stays where it was, free again; false = nothing was followed
   public stopFollow() {
     if (this.followed === null) return false;
@@ -81,6 +94,7 @@ export default class CameraController extends PragmaSystem {
 
   // stops the follow and takes back a click's zoom; false = there was nothing to let go
   public release() {
+    if (this.inScene) return false;
     const stopped = this.stopFollow();
     if (Number.isNaN(this.zoomBefore)) return stopped;
     Camera.setZoom(this.zoomBefore);
@@ -102,7 +116,7 @@ export default class CameraController extends PragmaSystem {
     const dirY =
       (InputManager.onActionHold(ACTION.cameraDown) ? 1 : 0) -
       (InputManager.onActionHold(ACTION.cameraUp) ? 1 : 0);
-    if (dirX === 0 && dirY === 0) return;
+    if ((dirX === 0 && dirY === 0) || this.inScene) return;
     // steering by hand takes the camera back from the follow, the zoom stays as it is
     if (this.stopFollow()) this.zoomBefore = NaN;
     Camera.pan({ x: dirX, y: dirY });
