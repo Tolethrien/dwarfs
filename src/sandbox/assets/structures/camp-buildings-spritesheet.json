@@ -1,0 +1,93 @@
+{
+    "image":  "camp-buildings-spritesheet.png",
+    "width":  3164,
+    "height":  2034,
+    "padding":  8,
+    "tileInPixels":  96,
+    "coordinates":  "Pixels, origin at top-left. Scaled so the wall beam is 1 tile wide; sourceCrop is the crop in the source image.",
+    "frames":  {
+                   "tavern":  {
+                                  "crop":  {
+                                               "x":  8,
+                                               "y":  8,
+                                               "width":  1018,
+                                               "height":  1824
+                                           },
+                                  "door":  {
+                                               "x":  781,
+                                               "y":  1455
+                                           },
+                                  "scale":  1.6,
+                                  "sourceCrop":  {
+                                                     "x":  5,
+                                                     "y":  2,
+                                                     "width":  636,
+                                                     "height":  1140
+                                                 }
+                              },
+                   "brewery":  {
+                                   "crop":  {
+                                                "x":  1034,
+                                                "y":  8,
+                                                "width":  1152,
+                                                "height":  1470
+                                            },
+                                   "scale":  1.8824,
+                                   "sourceCrop":  {
+                                                      "x":  651,
+                                                      "y":  0,
+                                                      "width":  612,
+                                                      "height":  781
+                                                  }
+                               },
+                   "smelter":  {
+                                 "crop":  {
+                                              "x":  2194,
+                                              "y":  8,
+                                              "width":  962,
+                                              "height":  806
+                                          },
+                                 "door":  {
+                                              "x":  746,
+                                              "y":  552
+                                          },
+                                 "scale":  1.6552,
+                                 "sourceCrop":  {
+                                                    "x":  1353,
+                                                    "y":  43,
+                                                    "width":  581,
+                                                    "height":  487
+                                                }
+                             },
+                   "market":  {
+                                  "crop":  {
+                                               "x":  1034,
+                                               "y":  1486,
+                                               "width":  1149,
+                                               "height":  540
+                                           },
+                                  "scale":  1.1034,
+                                  "sourceCrop":  {
+                                                     "x":  5,
+                                                     "y":  1509,
+                                                     "width":  1041,
+                                                     "height":  489
+                                                 }
+                              },
+                   "shaftSegment":  {
+                                        "crop":  {
+                                                     "x":  2194,
+                                                     "y":  822,
+                                                     "width":  960,
+                                                     "height":  960
+                                                 },
+                                        "scale":  1,
+                                        "sourceCrop":  {
+                                                           "x":  0,
+                                                           "y":  0,
+                                                           "width":  960,
+                                                           "height":  960
+                                                       }
+                                    }
+               }
+}

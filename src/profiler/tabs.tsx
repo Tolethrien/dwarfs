@@ -10,7 +10,7 @@ import OptionsMenu from "./components/optionsMenu";
 import { tweakStore } from "./tweak/store";
 import { tabVisibility } from "./tabVisibility";
 
-export type TabId = "custom" | "console" | "watch" | "aurora" | "coroutines" | "mapGen";
+export type TabId = "custom" | "console" | "watch" | "game" | "aurora" | "coroutines" | "mapGen";
 
 interface TabDefinition {
   label: string;
@@ -41,8 +41,8 @@ function AuroraActions() {
   );
 }
 
-function MapGenActions() {
-  return <GroupButton group="mapGen" label="⚙ Settings" />;
+function GameActions() {
+  return <GroupButton group="game" label="🎮 Game" />;
 }
 
 export const TABS: Record<TabId, TabDefinition> = {
@@ -52,6 +52,12 @@ export const TABS: Record<TabId, TabDefinition> = {
     label: "Watch",
     panels: () => watchStore.names().map(watchPanelId),
     empty: "no watches, register one with debug.watch.add(...)",
+  },
+  game: {
+    label: "Game",
+    actions: GameActions,
+    panels: ["gameDwarfs", "gameNetwork", "gameBuildings", "gameGear", "gameResearch", "gameEconomy"],
+    empty: "game panels: 🎮 Game",
   },
   aurora: {
     label: "Aurora",
@@ -73,8 +79,8 @@ export const TABS: Record<TabId, TabDefinition> = {
   },
   mapGen: {
     label: "MapGen",
-    actions: MapGenActions,
-    panels: ["mapGenSummary", "mapGenOres", "mapGenConfig"],
+    panels: [],
+    empty: "map generator: nothing here yet, it gets rewritten for the new generator",
   },
 };
 

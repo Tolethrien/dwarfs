@@ -22,7 +22,9 @@ export default class Transform extends PragmaComponent {
   private worldScaleCache: Vec2 | null = null;
   private worldZCache: number | null = null;
 
-  fixedUpdate(): void {
+  // before every fixedUpdate, so the state from before the step is kept no matter whether the
+  // system moving it runs before or after the actors
+  preFixedUpdate(): void {
     this.previousPosition.copy(this.position);
     this.previousRotation = this.rotation;
     this.interpolating = true;

@@ -13,7 +13,7 @@ const DEBUG_CHANNELS = [
   "debug:performance",
   "debug:aurora",
   "debug:coroutines",
-  "debug:mapGen",
+  "debug:game",
 ] as const;
 
 export function registerDebugIPC() {

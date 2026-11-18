@@ -305,6 +305,13 @@ struct MaterialInput {
   // how far dist stays true
   reach: f32,
   params: vec4f,
+  // world only, for a material sampling the sprite itself (its neighbours): the pixel in the
+  // atlas in texels, the sprite's crop there (zw negative when flipped), the layer (UI_ATLAS set
+  // on the ui array) and the mip the texel came from
+  texelPosition: vec2f,
+  uvRect: vec4f,
+  layer: u32,
+  lod: f32,
 };
 
 // a material may set it per pixel: share (0-1) that ignores the light map, like Material.emissive
@@ -473,6 +480,10 @@ fn fragmentMain(in: VertexOut) -> FragmentOut {
   // shapes are true distances everywhere
   input.reach = max(in.halfSize.x, in.halfSize.y);
   input.params = in.params;
+  input.texelPosition = texelPosition;
+  input.uvRect = in.uvRect;
+  input.layer = in.layer;
+  input.lod = lod;
   if (glyph) {
     // text outlines grow outwards, the letter itself stays untouched; the ring
     // reaches 1.5px under the letter so its edge blends over a solid ring, no seam

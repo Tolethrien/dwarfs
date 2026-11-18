@@ -14,7 +14,8 @@ import { deepMerge } from "@axiom/utils";
 import AxiomMath from "@axiom/math";
 import { Tween } from "./tween";
 type Axis = "x" | "y";
-export type InputMode = "normal" | "none" | "absorb" | "disabled";
+// "ignore": the node and everything under it never take the mouse (info layers)
+export type InputMode = "normal" | "none" | "absorb" | "disabled" | "ignore";
 export interface KeyInput {
   text: string;
   keys: readonly string[];
@@ -328,17 +329,33 @@ export default class UINode {
     const innerH =
       this.pixelBox.h - padding.top * scale - padding.bottom * scale;
 
+    const flow = this.flowChildren;
     switch (this.style.layout) {
       case "stack":
-        this.layoutStack(innerX, innerY, innerW, innerH, scale);
+        this.layoutStack(flow, innerX, innerY, innerW, innerH, scale);
         break;
       case "grid":
-        this.layoutGrid(innerX, innerY, innerW, innerH, scale);
+        this.layoutGrid(flow, innerX, innerY, innerW, innerH, scale);
         break;
       default:
-        this.layoutFree(innerX, innerY, innerW, innerH, scale);
+        this.layoutFree(flow, innerX, innerY, innerW, innerH, scale);
         break;
     }
+    if (flow.length === this.children.length) return;
+    const box = this.pixelBox;
+    const overlays = this.children.filter((child) => child.style.overlay);
+    this.layoutFree(overlays, box.x, box.y, box.w, box.h, scale);
+  }
+
+  // hidden (inactive) children take no space either;
+  // layout runs over the whole tree, so no new array while there's none of them (almost always)
+  private get flowChildren() {
+    for (const child of this.children)
+      if (child.style.overlay || !child.active)
+        return this.children.filter(
+          (other) => !other.style.overlay && other.active,
+        );
+    return this.children;
   }
 
   public play(tween: Tween) {
@@ -491,13 +508,14 @@ export default class UINode {
   }
 
   private layoutFree(
+    children: UINode[],
     innerX: number,
     innerY: number,
     innerW: number,
     innerH: number,
     scale: number,
   ) {
-    for (const child of this.children) {
+    for (const child of children) {
       const style = child.style;
 
       let childX: number;
@@ -558,6 +576,7 @@ export default class UINode {
     }
   }
   private layoutStack(
+    children: UINode[],
     innerX: number,
     innerY: number,
     innerW: number,
@@ -566,13 +585,13 @@ export default class UINode {
   ) {
     const isRow = this.style.direction === "row";
     const gap = this.style.gap * scale;
-    const count = this.children.length;
+    const count = children.length;
 
     const widths: number[] = [];
     const heights: number[] = [];
     let usedMain = gap * (count - 1);
 
-    for (const child of this.children) {
+    for (const child of children) {
       const childW = child.resolveSize(
         child.size.width,
         innerW,
@@ -611,7 +630,7 @@ export default class UINode {
     }
 
     for (let i = 0; i < count; i++) {
-      const child = this.children[i];
+      const child = children[i];
       let childW = widths[i];
       let childH = heights[i];
 
@@ -648,6 +667,7 @@ export default class UINode {
     }
   }
   private layoutGrid(
+    children: UINode[],
     innerX: number,
     innerY: number,
     innerW: number,
@@ -661,13 +681,13 @@ export default class UINode {
 
     let cellW = 0;
     let cellH = 0;
-    for (const child of this.children) {
+    for (const child of children) {
       if (child.measured.width > cellW) cellW = child.measured.width;
       if (child.measured.height > cellH) cellH = child.measured.height;
     }
 
-    for (let i = 0; i < this.children.length; i++) {
-      const child = this.children[i];
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
       const line = Math.floor(i / perLine);
       const slot = i % perLine;
 
@@ -726,36 +746,37 @@ export default class UINode {
     return this.contentSize.height;
   }
   private measureContentAxis(axis: Axis, scale: number) {
-    if (this.children.length === 0) return 0;
+    const children = this.flowChildren;
+    if (children.length === 0) return 0;
     switch (this.style.layout) {
       case "stack":
-        return this.measureStackAxis(axis, scale);
+        return this.measureStackAxis(children, axis, scale);
       case "grid":
-        return this.measureGridAxis(axis, scale);
+        return this.measureGridAxis(children, axis, scale);
       default:
-        return this.measureFreeAxis(axis, scale);
+        return this.measureFreeAxis(children, axis, scale);
     }
   }
-  private measureStackAxis(axis: Axis, scale: number) {
+  private measureStackAxis(children: UINode[], axis: Axis, scale: number) {
     if (this.isMainAxis(axis)) {
       let sum = 0;
-      for (const child of this.children) {
+      for (const child of children) {
         sum += this.childSizeOnAxis(child, axis);
       }
-      return sum + this.style.gap * scale * (this.children.length - 1);
+      return sum + this.style.gap * scale * (children.length - 1);
     }
 
     let biggest = 0;
-    for (const child of this.children) {
+    for (const child of children) {
       const size = this.childSizeOnAxis(child, axis);
       if (size > biggest) biggest = size;
     }
     return biggest;
   }
-  private measureFreeAxis(axis: Axis, scale: number) {
+  private measureFreeAxis(children: UINode[], axis: Axis, scale: number) {
     let furthest = 0;
 
-    for (const child of this.children) {
+    for (const child of children) {
       const anchor = axis === "x" ? child.style.anchorX : child.style.anchorY;
       if (anchor === "stretch") continue;
 
@@ -769,13 +790,13 @@ export default class UINode {
     }
     return furthest;
   }
-  private measureGridAxis(axis: Axis, scale: number) {
+  private measureGridAxis(children: UINode[], axis: Axis, scale: number) {
     const perLine = Math.max(1, this.style.gridCount);
-    const lines = Math.ceil(this.children.length / perLine);
-    const inLine = Math.min(this.children.length, perLine);
+    const lines = Math.ceil(children.length / perLine);
+    const inLine = Math.min(children.length, perLine);
 
     let cell = 0;
-    for (const child of this.children) {
+    for (const child of children) {
       const size = this.childSizeOnAxis(child, axis);
       if (size > cell) cell = size;
     }

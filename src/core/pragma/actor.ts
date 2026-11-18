@@ -28,8 +28,9 @@ export default abstract class PragmaActor {
     ITERATED_PHASES.map((phase) => [phase, new Set<PragmaComponent>()]),
   ) as PragmaPhaseRegistry;
 
-  constructor() {
-    this.ID = Symbol(crypto.randomUUID());
+  // a loaded save passes the uuid back, so the actor keeps its identity
+  constructor(uuid: string = crypto.randomUUID()) {
+    this.ID = Symbol(uuid);
     this.addComponent(Transform);
   }
   public addComponent<T extends PragmaComponentClass>(

@@ -13,9 +13,7 @@ import type { SortProps, URPProps } from "@aurora/urp/urp";
 import type { TexturePreview } from "@aurora/urp/passes/previewPass";
 import type { TweakField, TweakFieldsSectionInfo } from "./modules/tweak/report";
 import type Coroutine from "@engine/coroutines/coroutine";
-import type { MapGenConfig } from "@sandbox/mapGen/mapGenerator";
-import type World from "@sandbox/world/world";
-import type { TileName } from "@sandbox/content/blocks";
+import type { GameReport } from "./modules/game/report";
 
 export interface ILogHandle {
   log(...args: unknown[]): void;
@@ -201,26 +199,9 @@ export interface ICoroutineModule {
   describe(coroutine: Coroutine, info: CoroutineGroupInfo): void;
   endFrame(): void;
 }
-export interface MapGenDebugData {
-  seed: number;
-  config: MapGenConfig;
-  defaults: MapGenConfig;
-  world: World;
-  // outside: beyond the mine, not playable
-  known: { outside: number; air: number };
-  // tiles by name: plain blocks and named variants
-  tiles: TileName[];
-  // measured where the map was made (a worker), instead of measure()
-  timeMs?: number;
-}
-export interface IMapGenModule {
-  // dev: the seed / config saved by the mapGen panel for this session, if any
-  seed(fallback: number): number;
-  config(fallback: MapGenConfig): MapGenConfig;
-  // dev: the panel's Generate is in effect this session, the game starts straight into a new map
-  requested(): boolean;
-  measure<Result>(generate: () => Result): Result;
-  connect(source: MapGenDebugData): void;
+export interface IGameModule {
+  connect<Key extends keyof GameReport>(key: Key, source: () => GameReport[Key]): void;
+  endFrame(): void;
 }
 export interface IDebug {
   performance: IPerformanceModule;
@@ -231,5 +212,5 @@ export interface IDebug {
   tweak: ITweakModule;
   camera: ICameraModule;
   coroutines: ICoroutineModule;
-  mapGen: IMapGenModule;
+  game: IGameModule;
 }

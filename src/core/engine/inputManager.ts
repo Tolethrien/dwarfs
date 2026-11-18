@@ -1,3 +1,4 @@
+import { assert } from "@axiom/utils";
 import { KEY_GROUP, type KeyCode } from "./keys";
 import Time from "./time";
 
@@ -19,13 +20,15 @@ enum MouseKey {
 const MODS = ["shift", "ctrl", "alt"] as const;
 type ModKey = (typeof MODS)[number];
 
-type Action = {
-  name: string;
+export type ActionBinding = {
   mods: ModKey[] | "NoMod";
 } & (
   | { key: KeyCode; mouse?: never }
   | { mouse: keyof typeof MouseKey; key?: never }
 );
+// when: the action fires only while it returns true (pressed and hold); a release always comes,
+// or a hold started in one state and let go in another would never end
+type Action = { name: string; when?: () => boolean } & ActionBinding;
 const WHEEL_GESTURE_GAP = 150;
 export default class InputManager {
   private static readonly NO_SCROLL: Position2D = { x: 0, y: 0 };
@@ -165,6 +168,17 @@ export default class InputManager {
   public static removeAction(actionName: string) {
     this.actionMap.delete(actionName);
   }
+  // one condition per action: whoever knows the state it depends on sets it
+  public static setCondition(name: string, when: () => boolean) {
+    const action = this.actionMap.get(name);
+    assert(action !== undefined, `Action "${name}" is not bound, bind it before its condition`);
+    assert(action.when === undefined, `Action "${name}" already has a condition`);
+    action.when = when;
+  }
+  public static clearCondition(name: string) {
+    const action = this.actionMap.get(name);
+    if (action) action.when = undefined;
+  }
   public static onActionHold(name: string): boolean {
     const action = this.actionMap.get(name);
     if (!action) return false;
@@ -173,7 +187,7 @@ export default class InputManager {
     if (action.key) isButtonPressed = this.isKeyHold(action.key);
     else if (action.mouse) isButtonPressed = this.isMouseHold(action.mouse);
     if (!isButtonPressed) return false;
-    return this.checkActionModsPressed(action);
+    return this.checkActionModsPressed(action) && (action.when?.() ?? true);
   }
 
   public static onActionPressed(name: string): boolean {
@@ -186,7 +200,7 @@ export default class InputManager {
       isActionTriggered = this.isMouseClicked(action.mouse);
 
     if (!isActionTriggered) return false;
-    return this.checkActionModsPressed(action);
+    return this.checkActionModsPressed(action) && (action.when?.() ?? true);
   }
 
   public static onActionReleased(name: string): boolean {

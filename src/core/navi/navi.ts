@@ -77,6 +77,9 @@ export default class Navi {
   }
 
   public static drawSystem() {
+    // the game's update may show or change nodes after updateSystem laid them out
+    this.measurePhase();
+    this.arrangePhase();
     this.drawPhase();
   }
 
@@ -269,9 +272,11 @@ export default class Navi {
     }
 
     this.applyHover(target);
-    this.applyFocus(target);
-    this.applyLeftButton(target);
-    this.applyRightButton(target);
+    const isDisabled = target?.input === "disabled";
+    this.applyFocus(isDisabled ? target?.parent : target);
+    const pressable = isDisabled ? undefined : target;
+    this.applyLeftButton(pressable);
+    this.applyRightButton(pressable);
   }
   private static drawPhase() {
     const screen: Box = {
@@ -518,13 +523,13 @@ export default class Navi {
     clip: Box,
     offset: Position2D,
   ): UINode | undefined {
-    if (!node.active) return undefined;
-    if (node.input === "disabled") return undefined;
+    if (!node.active || node.input === "ignore") return undefined;
 
     const childClip = this.resolveChildClip(node, clip, offset);
     if (childClip === null) return undefined;
 
-    if (node.input === "absorb") {
+    // a disabled node still takes the hover (tooltips), hitTestPhase keeps clicks off it
+    if (node.input === "absorb" || node.input === "disabled") {
       if (this.pointInside(node, mouse, clip, offset)) return node;
       return undefined;
     }

@@ -3,6 +3,7 @@ import { debug } from "@debug";
 import VertexLayout from "@aurora/utils/vertexLayout";
 import RenderGraph from "@aurora/renderGraph";
 import type LightPass from "../passes/lightPass";
+import type { LightLimit } from "../urp";
 import { clearShapeData, writeCorners } from "./drawInternal";
 import type {
   AmbientLight,
@@ -52,6 +53,8 @@ export class LightDraw {
     intensity: 1,
   };
   private occlusion = "fn lightVisibility(light: vec2f, pixel: vec2f) -> f32 { return 1.0; }";
+  private ambientMap = "fn ambientAt(world: vec2f, base: vec3f) -> vec3f { return base; }";
+  private limit: LightLimit = { knee: 0, max: 0 };
 
   public setTarget(target: LightPass) {
     this.target = target;
@@ -124,6 +127,26 @@ export class LightDraw {
   }
   public get getOcclusion() {
     return this.occlusion;
+  }
+
+  // the ambient by place: WGSL defining fn ambientAt(world: vec2f, base: vec3f) -> vec3f (the pixel's
+  // world point and the ambient's own color there, linear; gives the color to use); it may read the
+  // globals (Aurora.addGlobal)
+  public setAmbientMap(code: string) {
+    this.ambientMap = code;
+    if (RenderGraph.isBuilt) void RenderGraph.rebuild();
+  }
+  public get getAmbientMap() {
+    return this.ambientMap;
+  }
+
+  // a cap on the summed light, applied where the scene takes it (LightCompositePass); max 0: none
+  public setLimit(limit: LightLimit) {
+    this.limit = { knee: limit.knee, max: limit.max };
+    if (RenderGraph.isBuilt) void RenderGraph.rebuild();
+  }
+  public get getLimit(): Readonly<LightLimit> {
+    return this.limit;
   }
 
   private writeLight(props: LightBase, width: number, height: number) {

@@ -30,6 +30,7 @@ export default class LightCompositePass extends RenderPass {
       label: "LightCompositePass",
       shader: lightCompositeShader,
       binds: this.binds.layout,
+      constants: { lightKnee: lightDraw.getLimit.knee, lightMax: lightDraw.getLimit.max },
     });
   }
   resources(res: PassResources) {

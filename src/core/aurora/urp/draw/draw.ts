@@ -15,7 +15,7 @@ type DrawCommand =
   | "glyph"
   | "pushClip"
   | "popClip";
-type LightCommand = "point" | "rect" | "ellipse" | "cone" | "setAmbient" | "setOcclusion";
+type LightCommand = "point" | "rect" | "ellipse" | "cone" | "setAmbient" | "setOcclusion" | "setAmbientMap";
 type PostCommand =
   | "setBloom"
   | "setDiffusion"

@@ -6,7 +6,7 @@ import type {
 } from "../core/debugger/report";
 import type { AuroraReport } from "../core/debugger/modules/aurora/report";
 import type { CoroutineReport } from "../core/debugger/modules/coroutines/report";
-import type { MapGenReport } from "../core/debugger/modules/mapGen/report";
+import type { GameReport } from "../core/debugger/modules/game/report";
 import type {
   LogEntry,
   LogMessage,
@@ -45,9 +45,10 @@ export const DEBUG = {
     ipcRenderer.send("debug:coroutines", report),
   onCoroutines: (callback: (report: CoroutineReport) => void) =>
     on("debug:coroutines", callback),
+  //game
+  sendGame: (report: Partial<GameReport>) => ipcRenderer.send("debug:game", report),
+  onGame: (callback: (report: Partial<GameReport>) => void) => on("debug:game", callback),
   //map generator
-  sendMapGen: (report: MapGenReport) => ipcRenderer.send("debug:mapGen", report),
-  onMapGen: (callback: (report: MapGenReport) => void) => on("debug:mapGen", callback),
   //log
   sendLog: (message: LogMessage) => ipcRenderer.send("debug:log", message),
   onLog: (callback: (message: LogMessage) => void) => on("debug:log", callback),

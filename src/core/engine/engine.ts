@@ -70,6 +70,7 @@ export default class Engine {
     debug.tweak.endFrame();
     debug.watch.endFrame();
     debug.coroutines.endFrame();
+    debug.game.endFrame();
 
     requestAnimationFrame((currentTime) => this.loop(currentTime));
   }

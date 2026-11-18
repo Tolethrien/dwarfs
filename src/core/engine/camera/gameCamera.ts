@@ -382,6 +382,9 @@ export default class GameCamera {
   public static get getZoomTarget() {
     return this.zoomTarget;
   }
+  public static get getZoomLimits(): Readonly<{ min: number; max: number }> {
+    return this.zoomLimits;
+  }
   public static get getState(): CameraState {
     const { origin, mode, position } = this;
     return { origin, mode, position: { x: position.x, y: position.y }, zoom: this.zoomTarget };
@@ -400,6 +403,26 @@ export default class GameCamera {
   }
   public static screenToWorld(point: Position2D) {
     return WorldView.screenToWorld(point);
+  }
+  // culling: a world box (a point is a box of size 0) in the view, margin in world units
+  public static isInView(box: Box, margin = 0) {
+    const view = WorldView.getBounds;
+    return (
+      box.x + box.w >= view.min.x - margin &&
+      box.y + box.h >= view.min.y - margin &&
+      box.x <= view.max.x + margin &&
+      box.y <= view.max.y + margin
+    );
+  }
+  // culling for things with a fixed screen size (UI): a point from worldToScreen, margin in pixels
+  public static isOnScreen(point: Position2D, margin = 0) {
+    const canvas = Aurora.canvas;
+    return (
+      point.x >= -margin &&
+      point.y >= -margin &&
+      point.x <= canvas.width + margin &&
+      point.y <= canvas.height + margin
+    );
   }
 
   public static update() {
@@ -634,7 +657,8 @@ export default class GameCamera {
 
     this.centerBefore.x = this.center.x;
     this.centerBefore.y = this.center.y;
-    const delta = Time.getDeltaTime();
+    // real time: a slowed world (bullet time) must not slow the camera's glide to the target
+    const delta = Time.getRawDeltaTime();
     const minStep = (SETTLE.minTexelsPerSecond * delta) / (this.zoom * Aurora.getRenderScale);
     this.approach(
       this.center,

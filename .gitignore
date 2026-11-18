@@ -103,7 +103,15 @@ gameData/
 # module todos
 .todo/
 
+# implementation plans
+.plans/
+
 # claude
 CLAUDE.md
 .claude/
 plans/
+
+# game design doc (lokalny, nie wersjonowany)
+.GDD/
+
+.gddOld/

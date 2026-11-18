@@ -1,7 +1,6 @@
 import { BrowserWindow, app } from "electron";
 import path from "path";
 import { registerWindowEventsIPC } from "../IPC/gameWindow";
-import { registerSavesIPC } from "../IPC/saves";
 import { resetLogSession, watchGameWindow } from "../IPC/log";
 import { resetWatchSession } from "../IPC/watch";
 import { resetCommandSession } from "../IPC/command";
@@ -26,7 +25,6 @@ export function createGameWindow() {
   gameWindow.setAspectRatio(16 / 9);
 
   registerWindowEventsIPC();
-  registerSavesIPC();
   if (!app.isPackaged) watchGameWindow(gameWindow);
   loadRenderer(gameWindow, {
     devServerUrl: MAIN_WINDOW_VITE_DEV_SERVER_URL,
@@ -48,7 +46,11 @@ function onDevServer() {
     if (input.control && input.shift && input.key.toLowerCase() === "i")
       gameWindow.webContents.toggleDevTools();
     // the event fires for keyUp and auto-repeat too, which toggled fullscreen back and forth
-    if (input.key === "F10" && input.type === "keyDown" && !input.isAutoRepeat) {
+    if (
+      input.key === "F10" &&
+      input.type === "keyDown" &&
+      !input.isAutoRepeat
+    ) {
       event.preventDefault();
       gameWindow.setFullScreen(!gameWindow.isFullScreen());
     }

@@ -115,8 +115,16 @@ export default class AxiomMath {
     }
     return items[items.length - 1];
   }
-  static randomArrayIndex(array: []) {
+  static randomArrayIndex(array: readonly unknown[]) {
     return AxiomMath.randomInt(0, array.length - 1);
+  }
+  static randomObjectEntry<T extends object>(object: T) {
+    const entries = Object.entries(object) as [keyof T, T[keyof T]][];
+    return entries[AxiomMath.randomArrayIndex(entries)];
+  }
+  static randomObjectKey<T extends object>(object: T) {
+    const keys = Object.keys(object) as (keyof T)[];
+    return keys[AxiomMath.randomArrayIndex(keys)];
   }
   static randomInCirclePoint(center: { x: number; y: number }, radius: number) {
     const angle = AxiomMath.randomFloat(0, Math.PI * 2);

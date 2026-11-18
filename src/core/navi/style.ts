@@ -40,6 +40,8 @@ export interface Style {
   layout: "none" | "stack" | "grid";
   direction: Direction;
   zIndex: number;
+  // out of the parent's stack/grid: placed by anchors over the parent's whole box, not measured
+  overlay: boolean;
   gap: number;
   gapCross: number;
   padding: Padding;
@@ -80,6 +82,7 @@ export const BASE_STYLE: Style = {
   layout: "none",
   direction: "col",
   zIndex: 0,
+  overlay: false,
   gap: 0,
   gapCross: 0,
   padding: { top: 0, right: 0, bottom: 0, left: 0 },

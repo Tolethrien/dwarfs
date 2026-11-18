@@ -64,7 +64,7 @@ export default class LightPass extends RenderPass {
     const [ambient, lights] = await Promise.all([
       FullScreenQuad.createPipeline(targets, {
         label: "LightPass:ambient",
-        shader: ambientShader,
+        shader: ambientShader.replace("// AMBIENT_MAP", lightDraw.getAmbientMap),
         binds: this.binds.layout,
       }),
       Aurora.createRenderPipeline(targets, {

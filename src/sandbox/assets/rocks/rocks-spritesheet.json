@@ -1,0 +1,111 @@
+{
+    "image":  "rocks-spritesheet.png",
+    "tileSize":  128,
+    "variants":  5,
+    "blocks":  {
+                   "stone":  {
+                                 "x":  0,
+                                 "y":  0
+                             },
+                   "granite":  {
+                                   "x":  5,
+                                   "y":  0
+                               },
+                   "marble":  {
+                                  "x":  0,
+                                  "y":  1
+                              },
+                   "sandstone":  {
+                                     "x":  5,
+                                     "y":  1
+                                 },
+                   "dirt":  {
+                                "x":  0,
+                                "y":  2
+                            },
+                   "fossils":  {
+                                   "x":  5,
+                                   "y":  2
+                               },
+                   "obsidian":  {
+                                    "x":  0,
+                                    "y":  3
+                                },
+                   "slate":  {
+                                 "x":  5,
+                                 "y":  3
+                             },
+                   "gneiss":  {
+                                  "x":  0,
+                                  "y":  4
+                              },
+                   "roseQuartz":  {
+                                      "x":  5,
+                                      "y":  4
+                                  },
+                   "coal":  {
+                                "x":  0,
+                                "y":  5
+                            },
+                   "iron":  {
+                                "x":  5,
+                                "y":  5
+                            },
+                   "copper":  {
+                                  "x":  0,
+                                  "y":  6
+                              },
+                   "tin":  {
+                               "x":  5,
+                               "y":  6
+                           },
+                   "gold":  {
+                                "x":  0,
+                                "y":  7
+                            },
+                   "mithril":  {
+                                   "x":  5,
+                                   "y":  7
+                               },
+                   "sulfur":  {
+                                  "x":  0,
+                                  "y":  8
+                              },
+                   "silver":  {
+                                  "x":  5,
+                                  "y":  8
+                              },
+                   "ice":  {
+                               "x":  0,
+                               "y":  9
+                           },
+                   "quartz":  {
+                                  "x":  5,
+                                  "y":  9
+                              },
+                   "topaz":  {
+                                 "x":  0,
+                                 "y":  10
+                             },
+                   "opal":  {
+                                "x":  5,
+                                "y":  10
+                            },
+                   "sapphire":  {
+                                    "x":  0,
+                                    "y":  11
+                                },
+                   "ruby":  {
+                                "x":  5,
+                                "y":  11
+                            },
+                   "diamond":  {
+                                   "x":  0,
+                                   "y":  12
+                               },
+                   "moss":  {
+                                "x":  5,
+                                "y":  12
+                            }
+               }
+}

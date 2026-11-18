@@ -8,15 +8,18 @@ import AuroraVramPanel from "./aurora/vram";
 import AuroraResourcesPanel from "./aurora/resources";
 import AuroraConfigPanel from "./aurora/config";
 import AuroraPresetPanel from "./aurora/preset";
+import { gameStore } from "../game/store";
+import GameDwarfsPanel from "./game/dwarfs";
+import GameGearPanel from "./game/gear";
+import GameResearchPanel from "./game/research";
+import GameNetworkPanel from "./game/network";
+import GameBuildingsPanel from "./game/buildings";
+import GameEconomyPanel from "./game/economy";
 import WatchPanel from "./watch/watch";
 import { watchStore } from "../watch/store";
 import { coroutineStore } from "../coroutines/store";
 import CoroutinesRunningPanel from "./coroutines/running";
 import CoroutinesFinishedPanel from "./coroutines/finished";
-import { mapGenStore } from "../mapGen/store";
-import MapGenSummaryPanel from "./mapGen/summary";
-import MapGenOresPanel from "./mapGen/ores";
-import MapGenConfigPanel from "./mapGen/config";
 
 export interface PanelDefinition {
   title: string | (() => string);
@@ -74,6 +77,42 @@ export const PANELS = {
     component: AuroraPresetPanel,
     live: auroraStore.live,
   },
+  gameDwarfs: {
+    title: "Dwarfs",
+    size: { w: 12, h: 5 },
+    component: GameDwarfsPanel,
+    live: gameStore.live,
+  },
+  gameGear: {
+    title: "Worker gear",
+    size: { w: 6, h: 4 },
+    component: GameGearPanel,
+    live: gameStore.live,
+  },
+  gameResearch: {
+    title: "Research and buffs",
+    size: { w: 6, h: 5 },
+    component: GameResearchPanel,
+    live: gameStore.live,
+  },
+  gameNetwork: {
+    title: "Network",
+    size: { w: 8, h: 5 },
+    component: GameNetworkPanel,
+    live: gameStore.live,
+  },
+  gameBuildings: {
+    title: "Buildings",
+    size: { w: 8, h: 4 },
+    component: GameBuildingsPanel,
+    live: gameStore.live,
+  },
+  gameEconomy: {
+    title: "Economy",
+    size: { w: 4, h: 4 },
+    component: GameEconomyPanel,
+    live: gameStore.live,
+  },
   coroutinesRunning: {
     title: "Coroutines",
     size: { w: 12, h: 5 },
@@ -85,24 +124,6 @@ export const PANELS = {
     size: { w: 12, h: 3 },
     component: CoroutinesFinishedPanel,
     live: coroutineStore.live,
-  },
-  mapGenSummary: {
-    title: "Map",
-    size: { w: 4, h: 2 },
-    component: MapGenSummaryPanel,
-    live: mapGenStore.live,
-  },
-  mapGenOres: {
-    title: "Ores per depth",
-    size: { w: 8, h: 3 },
-    component: MapGenOresPanel,
-    live: mapGenStore.live,
-  },
-  mapGenConfig: {
-    title: "Current settings",
-    size: { w: 12, h: 6 },
-    component: MapGenConfigPanel,
-    live: mapGenStore.live,
   },
 } satisfies Record<string, PanelDefinition>;
 

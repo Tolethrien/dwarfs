@@ -1,0 +1,176 @@
+{
+  "image": "resources.png",
+  "width": 1280,
+  "height": 384,
+  "frameWidth": 125,
+  "frameHeight": 125,
+  "sharedFrame": {
+    "visibleWidth": 125,
+    "image": "shared-frame.png",
+    "visibleHeight": 125,
+    "identicalPerimeter": 12,
+    "identicalCorners": 24
+  },
+  "frames": {
+    "bones": {
+      "crop": {
+        "x": 0,
+        "width": 125,
+        "height": 125,
+        "y": 0
+      }
+    },
+    "stone": {
+      "crop": {
+        "x": 125,
+        "width": 125,
+        "height": 125,
+        "y": 0
+      }
+    },
+    "gold": {
+      "crop": {
+        "x": 250,
+        "width": 125,
+        "height": 125,
+        "y": 0
+      }
+    },
+    "diamonds": {
+      "crop": {
+        "x": 375,
+        "width": 125,
+        "height": 125,
+        "y": 0
+      }
+    },
+    "silver": {
+      "crop": {
+        "x": 500,
+        "width": 125,
+        "height": 125,
+        "y": 0
+      }
+    },
+    "sapphire": {
+      "crop": {
+        "x": 625,
+        "width": 125,
+        "height": 125,
+        "y": 0
+      }
+    },
+    "copper": {
+      "crop": {
+        "x": 750,
+        "width": 125,
+        "height": 125,
+        "y": 0
+      }
+    },
+    "coal": {
+      "crop": {
+        "x": 875,
+        "width": 125,
+        "height": 125,
+        "y": 0
+      }
+    },
+    "mixed": {
+      "crop": {
+        "x": 1000,
+        "width": 125,
+        "height": 125,
+        "y": 0
+      }
+    },
+    "beer": {
+      "crop": {
+        "x": 0,
+        "width": 125,
+        "height": 125,
+        "y": 125
+      }
+    },
+    "beer-premium": {
+      "crop": {
+        "x": 125,
+        "width": 125,
+        "height": 125,
+        "y": 125
+      }
+    },
+    "permit": {
+      "crop": {
+        "x": 250,
+        "width": 125,
+        "height": 125,
+        "y": 125
+      }
+    },
+    "iron": {
+      "crop": {
+        "x": 375,
+        "width": 125,
+        "height": 125,
+        "y": 125
+      }
+    },
+    "marble": {
+      "crop": {
+        "x": 500,
+        "width": 125,
+        "height": 125,
+        "y": 125
+      }
+    },
+    "wood": {
+      "crop": {
+        "x": 625,
+        "width": 125,
+        "height": 125,
+        "y": 125
+      }
+    },
+    "cloth": {
+      "crop": {
+        "x": 750,
+        "width": 125,
+        "height": 125,
+        "y": 125
+      }
+    },
+    "research": {
+      "crop": {
+        "x": 875,
+        "width": 125,
+        "height": 125,
+        "y": 125
+      }
+    },
+    "palisade": {
+      "crop": {
+        "x": 1000,
+        "width": 125,
+        "height": 125,
+        "y": 125
+      }
+    },
+    "track": {
+      "crop": {
+        "x": 1125,
+        "width": 125,
+        "height": 125,
+        "y": 125
+      }
+    },
+    "station": {
+      "crop": {
+        "x": 0,
+        "width": 125,
+        "height": 125,
+        "y": 250
+      }
+    }
+  }
+}

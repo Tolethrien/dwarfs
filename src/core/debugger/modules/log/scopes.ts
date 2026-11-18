@@ -4,6 +4,7 @@ export const LOG_SCOPE = {
   auroraURP: "URP",
   camera: "Camera",
   coroutine: "Coroutine",
+  stations: "Stations",
   // sandbox tests
   sandbox: "Sandbox",
   consoleTest: "ConsoleTest",

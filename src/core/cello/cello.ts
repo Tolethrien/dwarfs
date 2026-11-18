@@ -31,6 +31,7 @@ interface PlayObject {
   effects?: string[];
   volume?: number;
   randomPitch?: number; //0-1 - 0.1 small diff
+  rate?: number;
   position?: Position2D;
   maxConcurrent?: number;
   categories: string[];
@@ -68,6 +69,7 @@ export default class Cello {
     }
     if (config.categoryTree) {
       this.createCategoryTree(config.categoryTree);
+      this.setMasterVolume(config.masterVolume);
     }
     if (config.effects) {
       for (const [name, strategy] of Object.entries(config.effects)) {
@@ -78,7 +80,6 @@ export default class Cello {
     window.API.WINDOW.onFocusChanged((value) => {
       value ? this.ctx.resume() : this.ctx.suspend();
     });
-    console.log(this.getCategoryPath("ambient"));
   }
   //limiter odglosow oraz pozycyjne wycizzanie
   private static createCategoryTree(tree: Record<string, CategoryTree>) {
@@ -124,10 +125,8 @@ export default class Cello {
     source.loop = props.loop ?? false;
 
     //random pitch to make slightly different sounds
-    if (props.randomPitch) {
-      const deviation = (Math.random() * 2 - 1) * props.randomPitch;
-      source.playbackRate.value = 1 + deviation;
-    }
+    const deviation = props.randomPitch ? (Math.random() * 2 - 1) * props.randomPitch : 0;
+    source.playbackRate.value = (1 + deviation) * (props.rate ?? 1);
 
     //individual volume control
     const instanceGain = this.ctx.createGain();

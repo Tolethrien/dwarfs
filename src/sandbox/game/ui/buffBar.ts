@@ -1,0 +1,87 @@
+import Navi from "@navi/navi";
+import UINode from "@navi/node";
+import UIText from "@navi/elements/text";
+import { auto, px } from "@navi/units";
+import type Buffs from "../systems/buffs";
+import { BUFFS, type BuffID } from "../content/buffs";
+import { UI_THEME } from "../content/ui";
+import { hudLayer } from "./hud";
+import { icon } from "./elements/icon";
+
+const BUFF_BAR = {
+  size: 48,
+  gap: 6,
+  textSize: 13,
+  textOutline: 2,
+};
+
+export function formatBuffLeft(seconds: number) {
+  const whole = Math.ceil(seconds);
+  if (whole < 60) return `${whole}s`;
+  const rest = whole % 60;
+  return `${Math.floor(whole / 60)}:${rest < 10 ? "0" : ""}${rest}`;
+}
+
+export function describeBuff(id: BuffID) {
+  const buff = BUFFS[id];
+  const effects = buff.effects.map((effect) => effect.describe()).join("\n");
+  return `${buff.name}\n${buff.description}\n${effects}`;
+}
+
+export default class BuffBarUI {
+  private readonly bar: UINode;
+  private readonly tiles = new Map<BuffID, UINode>();
+
+  constructor(private readonly buffs: Buffs) {
+    const margin = UI_THEME.spacing.screenMargin;
+    this.bar = Navi.append(
+      new UINode({
+        position: { x: px(margin), y: px(margin) },
+        size: { width: auto(), height: auto() },
+        input: "none",
+        style: {
+          anchorX: "end",
+          anchorY: "start",
+          backgroundColor: UI_THEME.colors.transparent,
+          layout: "stack",
+          direction: "row",
+          gap: BUFF_BAR.gap,
+        },
+      }),
+      hudLayer(),
+    );
+  }
+
+  public update() {
+    const active = this.buffs.list;
+    for (const [id, tile] of this.tiles) {
+      if (active.has(id)) continue;
+      Navi.remove(tile, this.bar);
+      this.tiles.delete(id);
+    }
+    for (const id of active.keys()) if (!this.tiles.has(id)) this.tiles.set(id, this.addTile(id));
+  }
+
+  private addTile(id: BuffID) {
+    const tile = icon(this.bar, BUFFS[id].icon, {
+      size: BUFF_BAR.size,
+      image: "buffs",
+      tooltip: () => describeBuff(id),
+    });
+    Navi.append(
+      new UIText(() => formatBuffLeft(this.buffs.list.get(id) ?? 0), {
+        size: { width: auto(), height: auto() },
+        input: "none",
+        style: {
+          anchorX: "center",
+          anchorY: "end",
+          textColor: UI_THEME.colors.text,
+          textSize: BUFF_BAR.textSize,
+          textOutline: { width: BUFF_BAR.textOutline, color: UI_THEME.colors.textOutline },
+        },
+      }),
+      tile,
+    );
+    return tile;
+  }
+}

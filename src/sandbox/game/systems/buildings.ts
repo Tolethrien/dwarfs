@@ -1,0 +1,234 @@
+import PragmaSystem from "@pragma/system";
+import Grid from "@axiom/grid";
+import InputManager from "@engine/inputManager";
+import { debug } from "@debug";
+import { gameCommands, gamePanel } from "../debugCommands";
+import { Camera } from "@engine/camera/camera";
+import { assert } from "@axiom/utils";
+import { BlocksID } from "../content/blocks";
+import { BUILDINGS, BuildingsID, STRUCTURES } from "../content/structures";
+import Building from "../actors/building";
+import Tavern from "../components/tavern";
+import Market from "../components/market";
+import Smelter from "../components/smelter";
+import { shaftColumns } from "../world/shaftShape";
+import { buildingSprite } from "../world/buildingShape";
+import { SURFACE } from "../content/surface";
+import GameGlobals from "../gpu/gameGlobals";
+import Terrain from "./terrain";
+import Stations from "./stations";
+import Rails from "./rails";
+import Transport from "./transport";
+
+// Object.keys gives enum numbers as strings
+const BUILDING_IDS = Object.keys(BUILDINGS).map(Number) as BuildingsID[];
+
+export type ShaftSide = "left" | "right";
+
+function boxText(box: Box) {
+  return `${box.x}, ${box.y} · ${box.w}×${box.h}`;
+}
+
+export interface BuildingPlace {
+  side: ShaftSide;
+  base: Box;
+  reserve: Box;
+}
+
+export type BuildingProblem = "built" | "outsideMap" | "tooDeep" | "noShaft" | "taken" | "notDug";
+
+export const BUILDING_PROBLEMS: Record<BuildingProblem, string> = {
+  built: "It's built already",
+  outsideMap: "It doesn't fit in the map",
+  tooDeep: `Buildings stand only down to ${STRUCTURES.buildings.maxDepth} tiles`,
+  noShaft: "It goes only by the shaft, not under it",
+  taken: "Something else keeps this room",
+  notDug: "Dig its room out first",
+};
+
+export interface BuildingRefusal {
+  problem: BuildingProblem;
+  tiles: Position2D[];
+}
+
+interface Built {
+  place: BuildingPlace;
+  actor: Building;
+}
+
+export default class Buildings extends PragmaSystem {
+  private readonly built = new Map<BuildingsID, Built>();
+  // pressed on this building: released on it too, it was a click
+  private pressed: Building | undefined;
+  declare private terrain: Terrain;
+  declare private stations: Stations;
+  declare private rails: Rails;
+  declare private transport: Transport;
+
+  awake(): void {
+    this.terrain = this.scene.getSystem(Terrain);
+    this.stations = this.scene.getSystem(Stations);
+    this.rails = this.scene.getSystem(Rails);
+    this.transport = this.scene.getSystem(Transport);
+    debug.game.connect("buildings", () => ({
+      shaftDepth: this.terrain.world.shaftDepth,
+      rows: [...this.built.entries()].map(([id, built]) => ({
+        name: BUILDINGS[id].name,
+        side: built.place.side,
+        base: boxText(built.place.base),
+        reserve: boxText(built.place.reserve),
+      })),
+    }));
+    const buildings = this;
+    gameCommands("building", {
+      get built() {
+        return buildings.built;
+      },
+      remove: (id: BuildingsID) => this.remove(id),
+    });
+    gamePanel("buildings", {
+      title: "Buildings",
+      live: true,
+      sections: [
+        {
+          title: "Built",
+          call: "game.building.remove",
+          arg: "object",
+          fields: BUILDING_IDS.map((id) => ({
+            key: String(id),
+            label: BUILDINGS[id].name,
+            control: { kind: "button", text: "Remove" },
+          })),
+          get: () => Object.fromEntries(BUILDING_IDS.map((id) => [String(id), false])),
+          set: (values) => {
+            for (const id of BUILDING_IDS) if (values[String(id)] === true && this.built.has(id)) this.remove(id);
+          },
+        },
+      ],
+    });
+  }
+
+  update(): void {
+    // the sling's pull is a left click too
+    if (this.stations.isShooting) {
+      this.pressed = undefined;
+      return;
+    }
+    if (InputManager.onActionPressed("select")) this.pressed = this.underMouse();
+    if (!InputManager.onActionReleased("select")) return;
+    const target = this.underMouse();
+    if (target && target === this.pressed) this.openWindow(target);
+    this.pressed = undefined;
+  }
+
+  public placeOf(id: BuildingsID) {
+    return this.built.get(id)?.place;
+  }
+
+  public get places(): BuildingPlace[] {
+    return [...this.built.values()].map((built) => built.place);
+  }
+
+  private underMouse() {
+    const tile = this.terrain.worldToTile(Camera.screenToWorld(InputManager.getMousePos()));
+    for (const built of this.built.values()) if (Grid.isTileInBox(built.place.base, tile)) return built.actor;
+    return undefined;
+  }
+
+  private openWindow(building: Building) {
+    if (building.id === BuildingsID.tavern) {
+      const tavern = building.getComponent(Tavern);
+      assert(tavern !== undefined, "The tavern has no Tavern");
+      tavern.open();
+    }
+    if (building.id === BuildingsID.market) {
+      const market = building.getComponent(Market);
+      assert(market !== undefined, "The market has no Market");
+      market.open();
+    }
+    if (building.id === BuildingsID.smelter) {
+      const smelter = building.getComponent(Smelter);
+      assert(smelter !== undefined, "The smelter has no Smelter");
+      smelter.open();
+    }
+  }
+
+  public placeAt(id: BuildingsID, tile: Position2D): BuildingPlace {
+    const data = BUILDINGS[id];
+    const columns = shaftColumns(this.terrain.world);
+    const side: ShaftSide = tile.x < (columns.from + columns.to + 1) / 2 ? "left" : "right";
+    const width = data.size.width;
+    const top = tile.y - Math.floor(data.size.height / 2);
+    const baseX = side === "left" ? columns.from - width : columns.to + 1;
+    const reserve = data.reserve;
+    return {
+      side: side,
+      base: { x: baseX, y: top, w: width, h: data.size.height },
+      reserve: {
+        x: side === "left" ? baseX - reserve.away : baseX,
+        y: top - reserve.up,
+        w: width + reserve.away,
+        h: data.size.height + reserve.up + reserve.down,
+      },
+    };
+  }
+
+  public buildMarket() {
+    this.build(BuildingsID.market, this.surfacePlace(BuildingsID.market));
+  }
+
+  private surfacePlace(id: BuildingsID): BuildingPlace {
+    const size = BUILDINGS[id].size;
+    const base = { x: shaftColumns(this.terrain.world).to + 1, y: -size.height, w: size.width, h: size.height };
+    return { side: "right", base: base, reserve: { ...base } };
+  }
+
+  public problem(id: BuildingsID, place: BuildingPlace): BuildingRefusal | undefined {
+    if (this.built.has(id)) return { problem: "built", tiles: [] };
+    const world = this.terrain.world;
+    const reserve = place.reserve;
+    const fits = reserve.x >= 0 && reserve.y >= 0 && reserve.x + reserve.w <= world.mapInTiles.width && reserve.y + reserve.h <= world.mapInTiles.height;
+    if (!fits) return { problem: "outsideMap", tiles: [] };
+    if (reserve.y + reserve.h > STRUCTURES.buildings.maxDepth) return { problem: "tooDeep", tiles: [] };
+    if (place.base.y + place.base.h - 1 > world.shaftDepth) return { problem: "noShaft", tiles: [] };
+    const joints = this.rails.joints.map((joint) => ({ x: joint.tile.x, y: joint.tile.y, w: 1, h: 1 }));
+    const others = [...this.places.map((other) => other.reserve), ...this.stations.footprints, ...joints];
+    const taken = Grid.tilesIn(reserve).filter((tile) => others.some((other) => Grid.isTileInBox(other, tile)));
+    if (taken.length > 0) return { problem: "taken", tiles: taken };
+    const rock = Grid.tilesIn(place.base).filter((tile) => world.getType(tile.x, tile.y) !== BlocksID.air);
+    if (rock.length > 0) return { problem: "notDug", tiles: rock };
+    return undefined;
+  }
+
+  public build(id: BuildingsID, place: BuildingPlace) {
+    const inMine = place.base.y >= 0;
+    if (inMine) for (const tile of Grid.tilesIn(place.base)) this.terrain.place(tile.x, tile.y, BlocksID.building);
+    const tile = this.terrain.tile;
+    const base = place.base;
+    const ground = inMine ? 0 : SURFACE.ground;
+    const middle = { x: (base.x + base.w / 2) * tile, y: (base.y + base.h / 2) * tile - ground };
+    const building = new Building({ id: id, place: place, position: middle });
+    this.built.set(id, { place: place, actor: building });
+    this.maskMist();
+    if (id === BuildingsID.tavern) this.transport.setTavern(place);
+    this.scene.spawnActor(building);
+  }
+
+  // its room stays dug out
+  public remove(id: BuildingsID) {
+    const built = this.built.get(id);
+    assert(built !== undefined, `No ${BUILDINGS[id].name} is built`);
+    if (built.place.base.y >= 0)
+      for (const tile of Grid.tilesIn(built.place.base)) this.terrain.place(tile.x, tile.y, BlocksID.air);
+    this.built.delete(id);
+    if (this.pressed === built.actor) this.pressed = undefined;
+    this.maskMist();
+    if (id === BuildingsID.tavern) this.transport.setTavern(undefined);
+    this.scene.deleteActor(built.actor);
+  }
+
+  private maskMist() {
+    const tile = this.terrain.tile;
+    GameGlobals.setBuildings([...this.built].map(([id, built]) => buildingSprite(id, built.place, tile)));
+  }
+}

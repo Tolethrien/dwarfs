@@ -32,10 +32,16 @@ export interface ToneMapProps {
   exposure: number;
   look: AgxLook;
 }
+// limit: many lights add up to a glare; up to knee the light stays as it is, past it the brightest
+// channel bends softly toward max, the color kept; max 0: no limit
+export interface LightLimit {
+  knee: number;
+  max: number;
+}
 export interface URPProps extends SortProps {
   pixelSnap: PixelSnap;
   toneMapping: ToneMapProps;
-  lighting: { enabled: boolean };
+  lighting: { enabled: boolean; limit: LightLimit };
   bloom: BloomProps;
 }
 const BASE_CONFIG: URPProps = {
@@ -45,7 +51,7 @@ const BASE_CONFIG: URPProps = {
   zRange: [0, 255],
   pixelSnap: "world",
   toneMapping: { mode: "none", exposure: 0, look: "none" },
-  lighting: { enabled: true },
+  lighting: { enabled: true, limit: { knee: 0, max: 0 } },
   bloom: { ...BLOOM_DEFAULTS },
 };
 export default class URP extends RenderPreset<URPProps> {
@@ -55,6 +61,7 @@ export default class URP extends RenderPreset<URPProps> {
     const base = structuredClone(BASE_CONFIG);
     const config = deepMerge(base, props);
     lightDraw.setAmbient({ enabled: config.lighting.enabled });
+    lightDraw.setLimit(config.lighting.limit);
     WorldView.setSnap(config.pixelSnap === "world");
     postDraw.setBloom(config.bloom);
     postDraw.setToneMapping(config.toneMapping.mode);
@@ -76,7 +83,7 @@ export default class URP extends RenderPreset<URPProps> {
             look: postDraw.getAgxLook,
           },
           bloom: { ...postDraw.getBloom },
-          lighting: { enabled: lightDraw.getAmbient.enabled },
+          lighting: { enabled: lightDraw.getAmbient.enabled, limit: lightDraw.getLimit },
           ...changes,
         }),
       effects: () => ScreenEffect.getAll,
