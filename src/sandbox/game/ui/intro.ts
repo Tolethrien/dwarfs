@@ -8,18 +8,30 @@ import { button, UIButton } from "./elements/button";
 import { text } from "./elements/text";
 
 // fromBottom: the bar's bottom edge, in percent of the screen's height; letterbox: the black strips
-// over and under the view while the player has no control
+// over and under the view while the player has no control; skip: the corner button's distance from
+// the screen's top right
 const INTRO_UI = {
   fromBottom: 25,
   pulse: { amount: 0.04, ms: 1400 },
   letterbox: { height: 64, outMs: 500 },
+  skip: { label: "Skip", margin: 16 },
 };
 
 export default class IntroUI {
   private readonly bar: UINode;
   private readonly letterbox: UINode[];
+  private readonly skip: UINode;
 
-  constructor() {
+  constructor(onSkip: () => void) {
+    const skip = INTRO_UI.skip;
+    this.skip = Navi.append(
+      new UINode({
+        position: { x: px(skip.margin), y: px(skip.margin) },
+        size: { width: auto(), height: auto() },
+        style: { anchorX: "end", anchorY: "start", zIndex: 1 },
+      }),
+    );
+    button(this.skip, skip.label, onSkip);
     this.bar = Navi.append(
       new UINode({
         position: { x: px(0), y: ph(INTRO_UI.fromBottom) },
@@ -52,10 +64,14 @@ export default class IntroUI {
   }
 
   public update() {
-    if (!this.bar.active) return;
     const clicked = Navi.getClicked;
     if (!(clicked instanceof UIButton) || clicked.isDisabled) return;
-    if (clicked.isDescendantOf(this.bar)) clicked.run();
+    if (this.bar.active && clicked.isDescendantOf(this.bar)) clicked.run();
+    if (this.skip.active && clicked.isDescendantOf(this.skip)) clicked.run();
+  }
+
+  public hideSkip() {
+    this.skip.setActive(false);
   }
 
   public offer(label: string, run: () => void) {
@@ -85,6 +101,7 @@ export default class IntroUI {
 
   public destroy() {
     Navi.remove(this.bar, Navi.root);
+    Navi.remove(this.skip, Navi.root);
     for (const strip of this.letterbox) if (strip.parent) Navi.remove(strip, Navi.root);
   }
 

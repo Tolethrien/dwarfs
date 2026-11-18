@@ -15,7 +15,7 @@ import { bar } from "../elements/bar";
 
 export interface SmelterActions {
   recipes: readonly RecipeID[];
-  power: number;
+  power: () => number;
   orders: () => readonly SmelterOrder[];
   status: () => string;
   order: (recipe: RecipeID, batches: number) => void;
@@ -44,7 +44,7 @@ export default class SmelterUI {
     const content = this.window.open();
     this.buildRecipes(content);
     this.buildQueue(content);
-    text(content, `Power: ${this.actions.power} kg of input an hour`, { color: UI_THEME.colors.muted });
+    text(content, `Power: ${this.actions.power()} kg of input an hour`, { color: UI_THEME.colors.muted });
   }
 
   public close() {

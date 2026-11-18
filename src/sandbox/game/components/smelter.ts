@@ -34,7 +34,7 @@ export default class Smelter extends PragmaComponent {
     this.lastTime = this.calendar.time;
     this.window = new SmelterUI({
       recipes: RECIPE_IDS,
-      power: SMELTER.power,
+      power: () => SMELTER.power,
       orders: () => this.queue,
       status: () => this.status,
       order: (recipe, batches) => this.order(recipe, batches),

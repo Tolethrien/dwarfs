@@ -8,6 +8,9 @@ import { SPECIAL_BEERS } from "../content/beers";
 import { BASE_GEAR, ITEMS } from "../content/gear";
 import { RESOURCE_IDS, RESOURCES, type ResourcesID } from "../content/resources";
 import { FOREMAN_TRAIT, MAIN_TRAITS, TRAITS, WORKER_TRAITS } from "../content/traits";
+import { MARKET_GOODS } from "../content/market";
+import { RECIPE_IDS, RECIPES, RecipeID } from "../content/smelter";
+import { SMELTER } from "../components/smelter";
 import Buffs from "./buffs";
 import Workforce from "./workforce";
 
@@ -52,6 +55,7 @@ export default class Tuning extends PragmaSystem {
     this.buffsPanel();
     this.gearPanel();
     this.economyPanel();
+    this.tradePanel();
   }
 
   private touch() {
@@ -145,5 +149,17 @@ export default class Tuning extends PragmaSystem {
     };
     const sections = [amounts, strength, drops].filter((section) => section !== undefined);
     gamePanel("tuneEconomy", { title: "Tune: mining", sections: sections });
+  }
+
+  private tradePanel() {
+    const goodRefs = (name: "price" | "pack") =>
+      MARKET_GOODS.map((good) => ({ key: RESOURCES[good.id].name, owner: good as unknown as Record<string, unknown>, name: name }));
+    const sections = [
+      this.section("Market prices (beer a pack)", "MARKET_GOODS.<good>.price", goodRefs("price")),
+      this.section("Market packs", "MARKET_GOODS.<good>.pack", goodRefs("pack")),
+      this.section("Smelter", "SMELTER", numberRefs(SMELTER)),
+      ...RECIPE_IDS.map((id) => this.section(`Recipe · ${RECIPES[id].name}`, `RECIPES.${RecipeID[id]}`, numberRefs(RECIPES[id]))),
+    ].filter((section) => section !== undefined);
+    gamePanel("tuneTrade", { title: "Tune: market & smelter", sections: sections });
   }
 }

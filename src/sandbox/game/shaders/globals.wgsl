@@ -108,7 +108,7 @@ struct Blueprint {
 @group(0) @binding(9) var<storage, read> fog: array<u32>;
 const FOG_PER_TILE: f32 = 4.0;
 // the share of the light left under the fog, so the undiscovered is faintly visible
-const FOG_MIN_LIGHT: f32 = 0.2;
+const FOG_MIN_LIGHT: f32 = 0.05;
 // one u32 per tile (mistField.ts): the low byte how tight the place is, the mist's thickness before
 // depth; the next byte the dust in the air, 0-255
 @group(0) @binding(10) var<storage, read> mist: array<u32>;

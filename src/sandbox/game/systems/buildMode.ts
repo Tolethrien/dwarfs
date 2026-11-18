@@ -499,7 +499,7 @@ export default class BuildMode extends PragmaSystem {
     this.menu.show();
   }
 
-  private leave() {
+  public leave() {
     this.gameMode.set("game");
     this.warp?.release();
     this.warp = undefined;

@@ -42,7 +42,7 @@ export const MAIN_TRAITS: Record<MainTraitsID, MainTraitData> = {
   [MainTraitsID.pyro]: {
     name: "Pyro",
     description: "A blasting specialist: sprinkles saltpetre around the rock, so every pick strike also hurts the blocks next to it.",
-    effects: [new Splash({ radius: 1, damage: 1 })],
+    effects: [new Splash({ radius: 1, damage: 3 })],
     speed: 3,
     power: 3,
     bph: 5,
