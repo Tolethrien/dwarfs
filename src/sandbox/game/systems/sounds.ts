@@ -12,9 +12,23 @@ const SOUNDS = {
   zoom: { full: 1, quiet: 0.125, floor: 0 },
   rate: { min: 0.5, max: 3.2 },
   pitch: 0.12,
-  hit: { name: "blockDamage", category: "mineEffects", deflected: 0.35, wound: { weak: 0.5, strong: 1 }, concurrent: 6, gap: 0.04 },
-  mined: { name: "blockDestroy", category: "mineEffects", volume: 1, hit: 1, concurrent: 4, gap: 0.06 },
-  ambient: { name: "mineAmbient", category: "ambient", volume: 0.6, pause: 2 },
+  hit: {
+    name: "blockDamage",
+    category: "mineEffects",
+    deflected: 0.35,
+    wound: { weak: 0.5, strong: 1 },
+    concurrent: 6,
+    gap: 0.04,
+  },
+  mined: {
+    name: "blockDestroy",
+    category: "mineEffects",
+    volume: 1,
+    hit: 1,
+    concurrent: 4,
+    gap: 0.06,
+  },
+  ambient: { name: "mineAmbient", category: "ambient", volume: 0.4, pause: 2 },
 };
 
 type HitSound = typeof SOUNDS.hit | typeof SOUNDS.mined;
@@ -26,23 +40,29 @@ export default class Sounds extends PragmaSystem {
   private zoomVolume = 1;
   declare private zoomGain: GainNode;
 
-  constructor(
-    internal: InternalPSProps,
-    world: World,
-  ) {
+  constructor(internal: InternalPSProps, world: World) {
     super(internal);
     this.tile = world.meta.tileInPixels;
   }
 
   awake(): void {
     const zoomGain = Cello.getEffectNode("zoomVolume")?.input;
-    assert(zoomGain instanceof GainNode, "Sounds: the zoomVolume effect isn't registered");
+    assert(
+      zoomGain instanceof GainNode,
+      "Sounds: the zoomVolume effect isn't registered",
+    );
     this.zoomGain = zoomGain;
     const events = this.scene.getSystem(GameEvents);
-    events.terrain.deflected.connect((tile) => this.hit(SOUNDS.hit, tile, SOUNDS.hit.deflected));
+    events.terrain.deflected.connect((tile) =>
+      this.hit(SOUNDS.hit, tile, SOUNDS.hit.deflected),
+    );
     events.terrain.damaged.connect((tile) => {
       const dealt = AxiomMath.clamp((tile.ratio - 0.5) / 0.5, 0, 1);
-      this.hit(SOUNDS.hit, tile, AxiomMath.lerp(SOUNDS.hit.wound.weak, SOUNDS.hit.wound.strong, dealt));
+      this.hit(
+        SOUNDS.hit,
+        tile,
+        AxiomMath.lerp(SOUNDS.hit.wound.weak, SOUNDS.hit.wound.strong, dealt),
+      );
     });
     events.terrain.mined.connect((tile) => {
       this.hit(SOUNDS.hit, tile, SOUNDS.mined.hit);
@@ -56,9 +76,16 @@ export default class Sounds extends PragmaSystem {
     this.startCoroutine(
       function* loop(co) {
         while (true) {
-          const sound = Cello.play(ambient.name, { volume: ambient.volume, categories: [ambient.category] });
+          const sound = Cello.play(ambient.name, {
+            volume: ambient.volume,
+            categories: [ambient.category],
+          });
           assert(sound !== undefined, `Sounds: no sound ${ambient.name}`);
-          yield co.waitPromise(new Promise((resolve) => sound.sourceNode.addEventListener("ended", resolve)));
+          yield co.waitPromise(
+            new Promise((resolve) =>
+              sound.sourceNode.addEventListener("ended", resolve),
+            ),
+          );
           yield co.waitSeconds(ambient.pause);
         }
       },
@@ -68,17 +95,30 @@ export default class Sounds extends PragmaSystem {
 
   update(): void {
     const zoom = SOUNDS.zoom;
-    const octaves = AxiomMath.inverseLerp(Math.log2(zoom.quiet), Math.log2(zoom.full), Math.log2(Camera.getZoom));
-    const volume = AxiomMath.lerp(zoom.floor, 1, AxiomMath.clamp(octaves, 0, 1));
+    const octaves = AxiomMath.inverseLerp(
+      Math.log2(zoom.quiet),
+      Math.log2(zoom.full),
+      Math.log2(Camera.getZoom),
+    );
+    const volume = AxiomMath.lerp(
+      zoom.floor,
+      1,
+      AxiomMath.clamp(octaves, 0, 1),
+    );
     if (volume === this.zoomVolume) return;
     this.zoomVolume = volume;
     this.zoomGain.gain.value = volume;
   }
 
-  private hit(sound: HitSound, tile: { gx: number; gy: number; type: BlocksID }, volume: number) {
+  private hit(
+    sound: HitSound,
+    tile: { gx: number; gy: number; type: BlocksID },
+    volume: number,
+  ) {
     if (!isNatural(tile.type)) return;
     const now = Cello.ctx.currentTime;
-    if (now - (this.lastPlayed.get(sound.name) ?? -Infinity) < sound.gap) return;
+    if (now - (this.lastPlayed.get(sound.name) ?? -Infinity) < sound.gap)
+      return;
     this.lastPlayed.set(sound.name, now);
     this.position.x = (tile.gx + 0.5) * this.tile;
     this.position.y = (tile.gy + 0.5) * this.tile;
