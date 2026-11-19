@@ -1,21 +1,30 @@
 import PragmaComponent from "@pragma/component";
+import type { Signal } from "@axiom/events";
 import { assert } from "@axiom/utils";
 import { debug } from "@debug";
 import type Dwarf from "../actors/dwarf";
 import { DwarfRank } from "../content/dwarfs";
+import { MainTraitsID } from "../content/traits";
 import { formatAmount, ResourcesID, type ResourceCost } from "../content/resources";
 import Calendar, { type Alarm } from "../systems/calendar";
 import Resources from "../systems/resources";
 import Roster from "../systems/roster";
-import TavernUI from "../ui/buildings/tavern";
+import TavernUI, { type TavernTab } from "../ui/buildings/tavern";
+import GameEvents from "../systems/gameEvents";
 import { toast } from "../ui/elements/toast";
 import Drinker from "./drinker";
 import Shift from "./shift";
 
+export interface TavernSignals {
+  arrived: Signal<Dwarf[]>;
+}
+
 const TAVERN = {
   applications: 10,
   perDay: 2,
-  startApplications: 4,
+  // the first crew and the first day's arrivals, the same every game
+  startApplications: [MainTraitsID.intern, MainTraitsID.intern, MainTraitsID.intern],
+  firstArrival: [MainTraitsID.miner, MainTraitsID.miner],
   arrivalHour: 12,
   hireCost: { [ResourcesID.beer]: 20 } as ResourceCost,
 };
@@ -23,6 +32,8 @@ const TAVERN = {
 export default class Tavern extends PragmaComponent {
   public readonly applications: Dwarf[] = [];
   private alarm: Alarm | undefined;
+  private arrivals = 0;
+  declare private events: GameEvents;
   declare private roster: Roster;
   declare private resources: Resources;
   declare private window: TavernUI;
@@ -30,6 +41,7 @@ export default class Tavern extends PragmaComponent {
   awake(): void {
     this.roster = this.scene.getSystem(Roster);
     this.resources = this.scene.getSystem(Resources);
+    this.events = this.scene.getSystem(GameEvents);
     this.window = new TavernUI({
       applications: () => this.applications,
       limit: TAVERN.applications,
@@ -46,6 +58,8 @@ export default class Tavern extends PragmaComponent {
       shiftEnd: (dwarf) => this.shift(dwarf).endsAt,
       openCard: (dwarf) => this.roster.showCard(dwarf, () => this.window.open()),
     });
+    // here, not in start: whoever looks once the tavern is alive finds them
+    for (const main of TAVERN.startApplications) this.applications.push(this.roster.create(main, DwarfRank.worker));
   }
 
   start(): void {
@@ -59,8 +73,7 @@ export default class Tavern extends PragmaComponent {
         .join(", "),
     }));
     const calendar = this.scene.getSystem(Calendar);
-    this.alarm = calendar.alarm({ hour: TAVERN.arrivalHour, everyDays: 1 }, () => this.arrive(TAVERN.perDay));
-    this.arrive(TAVERN.startApplications);
+    this.alarm = calendar.alarm({ hour: TAVERN.arrivalHour, everyDays: 1 }, () => this.arrive());
   }
 
   update(): void {
@@ -77,11 +90,39 @@ export default class Tavern extends PragmaComponent {
     this.window.open();
   }
 
-  private arrive(count: number) {
-    for (let index = 0; index < count; index++) {
-      if (this.applications.length >= TAVERN.applications) return;
-      this.applications.push(this.roster.createRandom(DwarfRank.worker));
+  public get isOpen() {
+    return this.window.isOpen;
+  }
+
+  public get uiWindow() {
+    return this.window.uiWindow;
+  }
+
+  public shows(tab: TavernTab) {
+    return this.window.shownTab === tab;
+  }
+
+  public get startCrew() {
+    return TAVERN.startApplications.length;
+  }
+
+  // hired for the player, the intro skipped; whoever can't be paid for stays
+  public hireAll() {
+    for (const dwarf of [...this.applications]) this.hire(dwarf);
+  }
+
+  private arrive() {
+    const first = this.arrivals === 0;
+    this.arrivals++;
+    const arrived: Dwarf[] = [];
+    for (let index = 0; index < TAVERN.perDay; index++) {
+      if (this.applications.length >= TAVERN.applications) break;
+      const main = first ? TAVERN.firstArrival[index] : undefined;
+      const dwarf = main === undefined ? this.roster.createRandom(DwarfRank.worker) : this.roster.create(main, DwarfRank.worker);
+      this.applications.push(dwarf);
+      arrived.push(dwarf);
     }
+    if (arrived.length > 0) this.events.tavern.arrived.emit(arrived);
   }
 
   private hire(dwarf: Dwarf) {

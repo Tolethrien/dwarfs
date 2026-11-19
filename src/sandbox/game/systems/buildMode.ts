@@ -85,7 +85,8 @@ export default class BuildMode extends PragmaSystem {
   public category: BuildCategoryID | undefined = categoriesOf("main")[0];
   public selected: BuildElementID | undefined;
   public removing = false;
-  public readonly free = new Set<BuildElementID>();
+  // locked whatever the level, while a cutscene wants them out of reach
+  public readonly held = new Set<BuildElementID>();
   private painted: Position2D[] | undefined;
   private warp: TimeWarp | undefined;
   private outline: Box | undefined;
@@ -218,6 +219,13 @@ export default class BuildMode extends PragmaSystem {
     this.menu.showSelected();
     if (element === undefined || BUILD_ELEMENTS[element].segment === undefined) return;
     const segment = this.segmentOf(element);
+    const limit = this.buildings.shaftLimit;
+    if (this.terrain.world.shaftDepth + segment > limit) {
+      popAt(InputManager.getMousePos(), `Headquarters level ${this.buildings.mineLevel} lets the shaft reach ${limit} tiles`, UI_THEME.colors.lacking);
+      this.selected = undefined;
+      this.menu.showSelected();
+      return;
+    }
     if (!this.digging.fits(segment)) {
       popAt(InputManager.getMousePos(), "The shaft can't go that deep", UI_THEME.colors.lacking);
       this.selected = undefined;
@@ -355,8 +363,16 @@ export default class BuildMode extends PragmaSystem {
     this.drawBox(box, BUILD.outline.refused, BUILD.outline.width);
   }
 
+  public isLocked(element: BuildElementID) {
+    return this.held.has(element) || this.needsLevel(element);
+  }
+
+  public needsLevel(element: BuildElementID) {
+    return BUILD_ELEMENTS[element].level > this.buildings.mineLevel;
+  }
+
   public costOf(element: BuildElementID): ResourceCost {
-    return this.free.has(element) ? {} : BUILD_ELEMENTS[element].cost;
+    return BUILD_ELEMENTS[element].cost;
   }
 
   private saysMissing(cost: ResourceCost) {

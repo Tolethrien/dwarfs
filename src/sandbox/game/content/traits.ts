@@ -20,6 +20,8 @@ export interface MainTraitData extends TraitData {
   power: number;
   // beer per game hour, the wage is shift hours × bph
   bph: number;
+  // kept in the table, but never recruited nor ordered
+  disabled?: boolean;
 }
 
 export const MAIN_TRAITS: Record<MainTraitsID, MainTraitData> = {
@@ -46,8 +48,14 @@ export const MAIN_TRAITS: Record<MainTraitsID, MainTraitData> = {
     speed: 3,
     power: 3,
     bph: 5,
+    disabled: true,
   },
 };
+
+// Object.keys gives enum numbers as strings
+export const ACTIVE_MAIN_TRAITS = (Object.keys(MAIN_TRAITS).map(Number) as MainTraitsID[]).filter(
+  (main) => !MAIN_TRAITS[main].disabled,
+);
 
 export const FOREMAN_TRAIT: TraitData = {
   name: "Foreman",
@@ -55,9 +63,18 @@ export const FOREMAN_TRAIT: TraitData = {
   effects: [new Pierce({ untilSpeed: 1.05, overSpeedPower: 0.3 })],
 };
 
-export enum TraitsID {}
+// the ids go to the save, keep them stable
+export enum TraitsID {
+  tired,
+}
 
-export const TRAITS: Record<TraitsID, TraitData> = {};
+export const TRAITS: Record<TraitsID, TraitData> = {
+  [TraitsID.tired]: {
+    name: "Tired",
+    description: "Morale fell below 30: won't go to work until it's back to 60.",
+    effects: [],
+  },
+};
 
 export enum WorkerTraitID {}
 

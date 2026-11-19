@@ -20,7 +20,8 @@ export function icon(parent: UINode, crop: Crop, options: IconOptions = {}) {
   const node = Navi.append(
     new UINode({
       size: { width: px(size), height: px(size) },
-      input: "none",
+      // a tooltip needs the hover
+      input: options.tooltip === undefined ? "none" : "absorb",
       style: {
         backgroundImage: options.image ?? UI_THEME.icon.image,
         backgroundImageCrop: crop,

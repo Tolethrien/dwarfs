@@ -209,7 +209,13 @@ export default class Debris extends PragmaSystem {
       if (falling) {
         pieces.vx[index] *= DEBRIS.friction;
         pieces.spin[index] *= DEBRIS.friction;
-        if (Math.abs(pieces.vy[index]) < DEBRIS.settleSpeed) pieces.rest[index] = 0;
+        // set down on the floor: stopped a frame's fall above it, lying() would not find it and
+        // throw it up again, over and over
+        if (Math.abs(pieces.vy[index]) < DEBRIS.settleSpeed) {
+          const floor = Math.floor((nextY + reach) / this.tile) * this.tile;
+          pieces.y[index] = floor - reach - 0.5;
+          pieces.rest[index] = 0;
+        }
       }
     } else pieces.y[index] = nextY;
 

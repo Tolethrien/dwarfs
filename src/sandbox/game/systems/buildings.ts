@@ -11,6 +11,8 @@ import Building from "../actors/building";
 import Tavern from "../components/tavern";
 import Market from "../components/market";
 import Smelter from "../components/smelter";
+import Headquarters, { shaftLimitAt } from "../components/headquarters";
+import BuildingLook from "../components/buildingLook";
 import { shaftColumns } from "../world/shaftShape";
 import { buildingSprite } from "../world/buildingShape";
 import { SURFACE } from "../content/surface";
@@ -60,6 +62,8 @@ export default class Buildings extends PragmaSystem {
   private readonly built = new Map<BuildingsID, Built>();
   // pressed on this building: released on it too, it was a click
   private pressed: Building | undefined;
+  // while set, the other buildings don't take clicks (the intro points at one, or at none)
+  public clickOnly: BuildingsID | "none" | undefined;
   declare private terrain: Terrain;
   declare private stations: Stations;
   declare private rails: Rails;
@@ -85,6 +89,12 @@ export default class Buildings extends PragmaSystem {
         return buildings.built;
       },
       remove: (id: BuildingsID) => this.remove(id),
+      get mineLevel() {
+        return buildings.mineLevel;
+      },
+      setMineLevel: (level: number) => {
+        this.headquarters().level = level;
+      },
     });
     gamePanel("buildings", {
       title: "Buildings",
@@ -109,11 +119,6 @@ export default class Buildings extends PragmaSystem {
   }
 
   update(): void {
-    // the sling's pull is a left click too
-    if (this.stations.isShooting) {
-      this.pressed = undefined;
-      return;
-    }
     if (InputManager.onActionPressed("select")) this.pressed = this.underMouse();
     if (!InputManager.onActionReleased("select")) return;
     const target = this.underMouse();
@@ -125,13 +130,46 @@ export default class Buildings extends PragmaSystem {
     return this.built.get(id)?.place;
   }
 
+  public actorOf(id: BuildingsID) {
+    return this.built.get(id)?.actor;
+  }
+
+  public highlight(id: BuildingsID, on: boolean) {
+    const built = this.built.get(id);
+    assert(built !== undefined, `No ${BUILDINGS[id].name} is built to highlight`);
+    const look = built.actor.getComponent(BuildingLook);
+    assert(look !== undefined, `The ${BUILDINGS[id].name} has no BuildingLook`);
+    look.highlighted = on;
+  }
+
+  // nothing can be built before the headquarters stands
+  public get mineLevel() {
+    return this.built.has(BuildingsID.headquarters) ? this.headquarters().level : 0;
+  }
+
+  // the deepest row the shaft may be dug to
+  public get shaftLimit() {
+    return shaftLimitAt(this.mineLevel);
+  }
+
+  private headquarters() {
+    const built = this.built.get(BuildingsID.headquarters);
+    assert(built !== undefined, "No headquarters is built");
+    const headquarters = built.actor.getComponent(Headquarters);
+    assert(headquarters !== undefined, "The headquarters has no Headquarters");
+    return headquarters;
+  }
+
   public get places(): BuildingPlace[] {
     return [...this.built.values()].map((built) => built.place);
   }
 
   private underMouse() {
     const tile = this.terrain.worldToTile(Camera.screenToWorld(InputManager.getMousePos()));
-    for (const built of this.built.values()) if (Grid.isTileInBox(built.place.base, tile)) return built.actor;
+    for (const [id, built] of this.built) {
+      if (this.clickOnly !== undefined && id !== this.clickOnly) continue;
+      if (Grid.isTileInBox(built.place.base, tile)) return built.actor;
+    }
     return undefined;
   }
 
@@ -151,6 +189,7 @@ export default class Buildings extends PragmaSystem {
       assert(smelter !== undefined, "The smelter has no Smelter");
       smelter.open();
     }
+    if (building.id === BuildingsID.headquarters) this.headquarters().open();
   }
 
   public placeAt(id: BuildingsID, tile: Position2D): BuildingPlace {
@@ -173,14 +212,20 @@ export default class Buildings extends PragmaSystem {
     };
   }
 
-  public buildMarket() {
-    this.build(BuildingsID.market, this.surfacePlace(BuildingsID.market));
+  public buildHeadquarters() {
+    this.build(BuildingsID.headquarters, this.surfacePlace(BuildingsID.headquarters, "right"));
   }
 
-  private surfacePlace(id: BuildingsID): BuildingPlace {
+  public buildMarket() {
+    this.build(BuildingsID.market, this.surfacePlace(BuildingsID.market, "left"));
+  }
+
+  private surfacePlace(id: BuildingsID, side: ShaftSide): BuildingPlace {
     const size = BUILDINGS[id].size;
-    const base = { x: shaftColumns(this.terrain.world).to + 1, y: -size.height, w: size.width, h: size.height };
-    return { side: "right", base: base, reserve: { ...base } };
+    const columns = shaftColumns(this.terrain.world);
+    const x = side === "left" ? columns.from - size.width : columns.to + 1;
+    const base = { x: x, y: -size.height, w: size.width, h: size.height };
+    return { side: side, base: base, reserve: { ...base } };
   }
 
   public problem(id: BuildingsID, place: BuildingPlace): BuildingRefusal | undefined {

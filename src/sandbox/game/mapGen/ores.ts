@@ -2,6 +2,8 @@ import AxiomMath from "@axiom/math";
 import Noise from "@axiom/noise";
 import SeededRandom from "@axiom/seedRandom";
 import { BlocksID } from "../content/blocks";
+import { STRUCTURES } from "../content/structures";
+import { craterCenter } from "../world/shaftShape";
 import type World from "../world/world";
 
 interface DepthPoint {
@@ -47,6 +49,9 @@ export const ORES = {
   // single lumps grown into cave walls: chance per wall tile; an ore may show up to lookAhead tiles
   // above its own depth, the rarer it is here, the likelier
   walls: { chance: 0.004, size: { min: 3, max: 6 }, lookAhead: 150, minWeight: 0.05 },
+  // guaranteed lumps of coal and iron mixed under the first shaft: nests of each ore, in a ring that
+  // starts margin tiles past the crater's edge and reaches that many tiles further
+  starter: { nests: { coal: 8, iron: 16 }, size: { min: 3, max: 5 }, margin: 1, reach: 8, tries: 30 },
 };
 
 const HOSTS = new Set([
@@ -60,7 +65,7 @@ const HOSTS = new Set([
   BlocksID.moss,
 ]);
 
-const SALT = { coal: 1200, iron: 6, fossils: 7, walls: 8 };
+const SALT = { coal: 1200, iron: 6, fossils: 7, walls: 8, starter: 9 };
 const BAND_ROWS = 16;
 
 const SIDES = [
@@ -76,6 +81,30 @@ export function placeOres(world: World, seed: number) {
   placeVeins(world, new SeededRandom(SeededRandom.derive(seed, SALT.iron)));
   placeNests(world, new SeededRandom(SeededRandom.derive(seed, SALT.fossils)));
   placeWallNests(world, new SeededRandom(SeededRandom.derive(seed, SALT.walls)));
+  placeStarterNests(world, new SeededRandom(SeededRandom.derive(seed, SALT.starter)));
+}
+
+// below and to the sides of the first crater, the ores taken in turn so they lie mixed
+function placeStarterNests(world: World, random: SeededRandom) {
+  const starter = ORES.starter;
+  const crater = STRUCTURES.station.crater;
+  const center = craterCenter(world, STRUCTURES.shaft.startDepth);
+  const inner = crater.radius * (1 + crater.jag) + starter.margin;
+  const blocks: BlocksID[] = [];
+  for (let index = 0; index < Math.max(starter.nests.coal, starter.nests.iron); index++) {
+    if (index < starter.nests.coal) blocks.push(ORES.coal.block);
+    if (index < starter.nests.iron) blocks.push(ORES.iron.block);
+  }
+  for (const block of blocks) {
+    for (let attempt = 0; attempt < starter.tries; attempt++) {
+      const angle = random.float(0, Math.PI);
+      const distance = random.float(inner, inner + starter.reach);
+      const start = { x: Math.floor(center.x + Math.cos(angle) * distance), y: Math.floor(center.y + Math.sin(angle) * distance) };
+      if (!isHost(world, start.x, start.y)) continue;
+      growNest(world, random, start, random.int(starter.size.min, starter.size.max), block);
+      break;
+    }
+  }
 }
 
 function placeSeams(world: World, noise: Noise) {

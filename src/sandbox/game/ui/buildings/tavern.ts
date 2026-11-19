@@ -9,7 +9,7 @@ import type { ResourceCost, ResourcesID } from "../../content/resources";
 import { UI_THEME } from "../../content/ui";
 import { CALENDAR } from "../../systems/calendar";
 import type { DwarfState } from "../../systems/roster";
-import { UIWindow } from "../elements/window";
+import { closeOnCameraMove, UIWindow } from "../elements/window";
 import { row } from "../elements/row";
 import { column } from "../elements/column";
 import { text } from "../elements/text";
@@ -37,9 +37,9 @@ export interface TavernActions {
   openCard: (dwarf: Dwarf) => void;
 }
 
-type Tab = "applications" | "crew";
+export type TavernTab = "applications" | "crew";
 
-const TABS: TabItem<Tab>[] = [
+const TABS: TabItem<TavernTab>[] = [
   { id: "applications", title: "Applications" },
   { id: "crew", title: "Crew" },
 ];
@@ -55,13 +55,15 @@ const STATES: Record<DwarfState, string> = {
 const TAVERN_UI = {
   width: 640,
   listHeight: 360,
-  applications: { look: 32, name: 140, type: 70, bph: 50, offer: 200 },
-  crew: { look: 32, name: 130, type: 60, rank: 60, state: 170, shift: 60, bph: 40 },
+  // both lists end at the same edge, the window's width without its padding and the scrollbar:
+  // columns add up to 570 and 558 (the gaps and the row padding make up the rest)
+  applications: { look: 32, name: 190, type: 90, bph: 50, offer: 208 },
+  crew: { look: 32, name: 140, type: 60, rank: 60, state: 166, shift: 60, bph: 40 },
 };
 
 export default class TavernUI {
-  private readonly window = new UIWindow({ kind: "modal", width: TAVERN_UI.width, title: "Tavern" });
-  private tab: Tab = "applications";
+  private readonly window = new UIWindow({ kind: "modal", width: TAVERN_UI.width, title: "Tavern", closeOnMove: closeOnCameraMove() });
+  private tab: TavernTab = "applications";
   declare private tabBar: UINode;
   declare private body: UINode;
   private list: UITable | undefined;
@@ -82,12 +84,24 @@ export default class TavernUI {
     this.window.close();
   }
 
+  public get isOpen() {
+    return this.window.isOpen;
+  }
+
   public update() {
     if (this.window.isOpen) this.followList();
     this.window.update();
   }
 
-  private pick(tab: Tab) {
+  public get uiWindow() {
+    return this.window;
+  }
+
+  public get shownTab(): TavernTab | undefined {
+    return this.window.isOpen ? this.tab : undefined;
+  }
+
+  private pick(tab: TavernTab) {
     this.tab = tab;
     this.showTab();
   }

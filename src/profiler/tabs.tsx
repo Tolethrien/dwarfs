@@ -56,7 +56,7 @@ export const TABS: Record<TabId, TabDefinition> = {
   game: {
     label: "Game",
     actions: GameActions,
-    panels: ["gameDwarfs", "gameNetwork", "gameBuildings", "gameGear", "gameResearch", "gameEconomy"],
+    panels: ["gameDwarfs", "gameNetwork", "gameBuildings", "gameGear", "gameResearch", "gameEconomy", "gamePlayer"],
     empty: "game panels: 🎮 Game",
   },
   aurora: {

@@ -13,11 +13,16 @@ import Transport from "./transport";
 import Resources from "./resources";
 import GameEvents from "./gameEvents";
 
-// every hour each station sends its haul to the smelter; cut off on the way, a cargo goes on to the
+// dropOff: where the hauls go, the first of them that stands
+const DELIVERIES = {
+  dropOff: [BuildingsID.headquarters],
+};
+
+// every hour each station sends its haul to the drop-off; cut off on the way, a cargo goes on to the
 // nearest station it still reaches and waits in its haul, with no station at all it lands in the
 // store at once
 export default class Deliveries extends PragmaSystem {
-  // undefined: on the way to the smelter
+  // undefined: on the way to the drop-off
   private readonly rides = new Map<Cargo, Station | undefined>();
   // rails or tiles changed this frame: the rides check the way to their next node once, in the next
   // update
@@ -49,14 +54,18 @@ export default class Deliveries extends PragmaSystem {
     this.checkAhead();
   }
 
-  private get smelterDoor() {
-    const place = this.buildings.placeOf(BuildingsID.smelter);
-    return place && this.transport.doorOf(BuildingsID.smelter, place);
+  // asked anew at every send and reroute, so a new drop-off takes over on the way
+  private get dropOffDoor() {
+    for (const id of DELIVERIES.dropOff) {
+      const place = this.buildings.placeOf(id);
+      if (place !== undefined) return this.transport.doorOf(id, place);
+    }
+    return undefined;
   }
 
-  // a station with no way to the smelter keeps its haul for the next hour
+  // a station with no way to the drop-off keeps its haul for the next hour
   private sendAll() {
-    const door = this.smelterDoor;
+    const door = this.dropOffDoor;
     if (!door) return;
     const network = this.stations.network;
     for (const station of this.stations.stations) {
@@ -111,7 +120,7 @@ export default class Deliveries extends PragmaSystem {
     assert(ride !== undefined, "A cargo rides nowhere");
     const at = cargo.transform.getPosition();
     const network = this.stations.network;
-    const door = this.smelterDoor;
+    const door = this.dropOffDoor;
     if (this.rides.get(cargo) === undefined && door) {
       const route = this.transport.rerouteToDoor(at, ride.route, next, door, network);
       if (route) {

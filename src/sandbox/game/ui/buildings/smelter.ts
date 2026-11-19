@@ -1,12 +1,13 @@
 import Navi from "@navi/navi";
 import type UINode from "@navi/node";
-import { formatAmount, RESOURCES, ResourcesID } from "../../content/resources";
-import { RECIPES, type RecipeID } from "../../content/smelter";
+import { formatAmount, RESOURCES, type ResourceCost, type ResourcesID } from "../../content/resources";
+import { RECIPES, recipeCost, type RecipeID } from "../../content/smelter";
 import type { SmelterOrder } from "../../components/smelter";
 import { UI_THEME } from "../../content/ui";
-import { UIWindow } from "../elements/window";
+import { closeOnCameraMove, UIWindow } from "../elements/window";
 import { header } from "../elements/header";
 import { button } from "../elements/button";
+import { cost, costEntries } from "../elements/cost";
 import { icon } from "../elements/icon";
 import { stepper } from "../elements/stepper";
 import { table, type UITable } from "../elements/table";
@@ -18,6 +19,7 @@ export interface SmelterActions {
   power: () => number;
   orders: () => readonly SmelterOrder[];
   status: () => string;
+  missing: (cost: ResourceCost) => [ResourcesID, number][];
   order: (recipe: RecipeID, batches: number) => void;
   cancel: (order: SmelterOrder) => void;
 }
@@ -26,13 +28,15 @@ const SMELTER_UI = {
   width: 760,
   // batches the stepper adds or takes
   step: 1,
-  recipes: { look: 32, name: 90, recipe: 260, amount: 150, add: 70 },
+  recipes: { look: 32, amount: 170, cost: 300, smelt: 90 },
   queue: { look: 32, name: 90, amount: 150, progress: 220, remove: 90 },
 };
 
 export default class SmelterUI {
-  private readonly window = new UIWindow({ kind: "modal", width: SMELTER_UI.width, title: "Smelter" });
+  private readonly window = new UIWindow({ kind: "modal", width: SMELTER_UI.width, title: "Smelter", closeOnMove: closeOnCameraMove() });
   private readonly picked = new Map<RecipeID, number>();
+  // the cost is built again on each step, its lacking marks are read once
+  private readonly costCells = new Map<RecipeID, UINode>();
   private readonly rows = new Map<SmelterOrder, UINode>();
   private queue: UITable | undefined;
   private empty: UINode | undefined;
@@ -54,7 +58,7 @@ export default class SmelterUI {
   public update() {
     if (this.window.isOpen) this.syncQueue();
     this.window.update();
-    if (!this.window.isOpen) this.forgetQueue();
+    if (!this.window.isOpen) this.forgetNodes();
   }
 
   private buildRecipes(parent: UINode) {
@@ -62,21 +66,32 @@ export default class SmelterUI {
     header(parent, "Recipes");
     const list = table(parent, [
       { title: "", width: columns.look },
-      { title: "Makes", width: columns.name },
-      { title: "One batch", width: columns.recipe },
-      { title: "Input", width: columns.amount, align: "center" },
-      { title: "", width: columns.add, align: "end" },
+      { title: "Makes", width: columns.amount, align: "center" },
+      { title: "Costs", width: columns.cost },
+      { title: "", width: columns.smelt, align: "end" },
     ]);
     for (const id of this.actions.recipes) {
       const recipe = RECIPES[id];
       list.row([
-        { build: (cell) => icon(cell, RESOURCES[recipe.output].icon) },
-        recipe.name,
-        batchText(id),
-        { build: (cell) => stepper(cell, "", () => formatAmount(recipe.input, this.batchesOf(id) * recipe.batch), (step) => this.pick(id, step)) },
-        { build: (cell) => button(cell, "Add", () => this.actions.order(id, this.batchesOf(id))) },
+        { build: (cell) => icon(cell, RESOURCES[recipe.output].icon, { tooltip: RESOURCES[recipe.output].name }) },
+        { build: (cell) => stepper(cell, "", () => formatAmount(recipe.output, this.batchesOf(id) * recipe.yield), (step) => this.pick(id, step)) },
+        {
+          build: (cell) => {
+            this.costCells.set(id, cell);
+            this.showCost(id);
+          },
+        },
+        { build: (cell) => button(cell, "Smelt", () => this.actions.order(id, this.batchesOf(id))) },
       ]);
     }
+  }
+
+  private showCost(id: RecipeID) {
+    const cell = this.costCells.get(id);
+    if (cell === undefined) return;
+    for (const child of [...cell.children]) Navi.remove(child, cell);
+    const total = recipeCost(id, this.batchesOf(id));
+    cost(cell, costEntries(total, this.actions.missing(total)));
   }
 
   private buildQueue(parent: UINode) {
@@ -86,7 +101,7 @@ export default class SmelterUI {
     this.queue = table(parent, [
       { title: "", width: columns.look },
       { title: "Makes", width: columns.name },
-      { title: "Input", width: columns.amount, align: "end" },
+      { title: "Made", width: columns.amount, align: "end" },
       { title: "Batch", width: columns.progress, align: "center" },
       { title: "", width: columns.remove, align: "end" },
     ]);
@@ -109,17 +124,18 @@ export default class SmelterUI {
   private orderRow(queue: UITable, order: SmelterOrder) {
     const recipe = RECIPES[order.recipe];
     return queue.row([
-      { build: (cell) => icon(cell, RESOURCES[recipe.output].icon) },
+      { build: (cell) => icon(cell, RESOURCES[recipe.output].icon, { tooltip: RESOURCES[recipe.output].name }) },
       recipe.name,
-      () => `${formatAmount(recipe.input, order.done * recipe.batch)} / ${formatAmount(recipe.input, order.batches * recipe.batch)}`,
+      () => `${formatAmount(recipe.output, order.done * recipe.yield)} / ${formatAmount(recipe.output, order.batches * recipe.yield)}`,
       { build: (cell) => bar(cell, { value: () => order.progress }) },
       { build: (cell) => button(cell, "Remove", () => this.actions.cancel(order)) },
     ]);
   }
 
   // closing drops the window's nodes, the next open builds them anew
-  private forgetQueue() {
+  private forgetNodes() {
     this.rows.clear();
+    this.costCells.clear();
     this.queue = undefined;
     this.empty = undefined;
   }
@@ -130,11 +146,6 @@ export default class SmelterUI {
 
   private pick(id: RecipeID, step: -1 | 1) {
     this.picked.set(id, Math.max(SMELTER_UI.step, this.batchesOf(id) + step * SMELTER_UI.step));
+    this.showCost(id);
   }
-}
-
-function batchText(id: RecipeID) {
-  const recipe = RECIPES[id];
-  const coal = recipe.coal > 0 ? ` + ${formatAmount(ResourcesID.coal, recipe.coal)} ${RESOURCES[ResourcesID.coal].name}` : "";
-  return `${formatAmount(recipe.input, recipe.batch)} ${RESOURCES[recipe.input].name}${coal} → ${formatAmount(recipe.output, recipe.yield)}`;
 }

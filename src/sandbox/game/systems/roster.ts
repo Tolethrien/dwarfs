@@ -15,16 +15,13 @@ import type Station from "../actors/station";
 import { ITEMS, type GearSlot, type ItemID } from "../content/gear";
 import { SPECIAL_BEERS, type SpecialBeerID } from "../content/beers";
 import { DwarfRank, getRandomDwarfLook, getRandomDwarfName } from "../content/dwarfs";
-import { MAIN_TRAITS, TRAITS, type MainTraitsID } from "../content/traits";
+import { ACTIVE_MAIN_TRAITS, MAIN_TRAITS, TRAITS, TraitsID, type MainTraitsID } from "../content/traits";
 import Buffs from "./buffs";
 import Calendar from "./calendar";
 import Workforce from "./workforce";
 import SpawnTemplate from "./spawnTemplate";
 
-// Object.keys gives enum numbers as strings
-const CLASSES = Object.keys(MAIN_TRAITS).map(Number) as MainTraitsID[];
-
-const ROSTER = { startWorkers: 6 };
+const ROSTER = { startWorkers: 0 };
 
 export type DwarfState = "tavern" | "travelling" | "waiting" | "working" | "returning";
 
@@ -136,7 +133,7 @@ export default class Roster extends PragmaSystem {
   }
 
   public createRandom(rank: DwarfRank) {
-    return this.create(CLASSES[AxiomMath.randomArrayIndex(CLASSES)], rank);
+    return this.create(ACTIVE_MAIN_TRAITS[AxiomMath.randomArrayIndex(ACTIVE_MAIN_TRAITS)], rank);
   }
 
   public enlist(dwarf: Dwarf) {
@@ -160,7 +157,7 @@ export default class Roster extends PragmaSystem {
     if (this.stateOf(dwarf) !== "tavern") return false;
     const traits = dwarf.getComponent(Traits);
     assert(traits !== undefined, `Dwarf ${dwarf.name} has no Traits`);
-    return !traits.foreman && traits.main === main;
+    return !traits.foreman && traits.main === main && !traits.has(TraitsID.tired);
   }
 
   public inTavern() {
@@ -261,6 +258,10 @@ export default class Roster extends PragmaSystem {
       traits: [...traits.list].map((trait) => TRAITS[trait].name),
       gear: equipment ? [...equipment.list.values()].map((item) => ITEMS[item].name) : [],
     };
+  }
+
+  public showMorale() {
+    this.card.showMorale();
   }
 
   public showCard(dwarf: Dwarf, back?: () => void) {

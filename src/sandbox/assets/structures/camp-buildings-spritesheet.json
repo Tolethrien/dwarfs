@@ -1,7 +1,7 @@
 {
     "image":  "camp-buildings-spritesheet.png",
     "width":  3164,
-    "height":  2034,
+    "height":  3010,
     "padding":  8,
     "tileInPixels":  96,
     "coordinates":  "Pixels, origin at top-left. Scaled so the wall beam is 1 tile wide; sourceCrop is the crop in the source image.",
@@ -41,24 +41,24 @@
                                                   }
                                },
                    "smelter":  {
-                                 "crop":  {
-                                              "x":  2194,
-                                              "y":  8,
-                                              "width":  962,
-                                              "height":  806
-                                          },
-                                 "door":  {
-                                              "x":  746,
-                                              "y":  552
-                                          },
-                                 "scale":  1.6552,
-                                 "sourceCrop":  {
-                                                    "x":  1353,
-                                                    "y":  43,
-                                                    "width":  581,
-                                                    "height":  487
-                                                }
-                             },
+                                   "crop":  {
+                                                "x":  2194,
+                                                "y":  8,
+                                                "width":  962,
+                                                "height":  806
+                                            },
+                                   "door":  {
+                                                "x":  746,
+                                                "y":  552
+                                            },
+                                   "scale":  1.6552,
+                                   "sourceCrop":  {
+                                                      "x":  1353,
+                                                      "y":  43,
+                                                      "width":  581,
+                                                      "height":  487
+                                                  }
+                               },
                    "market":  {
                                   "crop":  {
                                                "x":  1034,
@@ -87,6 +87,25 @@
                                                            "y":  0,
                                                            "width":  960,
                                                            "height":  960
+                                                       }
+                                    },
+                   "headquarters":  {
+                                        "crop":  {
+                                                     "x":  8,
+                                                     "y":  2034,
+                                                     "width":  2016,
+                                                     "height":  968
+                                                 },
+                                        "door":  {
+                                                     "x":  1200,
+                                                     "y":  902
+                                                 },
+                                        "scale":  1.1776,
+                                        "sourceCrop":  {
+                                                           "x":  11,
+                                                           "y":  60,
+                                                           "width":  1712,
+                                                           "height":  822
                                                        }
                                     }
                }

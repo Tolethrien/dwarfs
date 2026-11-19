@@ -1,5 +1,6 @@
 import Pragma from "@pragma/pragma";
 import Roster from "./systems/roster";
+import Welfare from "./systems/welfare";
 import GameEvents from "./systems/gameEvents";
 import GameMode from "./systems/gameMode";
 import Terrain from "./systems/terrain";
@@ -9,6 +10,7 @@ import Sparks from "./systems/sparks";
 import Sounds from "./systems/sounds";
 import Calendar from "./systems/calendar";
 import Resources from "./systems/resources";
+import PlayerStats from "./systems/playerStats";
 import Director from "./systems/director";
 import BallPhysics from "./systems/ballPhysics";
 import Biomes from "./systems/biomes";
@@ -23,6 +25,7 @@ import BuildMode from "./systems/buildMode";
 import Buildings from "./systems/buildings";
 import Deliveries from "./systems/deliveries";
 import Intro from "./systems/intro";
+import StoryEvents from "./systems/storyEvents";
 import Profiler from "./systems/profiler";
 import { soundPanel } from "./audio/soundPanel";
 import World from "./world/world";
@@ -46,6 +49,7 @@ export function startGame(seed: number) {
   scene.addSystem(Sparks, world);
   scene.addSystem(Sounds, world);
   scene.addSystem(Resources);
+  scene.addSystem(PlayerStats);
   scene.addSystem(BallPhysics);
   scene.addSystem(Biomes, world);
   scene.addSystem(Discovery, world);
@@ -54,6 +58,7 @@ export function startGame(seed: number) {
   scene.addSystem(Workforce);
   scene.addSystem(Tuning);
   scene.addSystem(Roster);
+  scene.addSystem(Welfare);
   scene.addSystem(Rails);
   scene.addSystem(Transport);
   scene.addSystem(Stations);
@@ -61,5 +66,6 @@ export function startGame(seed: number) {
   scene.addSystem(Deliveries);
   scene.addSystem(BuildMode, shaft);
   scene.addSystem(Intro, shaft);
+  scene.addSystem(StoryEvents);
   scene.addSystem(Profiler);
 }

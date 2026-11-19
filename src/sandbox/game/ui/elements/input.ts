@@ -9,6 +9,8 @@ export interface InputOptions {
   placeholder?: string;
   maxLength?: number;
   width?: number;
+  // what's typed stays when the focus goes, not only on Enter (a form with its own button)
+  keepOnBlur?: boolean;
   // on Enter, run by UIWindow.update (Navi reads the keys mid-traversal)
   submit?: (value: string) => void;
 }
@@ -20,6 +22,7 @@ export class UIField extends UIInput {
 
   constructor(
     public readonly submit: ((value: string) => void) | undefined,
+    private readonly keepOnBlur: boolean,
     props: InputProps,
   ) {
     super(props);
@@ -32,7 +35,7 @@ export class UIField extends UIInput {
 
   // focusLost is set when the focus went away last frame, Enter commits before that
   public contentChanged() {
-    if (this.focusLost) this.value = this.committed;
+    if (this.focusLost && !this.keepOnBlur) this.value = this.committed;
     return super.contentChanged();
   }
 }
@@ -49,7 +52,7 @@ export function takeSubmitted(within: UINode) {
 
 export function input(parent: UINode, options: InputOptions = {}) {
   const colors = UI_THEME.colors;
-  const node = new UIField(options.submit, {
+  const node = new UIField(options.submit, options.keepOnBlur ?? false, {
     value: options.value,
     placeholder: options.placeholder,
     maxLength: options.maxLength,

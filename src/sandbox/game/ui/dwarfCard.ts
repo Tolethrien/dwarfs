@@ -11,6 +11,7 @@ import Drinker from "../components/drinker";
 import Effects from "../components/effects";
 import Equipment from "../components/equipment";
 import Outfit from "../components/outfit";
+import Morale from "../components/morale";
 import { STAT_NAMES, type StatName } from "../effects/effect";
 import { SPECIAL_BEERS } from "../content/beers";
 import { DwarfRank } from "../content/dwarfs";
@@ -24,6 +25,7 @@ import { UIButton } from "./elements/button";
 import { text } from "./elements/text";
 import { paragraph } from "./elements/paragraph";
 import { tooltip } from "./elements/tooltip";
+import { bar } from "./elements/bar";
 
 export interface DwarfCardActions {
   previous: (dwarf: Dwarf) => Dwarf;
@@ -52,6 +54,7 @@ const CARD = {
   beer: { text: { x: 204, y: 104 }, slot: { x: 546, y: 104, size: 48 } },
   equipment: { x: 42, y: 196, size: 56, gap: 12 },
   stats: { x: 42, y: 304, width: 250, rowHeight: 22 },
+  morale: { x: 42, y: 404, width: 250, gap: 4 },
   traits: { x: 334, y: 196, width: 276, gap: 10 },
   buttons: { y: 466, x: { previous: 28, next: 488 } },
   labelHeight: 24,
@@ -82,6 +85,9 @@ export default class DwarfCardUI {
   private portraitLayers: UINode[] = [];
   private traitList: UINode | undefined;
   private shownTraits = "";
+  // the trade union brings morale into the game
+  private moraleShown = false;
+  private moraleNode: UINode | undefined;
   private readonly slotMarks = new Map<GearSlot, UINode>();
   private readonly slots = new Map<GearSlot, UINode>();
 
@@ -99,6 +105,7 @@ export default class DwarfCardUI {
       this.showTraits(this.dwarf);
       this.showSlots();
       this.paintSlotMarks();
+      this.moraleNode?.setActive(this.moraleShown);
     }
     this.window.update();
   }
@@ -116,6 +123,10 @@ export default class DwarfCardUI {
     this.window.close();
   }
 
+  public showMorale() {
+    this.moraleShown = true;
+  }
+
   private get current() {
     assert(this.dwarf !== undefined, "The dwarf card is read with no dwarf open");
     return this.dwarf;
@@ -128,6 +139,7 @@ export default class DwarfCardUI {
     this.addBeer(card);
     this.addEquipment(card);
     this.addStats(card);
+    this.moraleNode = this.addMorale(card);
     this.traitList = this.addTraitList(card);
     this.shownTraits = "";
     const row = CARD.buttons;
@@ -293,6 +305,30 @@ export default class DwarfCardUI {
       text(row, line.label, { color: LOOK.muted, size: LOOK.textSize.body });
       text(row, () => this.statText(line.stat), { color: LOOK.text, size: LOOK.textSize.body });
     });
+  }
+
+  // the scale is 0–100, a buff only moves its min and max within it
+  private addMorale(card: UINode) {
+    const morale = CARD.morale;
+    const section = Navi.append(
+      new UINode({
+        position: { x: px(morale.x), y: px(morale.y) },
+        size: { width: px(morale.width), height: auto() },
+        input: "none",
+        style: { backgroundColor: UI_THEME.colors.transparent, layout: "stack", direction: "col", alignCross: "stretch", gap: morale.gap },
+      }),
+      card,
+    );
+    text(section, "MORALE", { color: LOOK.label, size: LOOK.textSize.label });
+    bar(section, { value: () => this.morale(this.current) / 100, label: () => `${Math.round(this.morale(this.current))}` });
+    section.setActive(this.moraleShown);
+    return section;
+  }
+
+  private morale(dwarf: Dwarf) {
+    const morale = dwarf.getComponent(Morale);
+    assert(morale !== undefined, `Dwarf ${dwarf.name} has no Morale`);
+    return morale.value;
   }
 
   private statText(stat: StatName) {

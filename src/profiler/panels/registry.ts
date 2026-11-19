@@ -15,6 +15,7 @@ import GameResearchPanel from "./game/research";
 import GameNetworkPanel from "./game/network";
 import GameBuildingsPanel from "./game/buildings";
 import GameEconomyPanel from "./game/economy";
+import GamePlayerPanel from "./game/player";
 import WatchPanel from "./watch/watch";
 import { watchStore } from "../watch/store";
 import { coroutineStore } from "../coroutines/store";
@@ -111,6 +112,12 @@ export const PANELS = {
     title: "Economy",
     size: { w: 4, h: 4 },
     component: GameEconomyPanel,
+    live: gameStore.live,
+  },
+  gamePlayer: {
+    title: "Player",
+    size: { w: 4, h: 4 },
+    component: GamePlayerPanel,
     live: gameStore.live,
   },
   coroutinesRunning: {

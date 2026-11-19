@@ -12,6 +12,7 @@ import Outfit from "../components/outfit";
 import Shift from "../components/shift";
 import Headlight from "../components/headlight";
 import Travel from "../components/travel";
+import Morale from "../components/morale";
 import type Buffs from "../systems/buffs";
 import type Workforce from "../systems/workforce";
 
@@ -52,5 +53,6 @@ export default class Dwarf extends PragmaActor {
     this.addComponent(Shift);
     this.addComponent(Headlight);
     this.addComponent(Travel);
+    this.addComponent(Morale);
   }
 }

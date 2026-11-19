@@ -87,6 +87,17 @@ export interface GameResourceRow {
   amount: string;
 }
 
+export interface GameMinedRow {
+  block: string;
+  count: number;
+}
+
+export interface GamePlayerReport {
+  name: string;
+  minedTotal: number;
+  mined: GameMinedRow[];
+}
+
 export interface GameReport {
   dwarfs: GameDwarfsReport;
   workforce: GameWorkforceReport;
@@ -97,4 +108,5 @@ export interface GameReport {
   tavern: GameTavernReport;
   resources: GameResourceRow[];
   date: string;
+  player: GamePlayerReport;
 }

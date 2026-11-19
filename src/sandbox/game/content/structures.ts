@@ -44,6 +44,7 @@ export enum BuildingsID {
   market,
   brewery,
   smelter,
+  headquarters,
 }
 
 export interface BuildingData {
@@ -93,6 +94,15 @@ export const BUILDINGS: Record<BuildingsID, BuildingData> = {
     door: BUILDING_SHEET.frames.smelter.door,
     light: LightsID.buildingLamp,
   },
+  [BuildingsID.headquarters]: {
+    name: "Headquarters",
+    size: { width: 21, height: 10 },
+    reserve: { away: 0, up: 0, down: 0 },
+    sprite: BUILDING_SHEET.frames.headquarters.crop,
+    door: BUILDING_SHEET.frames.headquarters.door,
+    wallBeam: false,
+    light: LightsID.buildingLamp,
+  },
 };
 
 export type BuildLayer = "main" | "deco";
@@ -133,6 +143,7 @@ export interface BuildElementData {
   title: string;
   short: string;
   cost: ResourceCost;
+  level: number;
   segment?: number;
   building?: BuildingsID;
   station?: boolean;
@@ -146,6 +157,7 @@ export const BUILD_ELEMENTS: Record<BuildElementID, BuildElementData> = {
     title: "Shaft, 20 tiles deeper",
     short: "20",
     cost: { [ResourcesID.stone]: 200, [ResourcesID.beer]: 50 },
+    level: 2,
     segment: 20,
   },
   [BuildElementID.shaft30]: {
@@ -153,27 +165,31 @@ export const BUILD_ELEMENTS: Record<BuildElementID, BuildElementData> = {
     title: "Shaft, 30 tiles deeper",
     short: "30",
     cost: { [ResourcesID.stone]: 350, [ResourcesID.beer]: 80 },
+    level: 2,
     segment: 30,
   },
   [BuildElementID.tavern]: {
     category: BuildCategoryID.buildings,
     title: "Tavern",
     short: "Ta",
-    cost: { [ResourcesID.stone]: 100, [ResourcesID.beer]: 20 },
+    cost: { [ResourcesID.stone]: 50, [ResourcesID.beer]: 100 },
+    level: 1,
     building: BuildingsID.tavern,
   },
   [BuildElementID.brewery]: {
     category: BuildCategoryID.buildings,
     title: "Brewery",
     short: "Br",
-    cost: { [ResourcesID.stone]: 100, [ResourcesID.beer]: 20 },
+    cost: { [ResourcesID.stone]: 50, [ResourcesID.beer]: 100 },
+    level: 2,
     building: BuildingsID.brewery,
   },
   [BuildElementID.smelter]: {
     category: BuildCategoryID.buildings,
     title: "Smelter",
     short: "Sm",
-    cost: { [ResourcesID.stone]: 100, [ResourcesID.beer]: 20 },
+    cost: { [ResourcesID.stone]: 50, [ResourcesID.beer]: 100 },
+    level: 1,
     building: BuildingsID.smelter,
   },
   [BuildElementID.station]: {
@@ -181,6 +197,7 @@ export const BUILD_ELEMENTS: Record<BuildElementID, BuildElementData> = {
     title: "Station",
     short: "St",
     cost: { [ResourcesID.stone]: 150, [ResourcesID.beer]: 30 },
+    level: 2,
     station: true,
   },
   [BuildElementID.rail]: {
@@ -188,6 +205,7 @@ export const BUILD_ELEMENTS: Record<BuildElementID, BuildElementData> = {
     title: "Rail, a tile",
     short: "Ra",
     cost: { [ResourcesID.stone]: 5 },
+    level: 2,
     rail: true,
   },
   [BuildElementID.shaftJoint]: {
@@ -195,6 +213,7 @@ export const BUILD_ELEMENTS: Record<BuildElementID, BuildElementData> = {
     title: "Shaft joint",
     short: "Jo",
     cost: { [ResourcesID.stone]: 20 },
+    level: 2,
     joint: true,
   },
 };

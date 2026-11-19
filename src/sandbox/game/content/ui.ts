@@ -205,4 +205,6 @@ export const UI_THEME = {
     popInMs: 200,
     hoverMs: 90,
   },
+  // a window of something on the map closes once the camera goes this many pixels away
+  worldWindow: { closeDistance: 600 },
 };

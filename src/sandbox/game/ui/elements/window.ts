@@ -3,6 +3,7 @@ import UINode from "@navi/node";
 import { Tweens } from "@navi/tween";
 import { auto, ph, pw, px } from "@navi/units";
 import InputManager from "@engine/inputManager";
+import { Camera } from "@engine/camera/camera";
 import { KEY } from "@engine/keys";
 import AxiomMath from "@axiom/math";
 import { COLOR } from "@axiom/color";
@@ -45,6 +46,15 @@ const WINDOWS = {
   opened: [] as UIWindow[],
 };
 
+// for a window of a building or a station: it closes when the camera leaves it behind
+export function closeOnCameraMove(): CloseOnMove {
+  return { position: () => Camera.getPosition, distance: UI_THEME.worldWindow.closeDistance };
+}
+
+export function isAnyWindowOpen() {
+  return WINDOWS.opened.length > 0;
+}
+
 export function closeAllWindows() {
   while (WINDOWS.opened.length > 0) WINDOWS.opened[WINDOWS.opened.length - 1].close();
 }
@@ -67,9 +77,12 @@ export class UIWindow {
 
   public open() {
     if (this.content) return this.content;
+    // a modal with an owner stands over it, the owner's update runs it and holds off its input
     if (this.options.kind === "modal") {
-      WINDOWS.modal?.close();
-      WINDOWS.modal = this;
+      if (this.options.owner === undefined) {
+        WINDOWS.modal?.close();
+        WINDOWS.modal = this;
+      }
       this.backdrop = Navi.append(this.createBackdrop());
     } else {
       WINDOWS.slots.get(this.slot)?.close();

@@ -4,6 +4,7 @@ import LampLight from "../components/lampLight";
 import Tavern from "../components/tavern";
 import Market from "../components/market";
 import Smelter from "../components/smelter";
+import Headquarters from "../components/headquarters";
 import { BUILDINGS, BuildingsID } from "../content/structures";
 import type { BuildingPlace } from "../systems/buildings";
 
@@ -24,5 +25,6 @@ export default class Building extends PragmaActor {
     if (props.id === BuildingsID.tavern) this.addComponent(Tavern);
     if (props.id === BuildingsID.market) this.addComponent(Market);
     if (props.id === BuildingsID.smelter) this.addComponent(Smelter);
+    if (props.id === BuildingsID.headquarters) this.addComponent(Headquarters);
   }
 }

@@ -36,6 +36,7 @@ import Discovery from "./discovery";
 import Rails from "./rails";
 import Transport, { type Network, type RideGoal, type StationPlace } from "./transport";
 import GameEvents from "./gameEvents";
+import GameMode from "./gameMode";
 
 const STATIONS = { leaveGap: 0.5 };
 
@@ -99,6 +100,7 @@ export default class Stations extends PragmaSystem {
   declare private discovery: Discovery;
   declare private rails: Rails;
   declare private transport: Transport;
+  declare private gameMode: GameMode;
   declare private bar: ShootingBarUI;
   declare private menu: StationMenuUI;
 
@@ -109,6 +111,7 @@ export default class Stations extends PragmaSystem {
     this.discovery = this.scene.getSystem(Discovery);
     this.rails = this.scene.getSystem(Rails);
     this.transport = this.scene.getSystem(Transport);
+    this.gameMode = this.scene.getSystem(GameMode);
     const events = this.scene.getSystem(GameEvents);
     events.dwarfs.shiftEnded.connect((dwarf) => this.sendHome(dwarf));
     events.rails.changed.connect(() => (this.networkChanged = true));
@@ -192,8 +195,8 @@ export default class Stations extends PragmaSystem {
     this.clickStation();
   }
 
-  public get isShooting() {
-    return this.shooting !== undefined;
+  public get isMenuOpen() {
+    return this.menu.isOpen;
   }
 
   public get footprints(): Box[] {
@@ -614,6 +617,7 @@ export default class Stations extends PragmaSystem {
     }
     this.menu.close();
     this.shooting = station;
+    this.gameMode.set("shoot");
     this.bar.show(
       () => `Shooting · ${station.name} · waiting ${launcher.queue.length}`,
     );
@@ -625,6 +629,7 @@ export default class Stations extends PragmaSystem {
     this.launcherOf(station).dropAim();
     this.from = null;
     this.shooting = undefined;
+    this.gameMode.set("game");
     this.bar.hide();
   }
 

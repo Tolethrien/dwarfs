@@ -1,7 +1,7 @@
 import PragmaComponent from "@pragma/component";
 import { assert } from "@axiom/utils";
-import { formatAmount, RESOURCES, ResourcesID, type ResourceCost } from "../content/resources";
-import { RECIPE_IDS, RECIPES, type RecipeID } from "../content/smelter";
+import { formatAmount, RESOURCES } from "../content/resources";
+import { RECIPE_IDS, RECIPES, recipeCost, type RecipeID } from "../content/smelter";
 import Calendar from "../systems/calendar";
 import Resources from "../systems/resources";
 import SmelterUI from "../ui/buildings/smelter";
@@ -37,6 +37,7 @@ export default class Smelter extends PragmaComponent {
       power: () => SMELTER.power,
       orders: () => this.queue,
       status: () => this.status,
+      missing: (cost) => this.resources.missing(cost),
       order: (recipe, batches) => this.order(recipe, batches),
       cancel: (order) => this.cancel(order),
     });
@@ -61,7 +62,7 @@ export default class Smelter extends PragmaComponent {
     const order = this.queue[0];
     if (order === undefined) return;
     const recipe = RECIPES[order.recipe];
-    if (!this.loaded) this.loaded = this.resources.pay(batchCost(order.recipe));
+    if (!this.loaded) this.loaded = this.resources.pay(recipeCost(order.recipe));
     if (!this.loaded) return;
     order.progress += (hours * SMELTER.power) / recipe.batch;
     if (order.progress < 1) return;
@@ -76,7 +77,7 @@ export default class Smelter extends PragmaComponent {
     const order = this.queue[0];
     if (order === undefined) return "Idle";
     if (this.loaded) return `Smelting ${RECIPES[order.recipe].name}`;
-    const lacking = this.resources.missing(batchCost(order.recipe));
+    const lacking = this.resources.missing(recipeCost(order.recipe));
     return `Waiting for ${lacking.map(([id, amount]) => `${formatAmount(id, amount)} ${RESOURCES[id].name}`).join(", ")}`;
   }
 
@@ -88,16 +89,9 @@ export default class Smelter extends PragmaComponent {
     const index = this.queue.indexOf(order);
     assert(index !== -1, "Cancelling an order not in the smelter's queue");
     if (index === 0 && this.loaded) {
-      this.resources.addAll(batchCost(order.recipe));
+      this.resources.addAll(recipeCost(order.recipe));
       this.loaded = false;
     }
     this.queue.splice(index, 1);
   }
-}
-
-function batchCost(id: RecipeID): ResourceCost {
-  const recipe = RECIPES[id];
-  const cost: ResourceCost = { [recipe.input]: recipe.batch };
-  if (recipe.coal > 0) cost[ResourcesID.coal] = recipe.coal;
-  return cost;
 }

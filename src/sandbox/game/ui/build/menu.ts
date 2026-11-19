@@ -28,6 +28,9 @@ export default class BuildMenu {
   private readonly elements: UINode;
   private readonly selection: UINode;
   private isOpen = true;
+  // Navi applies appends at the frame's end, so a second clear in the same frame misses the first
+  // build: asked for any number of times, built once in update
+  private selectionDirty = false;
 
   constructor(
     private readonly buildMode: BuildMode,
@@ -52,6 +55,11 @@ export default class BuildMenu {
   }
 
   public showSelected() {
+    this.selectionDirty = true;
+  }
+
+  private buildSelected() {
+    this.selectionDirty = false;
     clear(this.selection);
     if (this.buildMode.removing) {
       text(this.selection, "Removing");
@@ -70,6 +78,7 @@ export default class BuildMenu {
   }
 
   public update() {
+    if (this.selectionDirty) this.buildSelected();
     const clicked = Navi.getClicked;
     if (!(clicked instanceof UIButton) || clicked.isDisabled) return;
     if (clicked === this.toggleButton || clicked.isDescendantOf(this.panel)) clicked.run();
@@ -82,6 +91,8 @@ export default class BuildMenu {
     this.panel.motion.offset.x = 0;
     this.toggleButton.setActive(true);
     this.panel.setActive(true);
+    // the headquarters' level may have changed since the last time
+    this.showElements();
     this.showSelected();
   }
 
@@ -149,7 +160,8 @@ export default class BuildMenu {
       const data = BUILD_ELEMENTS[element];
       slot(cells, {
         label: data.short,
-        tooltip: data.title,
+        tooltip: this.buildMode.needsLevel(element) ? `${data.title} · Needs headquarters level ${data.level}` : data.title,
+        locked: this.buildMode.isLocked(element),
         selected: () => this.buildMode.selected === element,
         click: () => this.buildMode.pick(element),
       });

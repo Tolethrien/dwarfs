@@ -15,6 +15,7 @@ export interface SlotOptions {
   // read every frame: picking a slot must not rebuild it, or the double click is lost
   selected?: () => boolean;
   empty?: boolean;
+  locked?: boolean;
   click?: () => void;
   // a double click runs click first, then this (the first click is a click on its own)
   doubleClick?: () => void;
@@ -51,7 +52,7 @@ export function slot(parent: UINode, options: SlotOptions) {
   const look = {
     icon: options.icon,
     iconSize: UI_THEME.slot.iconSize,
-    disabled: options.empty,
+    disabled: options.empty || options.locked,
     color: options.empty ? UI_THEME.colors.slotEmpty : undefined,
   };
   const props = buttonProps(look);

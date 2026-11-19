@@ -7,6 +7,8 @@ import type { BiomesSignals } from "./biomes";
 import type { ShiftSignals } from "../components/shift";
 import type { RailsSignals } from "./rails";
 import type { ShaftSignals } from "../components/shaftDigging";
+import type { TavernSignals } from "../components/tavern";
+import type { HeadquartersSignals } from "../components/headquarters";
 
 // only the owner of a group emits on it, everyone else just connects
 export default class GameEvents extends PragmaSystem {
@@ -37,5 +39,11 @@ export default class GameEvents extends PragmaSystem {
   };
   public readonly dwarfs: ShiftSignals = {
     shiftEnded: new Signal(),
+  };
+  public readonly tavern: TavernSignals = {
+    arrived: new Signal(),
+  };
+  public readonly headquarters: HeadquartersSignals = {
+    upgraded: new Signal(),
   };
 }

@@ -1,6 +1,5 @@
 import Navi from "@navi/navi";
 import type UINode from "@navi/node";
-import { Camera } from "@engine/camera/camera";
 import AxiomMath from "@axiom/math";
 import { assert } from "@axiom/utils";
 import type Dwarf from "../../actors/dwarf";
@@ -9,13 +8,13 @@ import { STATION } from "../../actors/station";
 import LayeredSprite from "../../components/layeredSprite";
 import Shift from "../../components/shift";
 import Traits from "../../components/traits";
-import { MAIN_TRAITS, MainTraitsID } from "../../content/traits";
+import { ACTIVE_MAIN_TRAITS, MAIN_TRAITS, MainTraitsID } from "../../content/traits";
 import { SPECIAL_BEERS, type SpecialBeerID } from "../../content/beers";
 import type { ResourceCost, ResourcesID } from "../../content/resources";
 import { UI_THEME } from "../../content/ui";
 import { CALENDAR } from "../../systems/calendar";
 import type { DwarfState } from "../../systems/roster";
-import { UIWindow } from "../elements/window";
+import { closeOnCameraMove, UIWindow } from "../elements/window";
 import { row } from "../elements/row";
 import { text } from "../elements/text";
 import { button, type UIButton } from "../elements/button";
@@ -51,13 +50,11 @@ export interface StationMenuActions {
 
 const MENU = {
   width: 400,
-  closeDistance: 600,
-  ordered: { look: 32, name: 130, state: 190 },
+  ordered: { look: 32, name: 130, state: 190, listHeight: 135 },
   nameLength: 24,
 };
 
-// Object.keys gives enum numbers as strings
-const CLASSES = Object.keys(MAIN_TRAITS).map(Number) as MainTraitsID[];
+const CLASSES = ACTIVE_MAIN_TRAITS;
 const BEERS: DropdownItem<SpecialBeerID | undefined>[] = [
   { id: undefined, title: "No special beer" },
   ...(Object.keys(SPECIAL_BEERS).map(Number) as SpecialBeerID[]).map((id) => ({
@@ -72,7 +69,7 @@ export default class StationMenuUI {
     slot: "center",
     width: MENU.width,
     title: () => this.station?.name ?? "",
-    closeOnMove: { position: () => Camera.getPosition, distance: MENU.closeDistance },
+    closeOnMove: closeOnCameraMove(),
     onClose: () => (this.station = undefined),
   });
   private station: Station | undefined;
@@ -120,6 +117,10 @@ export default class StationMenuUI {
     this.window.close();
   }
 
+  public get isOpen() {
+    return this.window.isOpen;
+  }
+
   private build(content: UINode, station: Station) {
     text(content, () => `Haul: ${this.actions.haul(station)}`);
     const order = header(content, "Order");
@@ -149,11 +150,15 @@ export default class StationMenuUI {
       () => `Ordered ${this.actions.assigned(station).length}/${STATION.manualLimit}`,
     );
     const columns = MENU.ordered;
-    this.list = table(ordered, [
-      { title: "", width: columns.look },
-      { title: "Name", width: columns.name },
-      { title: "", width: columns.state },
-    ]);
+    this.list = table(
+      ordered,
+      [
+        { title: "", width: columns.look },
+        { title: "Name", width: columns.name },
+        { title: "", width: columns.state },
+      ],
+      { height: columns.listHeight },
+    );
     this.shownOrdered = [];
     this.fillOrdered(station);
     const recall = row(content, { fit: true });

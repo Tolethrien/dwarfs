@@ -6,11 +6,11 @@ import { formatAmount, RESOURCE_IDS, RESOURCES, ResourcesID, type ResourceCost }
 import ResourcesHud from "../ui/resources";
 import GameEvents from "./gameEvents";
 
-// start: what the game begins with, none of the rest; precision: amounts and costs are kept to a
+// start: what the game begins with, none of the rest (the intro's grant comes on top); precision: amounts and costs are kept to a
 // tenth, so float noise (23.9999 L) never blocks a payment
 export const RESOURCE_RULES = {
   precision: 10,
-  start: { [ResourcesID.beer]: 100 } as ResourceCost,
+  start: {} as ResourceCost,
 };
 
 export interface ResourceChange {
