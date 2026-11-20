@@ -1,10 +1,9 @@
 import PragmaSystem from "@pragma/system";
 import { assert } from "@axiom/utils";
-import { debug } from "@debug";
-import { gameCommands } from "../debugCommands";
 import type Effect from "../effects/effect";
+import GameEvents from "./gameEvents";
 import { BASE_GEAR, BaseGearID } from "../content/gear";
-import { MAIN_TRAITS, WORKER_IDS, WORKER_TRAITS, type MainTraitsID, type WorkerTraitID } from "../content/traits";
+import { MAIN_TRAITS, WORKER_TRAITS, type MainTraitsID, type WorkerTraitID } from "../content/traits";
 
 const WORKFORCE = { startGear: BaseGearID.universal };
 
@@ -27,44 +26,19 @@ export default class Workforce extends PragmaSystem {
   private readonly traits = new Set<WorkerTraitID>();
   private readonly traitEffects: Effect[] = [];
   private changes = 0;
+  declare private events: GameEvents;
 
   awake(): void {
-    const workforce = this;
-    gameCommands("workforce", {
-      get levels() {
-        return workforce.levels;
-      },
-      get assigned() {
-        return workforce.assigned;
-      },
-      get researched() {
-        return workforce.traits;
-      },
-      setLevel: (gear: BaseGearID, level: number) => this.setLevel(gear, level),
-      assign: (main: MainTraitsID, gear: BaseGearID) => this.assign(main, gear),
-      research: (id: WorkerTraitID) => this.research(id),
-      forget: (id: WorkerTraitID) => this.forget(id),
-    });
+    this.events = this.scene.getSystem(GameEvents);
   }
 
-  start(): void {
-    debug.game.connect("workforce", () => ({
-      gear: GEAR_IDS.map((gear) => ({
-        name: BASE_GEAR[gear].name,
-        level: this.level(gear),
-        max: BASE_GEAR[gear].levels.length,
-        classes: CLASS_IDS.filter((main) => this.assigned.get(main) === gear).map((main) => MAIN_TRAITS[main].name),
-      })),
-      research: WORKER_IDS.map((id) => ({
-        name: WORKER_TRAITS[id].name,
-        description: WORKER_TRAITS[id].description,
-        researched: this.traits.has(id),
-      })),
-    }));
+  public get assignments(): ReadonlyMap<MainTraitsID, BaseGearID> {
+    return this.assigned;
   }
 
   public touch() {
     this.changes++;
+    this.events.dwarfs.statsChanged.emit("all");
   }
 
   public get version() {
@@ -121,6 +95,6 @@ export default class Workforce extends PragmaSystem {
   private collect() {
     this.traitEffects.length = 0;
     for (const id of this.traits) this.traitEffects.push(...WORKER_TRAITS[id].effects);
-    this.changes++;
+    this.touch();
   }
 }

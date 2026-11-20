@@ -17,6 +17,7 @@ import buildings from "@sandbox/assets/structures/camp-buildings-spritesheet.png
 import dwarfCard from "@sandbox/assets/ui/dwarf-card-spritesheet.png";
 import buffsIco from "@sandbox/assets/icons/buffs.png";
 import lato from "@sandbox/assets/fonts/Lato-Regular.ttf";
+import bebas from "@sandbox/assets/fonts/BebasNeue-Regular.ttf";
 import Cello from "@cello/cello";
 import { MAP_GEN } from "./game/mapGen/mapGen";
 import TileMap from "./game/gpu/tileMap";
@@ -46,7 +47,10 @@ async function preload() {
       { name: "dwarfCard", url: dwarfCard },
       { name: "buffs", url: buffsIco },
     ],
-    fonts: [{ name: "lato", type: "dynamic", url: lato }],
+    fonts: [
+      { name: "lato", type: "dynamic", url: lato },
+      { name: "bebas", type: "dynamic", url: bebas },
+    ],
     rendering: {
       renderRes: "1080p",
       canvasColor: COLOR.BLACK,

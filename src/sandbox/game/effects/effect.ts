@@ -1,11 +1,15 @@
 import type Ball from "../components/ball";
 
-export type StatName = "speed" | "power" | "bph";
+export type ClassStat = "speed" | "power" | "bph";
+export type StatName = ClassStat | "moraleMin" | "moraleMax" | "moraleRate";
 
 export const STAT_NAMES: Record<StatName, string> = {
   speed: "Speed",
   power: "Damage",
   bph: "Beer per hour",
+  moraleMin: "Morale min",
+  moraleMax: "Morale max",
+  moraleRate: "Morale rate",
 };
 
 export const STATS = Object.keys(STAT_NAMES) as StatName[];

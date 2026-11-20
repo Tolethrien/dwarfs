@@ -1,4 +1,5 @@
 import { DrawGui as Draw } from "@aurora/urp/draw/draw";
+import type { DrawShadow } from "@aurora/urp/draw/drawTypes";
 import { COLOR } from "@axiom/color";
 import {
   Anchor,
@@ -162,10 +163,10 @@ export default class UINode {
       width: box.x + box.w - position.x,
       height: box.y + box.h - position.y,
     };
-    const { rounded, backgroundImage, backgroundImageCrop, shadow, backdrop } =
-      style;
+    const { rounded, backgroundImage, backgroundImageCrop, backdrop } = style;
     const color = this.fade(style.backgroundColor);
     const outline = this.resolveOutline(style.outline);
+    const shadow = this.resolveShadow(style.shadow);
     const material = style.backgroundMaterial?.use;
     const params = style.backgroundMaterial?.params;
     if (backgroundImage) {
@@ -204,10 +205,16 @@ export default class UINode {
     return {
       color: this.fade(style.textColor),
       outline: this.resolveOutline(style.textOutline),
-      shadow: style.textShadow,
+      shadow: this.resolveShadow(style.textShadow),
       material: style.textMaterial?.use,
       params: style.textMaterial?.params,
     };
+  }
+
+  private resolveShadow(shadow: DrawShadow | DrawShadow[] | undefined) {
+    if (!shadow || this.drawAlpha >= 1) return shadow;
+    if (!Array.isArray(shadow)) return { ...shadow, color: this.fade(shadow.color) };
+    return shadow.map((one) => ({ ...one, color: this.fade(one.color) }));
   }
 
   private resolveOutline(outline: StyleOutline | undefined) {
@@ -360,6 +367,7 @@ export default class UINode {
 
   public play(tween: Tween) {
     tween.elapsed = 0;
+    tween.finished = false;
     this.tweens.push(tween);
     Navi.registerAnimated(this);
     return tween;
@@ -369,11 +377,13 @@ export default class UINode {
     const i = this.tweens.indexOf(tween);
     if (i === -1) return;
     this.tweens.splice(i, 1);
+    tween.finished = true;
     if (this.tweens.length === 0) this.resetMotion();
   }
 
   public stopAllTweens() {
     if (this.tweens.length === 0) return;
+    for (const tween of this.tweens) tween.finished = true;
     this.tweens.length = 0;
     this.resetMotion();
   }
@@ -406,6 +416,7 @@ export default class UINode {
 
       if (!tween.loop && live >= tween.ms) {
         this.tweens.splice(i, 1);
+        tween.finished = true;
         if (tween.onDone) done.push(tween.onDone);
       }
     }

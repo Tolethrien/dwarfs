@@ -8,6 +8,7 @@ import { button, UIButton } from "./button";
 import { placeBeside } from "./place";
 import { TextContent } from "./text";
 import { tooltip } from "./tooltip";
+import { panelStyle } from "./panel";
 
 export interface MenuItem {
   label: string;
@@ -31,9 +32,7 @@ class UIMenu extends UINode {
       size: { width: auto(), height: auto() },
       minSize: { width: px(minWidth / Navi.getScale) },
       style: {
-        backgroundColor: UI_THEME.colors.panel,
-        outline: { width: UI_THEME.menu.outline, color: UI_THEME.colors.frame },
-        rounded: UI_THEME.radius.button,
+        ...panelStyle("small"),
         zIndex: UI_THEME.menu.zIndex,
         padding: UI_THEME.menu.padding,
         layout: "stack",

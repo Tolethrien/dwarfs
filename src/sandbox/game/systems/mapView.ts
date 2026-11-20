@@ -11,9 +11,6 @@ import MistField from "../gpu/mistField";
 import Mist from "../gpu/mist";
 import StructurePlan from "../gpu/structurePlan";
 import { RENDER_SHEET, SORT_ORDER } from "../content/render";
-import { assert } from "@axiom/utils";
-import { BLOCKS, BlocksID, GLOW_STYLES } from "../content/blocks";
-import { gamePanel, gameSwitch } from "../debugCommands";
 import GameEvents from "./gameEvents";
 import InputManager from "@engine/inputManager";
 import { Camera } from "@engine/camera/camera";
@@ -28,8 +25,19 @@ const BLUEPRINT = {
   everywhere: 1e6,
 };
 
+// the screen dims and blurs everywhere but around a point; vignette and blur share one shape,
+// intensity is the vignette's reach: a bigger number is a smaller clear window
+const SPOTLIGHT = {
+  seconds: { in: 0.4, out: 0.3 },
+  home: { center: { x: 0.5, y: 0.5 }, roundness: 1 },
+  vignette: { intensity: 1.4, smoothness: 0.5 },
+  blur: { sigma: 6, reach: 1.4, smoothness: 0.5 },
+  breath: { seconds: 2.2, amount: 0.12 },
+};
+
 export default class MapView extends PragmaSystem {
   private readonly changed = new Set<number>();
+  private readonly spot = { target: undefined as Box | undefined, progress: 0, center: { x: 0.5, y: 0.5 } };
   private readonly layers = {
     blocks: TileMap.material.pack({ layer: TILE_MAP_LAYER.blocks }),
     backgrounds: TileMap.material.pack({ layer: TILE_MAP_LAYER.backgrounds }),
@@ -38,8 +46,8 @@ export default class MapView extends PragmaSystem {
   };
   private readonly blueprint = { progress: 0, opening: false, center: { x: 0, y: 0 }, reach: 0 };
   declare private mist: MistField;
-  private mistShown = true;
-  private aoShown = true;
+  public mistShown = true;
+  private ao = true;
 
   constructor(
     internal: InternalPSProps,
@@ -56,98 +64,15 @@ export default class MapView extends PragmaSystem {
     events.terrain.mined.connect((tile) => this.markOpened(tile.gx, tile.gy));
     events.terrain.damaged.connect((tile) => this.markChanged(tile.gx, tile.gy));
     events.terrain.changed.connect((tile) => this.markOpened(tile.gx, tile.gy));
-    gameSwitch(
-      "mist",
-      "tunnel mist",
-      () => this.mistShown,
-      (on) => (this.mistShown = on),
-    );
-    gameSwitch(
-      "ao",
-      "background AO",
-      () => this.aoShown,
-      (on) => {
-        this.aoShown = on;
-        GameGlobals.setAo(on);
-      },
-    );
-    this.glowPanel();
   }
 
-  private glowPanel() {
-    const look = MAP_LOOK.glow;
-    const glowing = (Object.keys(BLOCKS).map(Number) as BlocksID[]).filter((id) => BLOCKS[id].glow);
-    const slider = (min: number, max: number, step: number) => ({ kind: "slider" as const, min, max, step });
-    const glowOf = (id: BlocksID) => {
-      const glow = BLOCKS[id].glow;
-      assert(glow !== undefined, `${BlocksID[id]} lost its glow`);
-      return glow;
-    };
-    gamePanel("glow", {
-      title: "Ore glow",
-      sections: [
-        {
-          title: "All ores",
-          call: "MAP_LOOK.glow",
-          arg: "object",
-          fields: [
-            { key: "sparkles", control: slider(0, 0.5, 0.01) },
-            { key: "sparkleSpeed", label: "sparkle speed", control: slider(0, 5, 0.05) },
-            { key: "breathe", control: slider(0, 0.5, 0.01) },
-            { key: "breatheSpeed", label: "breathe speed", control: slider(0, 2, 0.01) },
-          ],
-          get: () => ({
-            sparkles: look.sparkle.density,
-            sparkleSpeed: look.sparkle.speed,
-            breathe: look.breathe.amount,
-            breatheSpeed: look.breathe.speed,
-          }),
-          set: (values) => {
-            if (typeof values.sparkles === "number") look.sparkle.density = values.sparkles;
-            if (typeof values.sparkleSpeed === "number") look.sparkle.speed = values.sparkleSpeed;
-            if (typeof values.breathe === "number") look.breathe.amount = values.breathe;
-            if (typeof values.breatheSpeed === "number") look.breathe.speed = values.breatheSpeed;
-            GameGlobals.refreshGlowLook();
-          },
-        },
-        ...glowing.map((id) => ({
-          title: BlocksID[id],
-          call: `BLOCKS.${BlocksID[id]}.glow`,
-          arg: "object" as const,
-          fields: [
-            { key: "color", control: { kind: "color" as const } },
-            { key: "blend", control: slider(0, 1, 0.01) },
-            { key: "shine", control: slider(0, 6, 0.05) },
-            { key: "style", control: { kind: "select" as const, options: GLOW_STYLES } },
-            { key: "sparkles", control: slider(0, 0.5, 0.005) },
-            { key: "sparkleSpeed", label: "sparkle speed", control: slider(0, 8, 0.05) },
-          ],
-          get: () => {
-            const glow = glowOf(id);
-            const sparkle = glow.sparkle ?? look.sparkle;
-            return {
-              color: [...glow.color, 255],
-              blend: glow.blend,
-              shine: glow.shine,
-              style: glow.style ?? "glow",
-              sparkles: sparkle.density,
-              sparkleSpeed: sparkle.speed,
-            };
-          },
-          set: (values: Record<string, unknown>) => {
-            const glow = glowOf(id);
-            if (Array.isArray(values.color)) glow.color = [values.color[0], values.color[1], values.color[2]];
-            if (typeof values.blend === "number") glow.blend = values.blend;
-            if (typeof values.shine === "number") glow.shine = values.shine;
-            const style = GLOW_STYLES.find((name) => name === values.style);
-            if (style) glow.style = style;
-            if (typeof values.sparkles === "number") glow.sparkle = { ...(glow.sparkle ?? look.sparkle), density: values.sparkles };
-            if (typeof values.sparkleSpeed === "number") glow.sparkle = { ...(glow.sparkle ?? look.sparkle), speed: values.sparkleSpeed };
-            GameGlobals.refreshMaterials();
-          },
-        })),
-      ],
-    });
+  public get aoShown() {
+    return this.ao;
+  }
+
+  public showAo(on: boolean) {
+    this.ao = on;
+    GameGlobals.setAo(on);
   }
 
   start(): void {
@@ -207,7 +132,61 @@ export default class MapView extends PragmaSystem {
     StructurePlan.pack(radius, center);
   }
 
+  // a world box to keep clear, or nothing to let the screen back
+  public spotlight(target: Box | undefined) {
+    this.spot.target = target;
+  }
+
+  // on real time, like the blueprint: the bullet time doesn't slow it
+  private shineSpotlight() {
+    const spot = this.spot;
+    const shown = spot.target !== undefined && Camera.isInView(spot.target);
+    if (!shown && spot.progress === 0) return;
+    if (spot.target) this.aimSpotlight(spot.target);
+    const seconds = shown ? SPOTLIGHT.seconds.in : SPOTLIGHT.seconds.out;
+    const step = Time.getRawDeltaTime() / seconds;
+    spot.progress = AxiomMath.clamp(spot.progress + (shown ? step : -step), 0, 1);
+    const home = SPOTLIGHT.home;
+    if (spot.progress === 0) {
+      Post.setVignette({ ...MAP_LOOK.post.vignette, roundness: home.roundness, center: home.center });
+      Post.setBlur({ sigma: 0 });
+      return;
+    }
+    const eased = Easing.easeOutCubic(spot.progress);
+    const breath = (Math.sin((Time.getTimeInSeconds() / SPOTLIGHT.breath.seconds) * Math.PI * 2) + 1) / 2;
+    const swell = 1 + (breath - 0.5) * SPOTLIGHT.breath.amount;
+    const vignette = SPOTLIGHT.vignette;
+    const base = MAP_LOOK.post.vignette;
+    Post.setVignette({
+      intensity: AxiomMath.lerp(base.intensity, vignette.intensity * swell, eased),
+      smoothness: AxiomMath.lerp(base.smoothness, vignette.smoothness, eased),
+      roundness: home.roundness,
+      center: {
+        x: AxiomMath.lerp(home.center.x, spot.center.x, eased),
+        y: AxiomMath.lerp(home.center.y, spot.center.y, eased),
+      },
+    });
+    const blur = SPOTLIGHT.blur;
+    Post.setBlur({
+      sigma: blur.sigma,
+      amount: eased,
+      mask: "vignette",
+      reach: blur.reach * swell,
+      smoothness: blur.smoothness,
+      roundness: home.roundness,
+      center: spot.center,
+    });
+  }
+
+  // the box's middle as a 0..1 point of the screen
+  private aimSpotlight(box: Box) {
+    const view = Camera.getViewBounds;
+    this.spot.center.x = (box.x + box.w / 2 - view.min.x) / (view.max.x - view.min.x);
+    this.spot.center.y = (box.y + box.h / 2 - view.min.y) / (view.max.y - view.min.y);
+  }
+
   render(): void {
+    this.shineSpotlight();
     for (const index of this.changed) GameGlobals.write("tiles", index, this.word(index));
     this.changed.clear();
     const mistRows = this.mist.settle(Time.getDeltaTime());

@@ -6,6 +6,7 @@ import { UI_THEME } from "../../content/ui";
 import { TextContent, textSource } from "./text";
 import { placeBeside } from "./place";
 import { paragraph } from "./paragraph";
+import { panelStyle } from "./panel";
 
 const TIPS = new WeakMap<UINode, () => string>();
 
@@ -22,14 +23,8 @@ class UITooltip extends UINode {
       size: { width: auto(), height: auto() },
       input: "none",
       style: {
-        backgroundColor: UI_THEME.colors.panel,
-        outline: {
-          width: UI_THEME.tooltip.outline,
-          color: UI_THEME.colors.frame,
-        },
-        rounded: UI_THEME.radius.button,
+        ...panelStyle("small"),
         zIndex: UI_THEME.tooltip.zIndex,
-        padding: UI_THEME.tooltip.padding,
       },
     });
     paragraph(this, () => this.message, {

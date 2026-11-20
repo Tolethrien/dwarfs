@@ -1,29 +1,24 @@
 import PragmaSystem from "@pragma/system";
 import AxiomMath from "@axiom/math";
 import { assert } from "@axiom/utils";
-import { debug } from "@debug";
-import { gameCommands } from "../debugCommands";
 import DwarfCardUI from "../ui/dwarfCard";
 import Dwarf from "../actors/dwarf";
-import Drinker from "../components/drinker";
-import Effects from "../components/effects";
-import Equipment from "../components/equipment";
 import Outfit from "../components/outfit";
-import Shift from "../components/shift";
 import Traits from "../components/traits";
 import type Station from "../actors/station";
-import { ITEMS, type GearSlot, type ItemID } from "../content/gear";
-import { SPECIAL_BEERS, type SpecialBeerID } from "../content/beers";
 import { DwarfRank, getRandomDwarfLook, getRandomDwarfName } from "../content/dwarfs";
-import { ACTIVE_MAIN_TRAITS, MAIN_TRAITS, TRAITS, TraitsID, type MainTraitsID } from "../content/traits";
+import { ACTIVE_MAIN_TRAITS, TraitsID, type MainTraitsID } from "../content/traits";
 import Buffs from "./buffs";
 import Calendar from "./calendar";
 import Workforce from "./workforce";
-import SpawnTemplate from "./spawnTemplate";
+import GameEvents from "./gameEvents";
 
 const ROSTER = { startWorkers: 0 };
 
 export type DwarfState = "tavern" | "travelling" | "waiting" | "working" | "returning";
+
+// mine: everyone out of the tavern, on the way there and back too
+export type DwarfGroup = "all" | "mine" | DwarfState[];
 
 interface Whereabouts {
   state: DwarfState;
@@ -37,7 +32,8 @@ export default class Roster extends PragmaSystem {
   declare private buffs: Buffs;
   declare private workforce: Workforce;
   declare private calendar: Calendar;
-  public readonly template = new SpawnTemplate();
+  declare private events: GameEvents;
+  public createInstead: (() => Dwarf) | undefined;
 
   awake(): void {
     this.buffs = this.scene.getSystem(Buffs);
@@ -50,28 +46,13 @@ export default class Roster extends PragmaSystem {
       },
       this.workforce,
     );
-    this.template.spawn = (count) => {
-      for (let index = 0; index < count; index++) this.enlist(this.fromTemplate());
-    };
-    const roster = this;
-    gameCommands("dwarf", {
-      get list() {
-        return roster.dwarfs;
-      },
-      card: (index: number = 0) => this.card.open(this.at(index)),
-      spawn: (count: number = 1, foreman: boolean = false) => this.spawnRandom(count, foreman),
-      pourBeer: (beer: SpecialBeerID, index: number = 0) => this.drinker(index).pour(beer),
-      emptyBeer: (index: number = 0) => this.drinker(index).empty(),
-      equip: (index: number, item: ItemID) => this.equipment(index).equip(item),
-      unequip: (index: number, slot: GearSlot) => this.equipment(index).unequip(slot),
-      get states() {
-        return roster.counts();
-      },
+    this.events = this.scene.getSystem(GameEvents);
+    this.events.calendar.hourStarted.connect(() => {
+      for (const dwarf of this.dwarfs) this.traitsOf(dwarf).hourPassed();
     });
   }
 
   start(): void {
-    debug.game.connect("dwarfs", () => ({ counts: this.counts(), rows: this.dwarfs.map((dwarf) => this.row(dwarf)) }));
     this.spawnRandom(ROSTER.startWorkers, false);
   }
 
@@ -79,24 +60,24 @@ export default class Roster extends PragmaSystem {
     this.card.update();
   }
 
-  private at(index: number) {
-    const dwarf = this.dwarfs[index];
-    assert(dwarf !== undefined, `No dwarf number ${index}, the roster has ${this.dwarfs.length}`);
-    return dwarf;
+  public dwarfsIn(where: DwarfGroup) {
+    if (where === "all") return this.dwarfs;
+    if (where === "mine") return this.dwarfs.filter((dwarf) => this.stateOf(dwarf) !== "tavern");
+    return this.dwarfs.filter((dwarf) => where.includes(this.stateOf(dwarf)));
   }
 
-  private drinker(index: number) {
-    const dwarf = this.at(index);
-    const drinker = dwarf.getComponent(Drinker);
-    assert(drinker !== undefined, `Dwarf ${dwarf.name} has no Drinker`);
-    return drinker;
+  public addTraitAll(trait: TraitsID, where: DwarfGroup = "all", hours?: number) {
+    for (const dwarf of this.dwarfsIn(where)) this.traitsOf(dwarf).add(trait, hours);
   }
 
-  private equipment(index: number) {
-    const dwarf = this.at(index);
-    const equipment = dwarf.getComponent(Equipment);
-    assert(equipment !== undefined, `Dwarf ${dwarf.name} is no foreman, only foremen wear items`);
-    return equipment;
+  public removeTraitAll(trait: TraitsID) {
+    for (const dwarf of this.dwarfs) this.traitsOf(dwarf).remove(trait);
+  }
+
+  private traitsOf(dwarf: Dwarf) {
+    const traits = dwarf.getComponent(Traits);
+    assert(traits !== undefined, `Dwarf ${dwarf.name} has no Traits`);
+    return traits;
   }
 
   private neighbour(dwarf: Dwarf, step: number) {
@@ -112,16 +93,10 @@ export default class Roster extends PragmaSystem {
   }
 
   public create(mainTrait: MainTraitsID, rank: DwarfRank) {
-    return this.template.apply ? this.fromTemplate() : this.make(mainTrait, rank);
+    return this.createInstead?.() ?? this.make(mainTrait, rank);
   }
 
-  public fromTemplate() {
-    const dwarf = this.make(this.template.mainTrait, this.template.rank);
-    this.template.dress(dwarf);
-    return dwarf;
-  }
-
-  private make(mainTrait: MainTraitsID, rank: DwarfRank) {
+  public make(mainTrait: MainTraitsID, rank: DwarfRank) {
     return new Dwarf({
       mainTrait: mainTrait,
       rank: rank,
@@ -129,6 +104,7 @@ export default class Roster extends PragmaSystem {
       name: getRandomDwarfName(),
       buffs: this.buffs,
       workforce: this.workforce,
+      events: this.events,
     });
   }
 
@@ -230,34 +206,10 @@ export default class Roster extends PragmaSystem {
     return whereabouts;
   }
 
-  private counts() {
+  public counts() {
     const counts: Record<DwarfState, number> = { tavern: 0, travelling: 0, waiting: 0, working: 0, returning: 0 };
     for (const whereabouts of this.whereabouts.values()) counts[whereabouts.state]++;
     return counts;
-  }
-
-  private row(dwarf: Dwarf) {
-    const traits = dwarf.getComponent(Traits);
-    const effects = dwarf.getComponent(Effects);
-    const drinker = dwarf.getComponent(Drinker);
-    const shift = dwarf.getComponent(Shift);
-    assert(traits !== undefined && effects !== undefined && drinker !== undefined && shift !== undefined, `Dwarf ${dwarf.name} lacks a component the debug report reads`);
-    const station = this.stationOf(dwarf);
-    const equipment = dwarf.getComponent(Equipment);
-    return {
-      name: dwarf.name,
-      rank: traits.foreman ? "foreman" : "worker",
-      class: MAIN_TRAITS[traits.main].name,
-      state: this.stateOf(dwarf),
-      station: station ? station.name : null,
-      shiftHoursLeft: shift.endsAt === undefined ? null : shift.endsAt - this.calendar.time,
-      beer: drinker.specialBeer === undefined ? null : SPECIAL_BEERS[drinker.specialBeer].name,
-      speed: Math.round(effects.speed),
-      power: Math.round(effects.power * 10) / 10,
-      bph: Math.round(effects.bph * 10) / 10,
-      traits: [...traits.list].map((trait) => TRAITS[trait].name),
-      gear: equipment ? [...equipment.list.values()].map((item) => ITEMS[item].name) : [],
-    };
   }
 
   public showMorale() {
@@ -268,7 +220,7 @@ export default class Roster extends PragmaSystem {
     this.card.open(dwarf, back);
   }
 
-  private spawnRandom(count: number, foreman: boolean) {
+  public spawnRandom(count: number, foreman: boolean) {
     const rank = foreman ? DwarfRank.foreman : DwarfRank.worker;
     for (let index = 0; index < count; index++) this.enlist(this.createRandom(rank));
   }

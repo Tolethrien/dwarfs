@@ -2,8 +2,6 @@ import PragmaSystem from "@pragma/system";
 import Time from "@engine/time";
 import type { Signal } from "@axiom/events";
 import { assert } from "@axiom/utils";
-import { debug } from "@debug";
-import { gameCommands } from "../debugCommands";
 import ClockHud from "../ui/clock";
 import GameEvents from "./gameEvents";
 
@@ -110,14 +108,6 @@ export default class Calendar extends PragmaSystem {
   awake(): void {
     this.events = this.scene.getSystem(GameEvents);
     this.clock = new ClockHud(this);
-    debug.game.connect("date", () => this.dateText);
-    const calendar = this;
-    gameCommands("time", {
-      get date() {
-        return calendar.dateText;
-      },
-      skip: (hours: number) => this.skip(hours),
-    });
   }
 
   update(): void {
@@ -209,7 +199,7 @@ export default class Calendar extends PragmaSystem {
     due.add(alarm);
   }
 
-  private skip(hours: number) {
+  public skip(hours: number) {
     this.hours += hours;
     this.advance();
   }

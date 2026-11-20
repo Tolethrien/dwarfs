@@ -62,7 +62,7 @@ const TAVERN_UI = {
 };
 
 export default class TavernUI {
-  private readonly window = new UIWindow({ kind: "modal", width: TAVERN_UI.width, title: "Tavern", closeOnMove: closeOnCameraMove() });
+  private readonly window = new UIWindow({ kind: "docked", width: TAVERN_UI.width, title: "Tavern", closeOnMove: closeOnCameraMove() });
   private tab: TavernTab = "applications";
   declare private tabBar: UINode;
   declare private body: UINode;
@@ -107,9 +107,9 @@ export default class TavernUI {
   }
 
   private showTab() {
-    clear(this.tabBar);
+    Navi.clear(this.tabBar);
     tabs(this.tabBar, TABS, this.tab, (tab) => this.pick(tab));
-    clear(this.body);
+    Navi.clear(this.body);
     if (this.tab === "applications") this.buildApplications(this.body);
     else this.buildCrew(this.body);
   }
@@ -237,13 +237,9 @@ export default class TavernUI {
     const list = this.list;
     assert(list !== undefined, "The tavern's list is filled before it's built");
     this.shown = [...this.listed()];
-    clear(list.body);
+    Navi.clear(list.body);
     return list;
   }
-}
-
-function clear(node: UINode) {
-  for (const child of [...node.children]) Navi.remove(child, node);
 }
 
 function hourText(hour: number) {

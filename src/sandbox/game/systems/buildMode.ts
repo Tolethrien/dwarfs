@@ -32,7 +32,6 @@ import Buildings, { BUILDING_PROBLEMS } from "./buildings";
 import GameEvents from "./gameEvents";
 import GameMode from "./gameMode";
 import MapView from "./mapView";
-import Resources from "./resources";
 import Stations, { REMOVE_PROBLEMS, STATION_PROBLEMS } from "./stations";
 import type Station from "../actors/station";
 import Rails, { JOINT_PROBLEMS, RAIL_PROBLEMS } from "./rails";
@@ -97,7 +96,6 @@ export default class BuildMode extends PragmaSystem {
   declare private menu: BuildMenu;
   declare private mapView: MapView;
   declare private terrain: Terrain;
-  declare private resources: Resources;
   declare private buildings: Buildings;
   declare private stations: Stations;
   declare private rails: Rails;
@@ -113,12 +111,11 @@ export default class BuildMode extends PragmaSystem {
   awake(): void {
     this.mapView = this.scene.getSystem(MapView);
     this.terrain = this.scene.getSystem(Terrain);
-    this.resources = this.scene.getSystem(Resources);
     this.buildings = this.scene.getSystem(Buildings);
     this.stations = this.scene.getSystem(Stations);
     this.rails = this.scene.getSystem(Rails);
     this.gameMode = this.scene.getSystem(GameMode);
-    this.menu = new BuildMenu(this, this.resources);
+    this.menu = new BuildMenu(this, (cost) => this.buildings.store.missing(cost));
     this.scene.getSystem(GameEvents).resources.changed.connect(() => {
       if (this.on) this.menu.showSelected();
     });
@@ -173,7 +170,7 @@ export default class BuildMode extends PragmaSystem {
     if (!this.drag || !segment) return;
     const refusal = this.drag.refusal;
     const cost = this.railCost(segment);
-    const short = refusal !== undefined || this.resources.missing(cost).length > 0;
+    const short = refusal !== undefined || this.buildings.store.missing(cost).length > 0;
     const tile = this.terrain.tile;
     const end = railEnd(segment);
     drawRail(segment.from, end, tile, refusal ? BUILD.outline.refused.border : BUILD.outline.free.border);
@@ -252,7 +249,7 @@ export default class BuildMode extends PragmaSystem {
         base: place.base,
         reserve: place.reserve,
         refusal: () => {
-          const refusal = this.buildings.problem(building, place);
+          const refusal = this.buildings.problem(building, place, this.stations.footprints);
           return refusal && { reason: BUILDING_PROBLEMS[refusal.problem], tiles: refusal.tiles };
         },
         build: () => this.buildings.build(building, place),
@@ -376,7 +373,7 @@ export default class BuildMode extends PragmaSystem {
   }
 
   private saysMissing(cost: ResourceCost) {
-    const missing = this.resources.missing(cost);
+    const missing = this.buildings.store.missing(cost);
     if (missing.length === 0) return false;
     const list = missing.map(([id, amount]) => `${formatAmount(id, amount)} ${RESOURCES[id].name}`);
     popAt(InputManager.getMousePos(), `Missing: ${list.join(", ")}`, UI_THEME.colors.lacking);
@@ -414,7 +411,7 @@ export default class BuildMode extends PragmaSystem {
     }
     const cost = this.railCost(segment);
     if (this.saysMissing(cost)) return;
-    this.resources.pay(cost);
+    this.buildings.store.pay(cost);
     this.rails.build(segment);
   }
 
@@ -432,7 +429,7 @@ export default class BuildMode extends PragmaSystem {
       popAt(InputManager.getMousePos(), refusal.reason, UI_THEME.colors.lacking);
       return;
     }
-    if (!this.resources.pay(this.costOf(element))) {
+    if (!this.buildings.store.pay(this.costOf(element))) {
       popAt(InputManager.getMousePos(), "Not enough resources any more", UI_THEME.colors.lacking);
       return;
     }

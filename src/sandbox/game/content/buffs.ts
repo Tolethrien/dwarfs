@@ -6,7 +6,7 @@ export interface BuffData {
   name: string;
   description: string;
   icon: Crop;
-  seconds: number;
+  hours: number;
   effects: Effect[];
 }
 

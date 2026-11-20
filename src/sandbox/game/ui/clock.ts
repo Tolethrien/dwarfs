@@ -7,13 +7,13 @@ import { UI_THEME } from "../content/ui";
 import { hudLayer } from "./hud";
 import { text } from "./elements/text";
 import { row } from "./elements/row";
-import { button, UIButton } from "./elements/button";
+import { button, runClicked } from "./elements/button";
+import { panelStyle } from "./elements/panel";
 
 const SPEEDS = [1, 2, 5, 25];
 
 export default class ClockHud {
   private readonly panel: UINode;
-  private readonly speeds: UINode;
   private speed = 1;
 
   constructor(calendar: Calendar) {
@@ -24,10 +24,7 @@ export default class ClockHud {
         style: {
           anchorX: "center",
           anchorY: "start",
-          backgroundColor: UI_THEME.colors.panel,
-          outline: { width: UI_THEME.outline.window, color: UI_THEME.colors.frame },
-          rounded: UI_THEME.radius.window,
-          padding: UI_THEME.spacing.buttonPadding,
+          ...panelStyle("hud"),
           layout: "stack",
           direction: "row",
           alignCross: "center",
@@ -36,34 +33,35 @@ export default class ClockHud {
       }),
       hudLayer(),
     );
-    text(this.panel, () => calendar.dateText, { size: UI_THEME.text.button });
-    this.speeds = row(this.panel, { fit: true });
+    const date = Navi.append(
+      new UINode({
+        size: { width: auto(), height: auto() },
+        style: {
+          backgroundColor: UI_THEME.colors.accent,
+          padding: { top: 4, right: 12, bottom: 4, left: 12 },
+          layout: "stack",
+          alignCross: "center",
+        },
+      }),
+      this.panel,
+    );
+    text(date, () => calendar.dateText, { size: UI_THEME.text.header, font: UI_THEME.font.display });
+    const speeds = row(this.panel, { fit: true });
+    button(speeds, "II", () => Time.setPaused(!Time.getPaused()), { selected: () => Time.getPaused() });
+    for (const option of SPEEDS)
+      button(speeds, `x${option}`, () => this.select(option), {
+        selected: () => !Time.getPaused() && option === this.speed,
+      });
     this.select(1);
   }
 
   public update() {
-    const clicked = Navi.getClicked;
-    if (!(clicked instanceof UIButton) || clicked.isDisabled) return;
-    if (clicked.isDescendantOf(this.panel)) clicked.run();
+    runClicked(this.panel);
   }
 
   private select(speed: number) {
     Time.setPaused(false);
     Time.setTimeSpeed(speed);
     this.speed = speed;
-    this.showButtons();
-  }
-
-  private togglePause() {
-    Time.setPaused(!Time.getPaused());
-    this.showButtons();
-  }
-
-  private showButtons() {
-    const paused = Time.getPaused();
-    for (const child of [...this.speeds.children]) Navi.remove(child, this.speeds);
-    button(this.speeds, "II", () => this.togglePause(), { selected: paused });
-    for (const option of SPEEDS)
-      button(this.speeds, `x${option}`, () => this.select(option), { selected: !paused && option === this.speed });
   }
 }

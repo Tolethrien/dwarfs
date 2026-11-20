@@ -21,12 +21,13 @@ export function header(parent: UINode, title: TextContent) {
   text(section, title, {
     color: UI_THEME.colors.title,
     size: UI_THEME.text.header,
+    font: UI_THEME.font.display,
   });
   Navi.append(
     new UINode({
       size: { width: pw(100), height: px(UI_THEME.header.line) },
       input: "none",
-      style: { backgroundColor: UI_THEME.colors.frame },
+      style: { backgroundColor: UI_THEME.colors.accent },
     }),
     section,
   );

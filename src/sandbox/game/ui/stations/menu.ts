@@ -212,7 +212,7 @@ export default class StationMenuUI {
   }
 
   private showClasses() {
-    clear(this.classes);
+    Navi.clear(this.classes);
     for (const main of CLASSES)
       button(
         this.classes,
@@ -231,7 +231,7 @@ export default class StationMenuUI {
     const shown = JSON.stringify([wage, lacking]);
     if (shown === this.shownWage) return;
     this.shownWage = shown;
-    clear(this.wage);
+    Navi.clear(this.wage);
     if (wage) cost(this.wage, costEntries(wage, lacking));
     else text(this.wage, "Nobody free", { color: UI_THEME.colors.muted });
   }
@@ -247,7 +247,7 @@ export default class StationMenuUI {
   private fillOrdered(station: Station) {
     const ordered = this.actions.assigned(station);
     this.shownOrdered = ordered;
-    clear(this.list.body);
+    Navi.clear(this.list.body);
     if (ordered.length === 0) {
       this.list.row(["", "Nobody ordered"]);
       return;
@@ -278,8 +278,4 @@ export default class StationMenuUI {
     const hour = String((shift.endsAt ?? 0) % CALENDAR.hoursPerDay).padStart(2, "0");
     return `working till ${hour}:00`;
   }
-}
-
-function clear(node: UINode) {
-  for (const child of [...node.children]) Navi.remove(child, node);
 }

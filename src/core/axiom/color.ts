@@ -245,6 +245,11 @@ export const PALETTE = {
     RUST: rgba(204, 92, 64),
     BONE: rgba(232, 220, 196),
     ASH: rgba(160, 146, 124),
+    CONCRETE: rgba(58, 56, 52),
+    SLAB: rgba(90, 87, 80),
+    BANNER: rgba(200, 40, 30),
+    BANNER_DARK: rgba(110, 20, 15),
+    ALARM: rgba(255, 106, 88),
   },
   // cold metals, the void and glows; text: STARLIGHT, muted: TITANIUM
   SPACE: {

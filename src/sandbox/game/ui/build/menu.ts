@@ -5,15 +5,16 @@ import { auto, px } from "@navi/units";
 import { UI_THEME } from "../../content/ui";
 import { BUILD_CATEGORIES, BUILD_ELEMENTS, categoriesOf, elementsOf, type BuildLayer } from "../../content/structures";
 import type BuildMode from "../../systems/buildMode";
-import type Resources from "../../systems/resources";
+import type { ResourceCost, ResourcesID } from "../../content/resources";
 import { buttonProps, UIButton } from "../elements/button";
 import { cost, costEntries } from "../elements/cost";
 import { gridCells } from "../elements/grid";
 import { row } from "../elements/row";
-import { button } from "../elements/button";
+import { button, runClicked } from "../elements/button";
 import { slot } from "../elements/slot";
 import { tabs } from "../elements/tabs";
 import { text } from "../elements/text";
+import { panelStyle } from "../elements/panel";
 
 const LAYER_TITLES: Record<BuildLayer, string> = {
   main: "Main",
@@ -34,7 +35,7 @@ export default class BuildMenu {
 
   constructor(
     private readonly buildMode: BuildMode,
-    private readonly resources: Resources,
+    private readonly missing: (cost: ResourceCost) => [ResourcesID, number][],
   ) {
     this.toggleButton = this.createToggleButton();
     Navi.append(this.toggleButton);
@@ -60,7 +61,7 @@ export default class BuildMenu {
 
   private buildSelected() {
     this.selectionDirty = false;
-    clear(this.selection);
+    Navi.clear(this.selection);
     if (this.buildMode.removing) {
       text(this.selection, "Removing");
       text(this.selection, "Click a station, drag over rails and joints", { color: UI_THEME.colors.muted });
@@ -74,14 +75,12 @@ export default class BuildMenu {
     const data = BUILD_ELEMENTS[element];
     text(this.selection, data.title);
     const price = this.buildMode.costOf(element);
-    cost(this.selection, costEntries(price, this.resources.missing(price)));
+    cost(this.selection, costEntries(price, this.missing(price)));
   }
 
   public update() {
     if (this.selectionDirty) this.buildSelected();
-    const clicked = Navi.getClicked;
-    if (!(clicked instanceof UIButton) || clicked.isDisabled) return;
-    if (clicked === this.toggleButton || clicked.isDescendantOf(this.panel)) clicked.run();
+    runClicked(this.toggleButton, this.panel);
   }
 
   public show() {
@@ -124,7 +123,7 @@ export default class BuildMenu {
 
   // the tabs mark the picked one when built, so they are built again on a pick
   private showLayers() {
-    clear(this.layers);
+    Navi.clear(this.layers);
     const items = (Object.keys(LAYER_TITLES) as BuildLayer[]).map((layer) => ({
       id: layer,
       title: LAYER_TITLES[layer],
@@ -133,7 +132,7 @@ export default class BuildMenu {
   }
 
   private showCategories() {
-    clear(this.categories);
+    Navi.clear(this.categories);
     for (const category of categoriesOf(this.buildMode.layer)) {
       const data = BUILD_CATEGORIES[category];
       slot(this.categories, {
@@ -149,7 +148,7 @@ export default class BuildMenu {
   }
 
   private showElements() {
-    clear(this.elements);
+    Navi.clear(this.elements);
     const category = this.buildMode.category;
     if (category === undefined) {
       text(this.elements, "Nothing here yet", { color: UI_THEME.colors.muted });
@@ -196,7 +195,6 @@ export default class BuildMenu {
 
   private createPanel() {
     const look = UI_THEME.buildMenu;
-    const padding = UI_THEME.spacing.windowPadding;
     return new UINode({
       position: {
         x: px(UI_THEME.spacing.screenMargin),
@@ -204,13 +202,10 @@ export default class BuildMenu {
       },
       size: { width: auto(), height: auto() },
       style: {
-        backgroundColor: UI_THEME.colors.panel,
-        outline: { width: UI_THEME.outline.window, color: UI_THEME.colors.frame },
-        rounded: UI_THEME.radius.window,
+        ...panelStyle("window"),
         layout: "stack",
         direction: "col",
         gap: UI_THEME.spacing.windowGap,
-        padding: { top: padding, right: padding, bottom: padding, left: padding },
       },
     });
   }
@@ -236,8 +231,4 @@ export default class BuildMenu {
       style: { backgroundColor: UI_THEME.colors.transparent },
     });
   }
-}
-
-function clear(node: UINode) {
-  for (const child of [...node.children]) Navi.remove(child, node);
 }

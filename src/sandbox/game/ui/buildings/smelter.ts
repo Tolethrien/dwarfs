@@ -33,7 +33,7 @@ const SMELTER_UI = {
 };
 
 export default class SmelterUI {
-  private readonly window = new UIWindow({ kind: "modal", width: SMELTER_UI.width, title: "Smelter", closeOnMove: closeOnCameraMove() });
+  private readonly window = new UIWindow({ kind: "docked", width: SMELTER_UI.width, title: "Smelter", closeOnMove: closeOnCameraMove() });
   private readonly picked = new Map<RecipeID, number>();
   // the cost is built again on each step, its lacking marks are read once
   private readonly costCells = new Map<RecipeID, UINode>();
@@ -89,7 +89,7 @@ export default class SmelterUI {
   private showCost(id: RecipeID) {
     const cell = this.costCells.get(id);
     if (cell === undefined) return;
-    for (const child of [...cell.children]) Navi.remove(child, cell);
+    Navi.clear(cell);
     const total = recipeCost(id, this.batchesOf(id));
     cost(cell, costEntries(total, this.actions.missing(total)));
   }

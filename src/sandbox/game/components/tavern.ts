@@ -1,13 +1,12 @@
 import PragmaComponent from "@pragma/component";
 import type { Signal } from "@axiom/events";
 import { assert } from "@axiom/utils";
-import { debug } from "@debug";
 import type Dwarf from "../actors/dwarf";
 import { DwarfRank } from "../content/dwarfs";
 import { MainTraitsID } from "../content/traits";
 import { formatAmount, ResourcesID, type ResourceCost } from "../content/resources";
 import Calendar, { type Alarm } from "../systems/calendar";
-import Resources from "../systems/resources";
+import Buildings from "../systems/buildings";
 import Roster from "../systems/roster";
 import TavernUI, { type TavernTab } from "../ui/buildings/tavern";
 import GameEvents from "../systems/gameEvents";
@@ -19,7 +18,7 @@ export interface TavernSignals {
   arrived: Signal<Dwarf[]>;
 }
 
-const TAVERN = {
+export const TAVERN = {
   applications: 10,
   perDay: 2,
   // the first crew and the first day's arrivals, the same every game
@@ -35,12 +34,12 @@ export default class Tavern extends PragmaComponent {
   private arrivals = 0;
   declare private events: GameEvents;
   declare private roster: Roster;
-  declare private resources: Resources;
+  declare private buildings: Buildings;
   declare private window: TavernUI;
 
   awake(): void {
     this.roster = this.scene.getSystem(Roster);
-    this.resources = this.scene.getSystem(Resources);
+    this.buildings = this.scene.getSystem(Buildings);
     this.events = this.scene.getSystem(GameEvents);
     this.window = new TavernUI({
       applications: () => this.applications,
@@ -48,7 +47,7 @@ export default class Tavern extends PragmaComponent {
       perDay: TAVERN.perDay,
       arrivalHour: TAVERN.arrivalHour,
       hireCost: TAVERN.hireCost,
-      lacking: (cost) => this.resources.missing(cost),
+      lacking: (cost) => this.buildings.store.missing(cost),
       beerPerHour: (dwarf) => this.drinker(dwarf).beerPerHour,
       hire: (dwarf) => this.hire(dwarf),
       dismiss: (dwarf) => this.dismiss(dwarf),
@@ -63,15 +62,6 @@ export default class Tavern extends PragmaComponent {
   }
 
   start(): void {
-    debug.game.connect("tavern", () => ({
-      applications: this.applications.length,
-      limit: TAVERN.applications,
-      perDay: TAVERN.perDay,
-      arrivalHour: TAVERN.arrivalHour,
-      hireCost: Object.entries(TAVERN.hireCost)
-        .map(([id, amount]) => formatAmount(Number(id) as ResourcesID, amount ?? 0))
-        .join(", "),
-    }));
     const calendar = this.scene.getSystem(Calendar);
     this.alarm = calendar.alarm({ hour: TAVERN.arrivalHour, everyDays: 1 }, () => this.arrive());
   }
@@ -126,13 +116,13 @@ export default class Tavern extends PragmaComponent {
   }
 
   private hire(dwarf: Dwarf) {
-    const lacking = this.resources.missing(TAVERN.hireCost);
+    const lacking = this.buildings.store.missing(TAVERN.hireCost);
     if (lacking.length > 0) {
       const short = lacking.map(([id, amount]) => formatAmount(id, amount)).join(", ");
       toast(`Not enough to hire ${dwarf.name}: ${short} short`, "error");
       return;
     }
-    this.resources.pay(TAVERN.hireCost);
+    this.buildings.store.pay(TAVERN.hireCost);
     this.remove(dwarf);
     this.roster.enlist(dwarf);
     toast(`${dwarf.name} hired`, "success");

@@ -1,17 +1,20 @@
 import PragmaSystem from "@pragma/system";
+import type PragmaActor from "@pragma/actor";
 import AxiomMath from "@axiom/math";
 import Grid from "@axiom/grid";
 import { assert } from "@axiom/utils";
+import type Station from "../actors/station";
+import Travel, { type RoutePoint } from "../components/travel";
 import { BuildingsID, STRUCTURES } from "../content/structures";
-import type { RoutePoint } from "../components/travel";
 import { laneX, shaftColumns } from "../world/shaftShape";
 import { stationFootprint, stationRailEnds } from "../world/stationShape";
 import { buildingSprite } from "../world/buildingShape";
 import type { BuildingPlace, ShaftSide } from "./buildings";
+import GameEvents from "./gameEvents";
 import Terrain from "./terrain";
 import Rails, { type RailStart, type ShaftJoint } from "./rails";
 
-const TRAVEL = { walk: 3, lane: 6, rail: 4, tunnel: 4, belly: 0.1, deck: 0.1 };
+const TRAVEL = { walk: 3, lane: 6, rail: 4, tunnel: 4, belly: 0.1, deck: 0.1, leaveGap: 0.5 };
 
 export type RouteLeg =
   | { kind: "free" }
@@ -26,7 +29,7 @@ const LANE_LEG: RouteLeg = { kind: "lane" };
 const RAIL_LEG: RouteLeg = { kind: "rail" };
 const TUNNEL_LEG: RouteLeg = { kind: "tunnel" };
 
-export interface Network {
+interface Network {
   shaftStation: Box;
   bodies: Box[];
 }
@@ -36,13 +39,35 @@ export interface StationPlace {
   atShaft: boolean;
 }
 
+export interface NetworkStop {
+  station: Station;
+  place: StationPlace;
+}
+
 // in tiles: where a ride comes out of a building onto its deck
-export interface BuildingDoor {
+interface BuildingDoor {
   tile: Position2D;
   side: ShaftSide;
 }
 
-export type RideGoal = { to: "station"; station: StationPlace } | { to: "tavern"; station: StationPlace | undefined };
+export type RideGoal =
+  | { to: "station"; station: Station }
+  | { to: "building"; id: BuildingsID; leaving?: Station }
+  | { to: "nearestStation" };
+
+export type RideFrom = Station | BuildingsID | "here";
+
+export interface RideOrder {
+  goal: RideGoal;
+  onArrive: (station: Station | undefined) => void;
+  onCutOff: () => void;
+}
+
+interface Departure {
+  actor: PragmaActor;
+  route: RoutePoint[];
+  order: RideOrder;
+}
 
 interface Entry {
   start: RailStart;
@@ -51,119 +76,289 @@ interface Entry {
 }
 
 export default class Transport extends PragmaSystem {
-  private tavernDoor: BuildingDoor | undefined;
+  private readonly doors = new Map<BuildingsID, BuildingDoor>();
+  private readonly departures = new Map<Station | BuildingsID, Departure[]>();
+  private readonly riding = new Set<PragmaActor>();
+  // rails or tiles changed this frame: the rides check the way to their next node once, in the next
+  // update
+  private networkChanged = false;
+  private stops: () => NetworkStop[] = () => [];
   declare private terrain: Terrain;
   declare private rails: Rails;
 
   awake(): void {
     this.terrain = this.scene.getSystem(Terrain);
     this.rails = this.scene.getSystem(Rails);
+    const events = this.scene.getSystem(GameEvents);
+    events.rails.changed.connect(() => (this.networkChanged = true));
+    events.terrain.changed.connect(() => (this.networkChanged = true));
   }
 
-  public setTavern(place: BuildingPlace | undefined) {
-    this.tavernDoor = place && this.doorOf(BuildingsID.tavern, place);
+  update(): void {
+    if (!this.networkChanged) return;
+    this.networkChanged = false;
+    this.checkAhead();
   }
 
-  public doorOf(id: BuildingsID, place: BuildingPlace): BuildingDoor {
+  // read anew at every use: the station at the shaft gets its tiles only once it starts
+  public useStations(stops: () => NetworkStop[]) {
+    this.stops = stops;
+  }
+
+  public setDoor(id: BuildingsID, place: BuildingPlace | undefined) {
     const tile = this.terrain.tile;
-    const door = buildingSprite(id, place, tile).door;
-    assert(door !== undefined, `${BuildingsID[id]} has no door in its sprite`);
-    return { tile: { x: door.x / tile, y: door.y / tile }, side: place.side };
+    const door = place && buildingSprite(id, place, tile).door;
+    if (door && place) this.doors.set(id, { tile: { x: door.x / tile, y: door.y / tile }, side: place.side });
+    else this.doors.delete(id);
+  }
+
+  public hasDoor(id: BuildingsID) {
+    return this.doors.has(id);
+  }
+
+  public send(actor: PragmaActor, from: RideFrom, order: RideOrder) {
+    const route = this.firstRoute(actor, from, order.goal);
+    if (!route) {
+      order.onCutOff();
+      return;
+    }
+    if (from === "here") this.ride(actor, route, order);
+    else this.depart(from, { actor: actor, route: route, order: order });
+  }
+
+  public redirect(actor: PragmaActor, order: RideOrder) {
+    const travel = travelOf(actor);
+    const ride = travel.riding;
+    assert(ride !== undefined, `${actor.ID.description} is redirected on no ride`);
+    travel.order = order;
+    this.riding.add(actor);
+    this.lost(actor, ride.next);
+  }
+
+  public turnBack(actor: PragmaActor, order: RideOrder) {
+    const travel = travelOf(actor);
+    travel.order = order;
+    this.riding.add(actor);
+    travel.turnBack(
+      () => this.arrive(actor),
+      (index) => this.atPoint(actor, index),
+    );
+    const back = travel.riding;
+    if (back && !this.isIntact(back.route, back.next)) this.lost(actor, back.next);
+  }
+
+  public cancel(actor: PragmaActor) {
+    for (const queue of this.departures.values()) {
+      const index = queue.findIndex((departure) => departure.actor === actor);
+      if (index === -1) continue;
+      queue.splice(index, 1);
+      return true;
+    }
+    return false;
+  }
+
+  private ride(actor: PragmaActor, route: RoutePoint[], order: RideOrder) {
+    const travel = travelOf(actor);
+    travel.order = order;
+    this.riding.add(actor);
+    travel.ride(
+      route,
+      () => this.arrive(actor),
+      (index) => this.atPoint(actor, index),
+    );
+  }
+
+  private depart(from: Station | BuildingsID, departure: Departure) {
+    const queue = this.departures.get(from);
+    if (queue) {
+      queue.push(departure);
+      return;
+    }
+    const waiting = [departure];
+    this.departures.set(from, waiting);
+    const transport = this;
+    this.startCoroutine(function* departing(co) {
+      while (waiting.length > 0) {
+        const next = waiting.shift() as Departure;
+        const route = transport.isIntact(next.route, 1)
+          ? next.route
+          : transport.firstRoute(next.actor, from, next.order.goal);
+        if (!route) {
+          next.order.onCutOff();
+          continue;
+        }
+        transport.scene.spawnActor(next.actor);
+        transport.ride(next.actor, route, next.order);
+        yield co.waitSeconds(TRAVEL.leaveGap);
+      }
+      transport.departures.delete(from);
+    });
+  }
+
+  private arrive(actor: PragmaActor) {
+    const order = this.endRide(actor);
+    const last = travelOf(actor).lastPoint;
+    const leg = last?.leg;
+    const stop = leg?.kind === "station" ? this.stops().find((stop) => isSameBox(stop.place.body, leg.body)) : undefined;
+    order.onArrive(stop?.station);
+  }
+
+  private endRide(actor: PragmaActor) {
+    const travel = travelOf(actor);
+    const order = travel.order;
+    assert(order !== undefined, `${actor.ID.description} rides with no order`);
+    travel.order = undefined;
+    this.riding.delete(actor);
+    return order;
+  }
+
+  private atPoint(actor: PragmaActor, index: number) {
+    const ride = travelOf(actor).riding;
+    if (!ride) return false;
+    if (!this.isNode(ride.route[index].position)) return false;
+    if (this.isIntact(ride.route, index + 1)) return false;
+    this.lost(actor, index + 1);
+    return true;
+  }
+
+  private checkAhead() {
+    for (const actor of [...this.riding]) {
+      const travel = travelOf(actor);
+      const ride = travel.riding;
+      const order = travel.order;
+      if (!ride || !order || !this.isCutAhead(ride.route, ride.next)) continue;
+      const back = this.backThroughNode(actor.transform.getPosition(), ride.route, ride.next, order.goal);
+      if (back) travel.redirect(back);
+      else this.lost(actor, ride.next);
+    }
+  }
+
+  private lost(actor: PragmaActor, next: number) {
+    const travel = travelOf(actor);
+    const ride = travel.riding;
+    const order = travel.order;
+    assert(ride !== undefined && order !== undefined, `${actor.ID.description} is lost on no ride`);
+    const route = this.reroute(actor.transform.getPosition(), ride.route, next, order.goal);
+    if (route) {
+      travel.redirect(route);
+      return;
+    }
+    this.endRide(actor).onCutOff();
+  }
+
+  private get network(): Network {
+    const stops = this.stops();
+    const shaft = stops.find((stop) => stop.place.atShaft);
+    assert(shaft !== undefined, "No station at the shaft's bottom");
+    return { shaftStation: shaft.place.body, bodies: stops.map((stop) => stop.place.body) };
+  }
+
+  private placeOf(station: Station) {
+    return this.stops().find((stop) => stop.station === station)?.place;
+  }
+
+  private firstRoute(actor: PragmaActor, from: RideFrom, goal: RideGoal): RoutePoint[] | undefined {
+    if (from === "here") {
+      assert(goal.to === "building" && goal.leaving !== undefined, "A ride from where it stands goes only home from the mine");
+      const station = this.placeOf(goal.leaving);
+      return station && this.home(actor.transform.getPosition(), station);
+    }
+    if (typeof from === "number") {
+      assert(goal.to === "station", `A ride out of ${BuildingsID[from]} goes only to a station`);
+      const door = this.doors.get(from);
+      const station = this.placeOf(goal.station);
+      return door && station && this.toStation(door, station);
+    }
+    assert(goal.to === "building", "A ride out of a station goes only to a building");
+    const door = this.doors.get(goal.id);
+    const station = this.placeOf(from);
+    return door && station && this.toDoor(door, station);
   }
 
   // from the station's stop to the building's door
-  public toDoor(door: BuildingDoor, station: StationPlace, network: Network): RoutePoint[] | undefined {
+  private toDoor(door: BuildingDoor, station: StationPlace): RoutePoint[] | undefined {
     const lane = this.randomLane();
-    const tail = this.fromLane({ x: lane, y: door.tile.y }, station, network);
+    const tail = this.fromLane({ x: lane, y: door.tile.y }, station);
     return tail && reversed([...this.outOfDoor(door, lane), ...tail]);
   }
 
-  public rerouteToDoor(at: Position2D, route: RoutePoint[], next: number, door: BuildingDoor, network: Network) {
-    return this.railsToDoor(at, this.cornersAround(at, route, next, network), door, network);
-  }
-
-  // to whichever of the stations is nearest along the rails
-  public rerouteToStations(at: Position2D, route: RoutePoint[], next: number, stations: StationPlace[], network: Network) {
-    return this.railsToStations(at, this.cornersAround(at, route, next, network), stations, network);
-  }
-
-  public toStation(station: StationPlace, network: Network): RoutePoint[] | undefined {
+  private toStation(door: BuildingDoor, station: StationPlace): RoutePoint[] | undefined {
     const lane = this.randomLane();
-    const route = this.outOfDoor(this.door, lane);
-    const tail = this.fromLane({ x: lane, y: this.door.tile.y }, station, network);
+    const route = this.outOfDoor(door, lane);
+    const tail = this.fromLane({ x: lane, y: door.tile.y }, station);
     return tail && [...route, ...tail];
   }
 
-  public fromStation(station: StationPlace, network: Network) {
-    const out = this.toStation(station, network);
-    return out && reversed(out);
-  }
-
-  public home(from: Position2D, station: StationPlace, network: Network): RoutePoint[] | undefined {
-    const back = this.fromStation(station, network);
+  private home(from: Position2D, station: StationPlace): RoutePoint[] | undefined {
+    const door = this.doors.get(BuildingsID.tavern);
+    const back = door && this.toDoor(door, station);
     if (!back) return undefined;
     const tunnels = this.tunnelsTo(from, station.body);
     return tunnels && [...tunnels, ...back.slice(1)];
   }
 
-  public isIntact(route: RoutePoint[], next: number, network: Network) {
+  private isIntact(route: RoutePoint[], next: number) {
+    const network = this.network;
     for (let index = Math.max(next, 1); index < route.length; index++)
       if (!this.canRideLeg(route, index, network)) return false;
     return true;
   }
 
-  public isNode(position: Position2D, network: Network) {
+  private isNode(position: Position2D) {
     const tile = this.terrain.tile;
     if (!isOnCorner(position, tile)) return false;
     const corner = cornerOf(position, tile);
     if (this.rails.isJunction(corner) || this.rails.joints.some((joint) => isSame(joint.anchor, corner))) return true;
-    return linksOf(network).some((ends) => ends.some((end) => isSame(end, corner)));
+    return linksOf(this.network).some((ends) => ends.some((end) => isSame(end, corner)));
   }
 
-  public isCutAhead(route: RoutePoint[], next: number, network: Network) {
+  private isCutAhead(route: RoutePoint[], next: number) {
+    const network = this.network;
     for (let index = Math.max(next, 1); index < route.length; index++) {
       if (!this.canRideLeg(route, index, network)) return true;
-      if (this.isNode(route[index].position, network)) return false;
+      if (this.isNode(route[index].position)) return false;
     }
     return false;
   }
 
-  public reroute(
-    at: Position2D,
-    route: RoutePoint[],
-    next: number,
-    goal: RideGoal,
-    network: Network,
-  ): RoutePoint[] | undefined {
-    if (goal.to === "tavern") {
+  private reroute(at: Position2D, route: RoutePoint[], next: number, goal: RideGoal): RoutePoint[] | undefined {
+    if (goal.to === "building") {
       const inMine = route.slice(next).some((point) => point.leg.kind === "tunnel");
-      if (inMine && goal.station) return this.home(at, goal.station, network);
-      return this.railsToDoor(at, this.cornersAround(at, route, next, network), this.door, network);
+      const leaving = goal.leaving && this.placeOf(goal.leaving);
+      if (inMine && leaving) return this.home(at, leaving);
     }
-    const onRails = route.slice(0, next).some((point) => isOnCorner(point.position, this.terrain.tile));
-    if (!onRails) return this.laneToStation(at, route, next, goal.station, network);
-    return this.railsToStation(at, this.cornersAround(at, route, next, network), goal.station, network);
+    if (goal.to === "station") {
+      const station = this.placeOf(goal.station);
+      if (!station) return undefined;
+      const onRails = route.slice(0, next).some((point) => isOnCorner(point.position, this.terrain.tile));
+      if (!onRails) return this.laneToStation(at, route, next, station);
+    }
+    return this.viaRails(at, this.cornersAround(at, route, next), goal);
   }
 
-  public backThroughNode(
-    at: Position2D,
-    route: RoutePoint[],
-    next: number,
-    goal: RideGoal,
-    network: Network,
-  ): RoutePoint[] | undefined {
+  private viaRails(at: Position2D, starts: RailStart[], goal: RideGoal): RoutePoint[] | undefined {
+    if (goal.to === "building") {
+      const door = this.doors.get(goal.id);
+      return door && this.railsToDoor(at, starts, door);
+    }
+    if (goal.to === "station") {
+      const station = this.placeOf(goal.station);
+      return station && this.railsToStations(at, starts, [station])?.route;
+    }
+    const stations = this.stops().map((stop) => stop.place);
+    return this.railsToStations(at, starts, stations)?.route;
+  }
+
+  private backThroughNode(at: Position2D, route: RoutePoint[], next: number, goal: RideGoal): RoutePoint[] | undefined {
+    const network = this.network;
     const back: RoutePoint[] = [here(at)];
     for (let index = next - 1; index >= 0; index--) {
       const leg = back.length === 1 ? FREE_LEG : route[index + 1].leg;
       back.push({ position: route[index].position, speed: route[index + 1].speed, leg: leg });
       if (!this.canRideLeg(back, back.length - 1, network)) return undefined;
-      if (!this.isNode(route[index].position, network)) continue;
+      if (!this.isNode(route[index].position)) continue;
       const node = route[index].position;
-      const start = [{ corner: cornerOf(node, this.terrain.tile), cost: 0 }];
-      const on =
-        goal.to === "tavern"
-          ? this.railsToDoor(node, start, this.door, network)
-          : this.railsToStation(node, start, goal.station, network);
+      const on = this.viaRails(node, [{ corner: cornerOf(node, this.terrain.tile), cost: 0 }], goal);
       return on && [...back, ...on.slice(1)];
     }
     return undefined;
@@ -187,7 +382,6 @@ export default class Transport extends PragmaSystem {
     route: RoutePoint[],
     next: number,
     station: StationPlace,
-    network: Network,
   ): RoutePoint[] | undefined {
     const tile = this.terrain.tile;
     const onLane = route.findIndex((point) => point.leg.kind === "lane") - 1;
@@ -200,20 +394,12 @@ export default class Transport extends PragmaSystem {
       from = { x: lane, y: at.y };
       if (at.x !== lane) prefix.push({ position: from, speed: TRAVEL.walk * tile, leg: FREE_LEG });
     }
-    const tail = this.fromLane(toTiles(from, tile), station, network);
+    const tail = this.fromLane(toTiles(from, tile), station);
     return tail && [...prefix, ...tail];
   }
 
-  private railsToStation(
-    at: Position2D,
-    starts: RailStart[],
-    station: StationPlace,
-    network: Network,
-  ): RoutePoint[] | undefined {
-    return this.railsToStations(at, starts, [station], network)?.route;
-  }
-
-  private railsToStations(at: Position2D, starts: RailStart[], stations: StationPlace[], network: Network) {
+  private railsToStations(at: Position2D, starts: RailStart[], stations: StationPlace[]) {
+    const network = this.network;
     const ends = stations.flatMap((station) => stationRailEnds(station.body).map((end) => ({ corner: end, cost: 0 })));
     const shaft = this.entries(0, 0, network.shaftStation).map((entry) => entry.start.corner);
     const corners = this.rails.route(starts, ends, linksOf(network), shaft);
@@ -266,7 +452,8 @@ export default class Transport extends PragmaSystem {
     return this.entries(0, 0, network.shaftStation).find((entry) => isSame(entry.start.corner, corner));
   }
 
-  private railsToDoor(at: Position2D, starts: RailStart[], door: BuildingDoor, network: Network) {
+  private railsToDoor(at: Position2D, starts: RailStart[], door: BuildingDoor) {
+    const network = this.network;
     const lane = this.randomLane();
     const entries = this.entries(lane, door.tile.y, network.shaftStation);
     const corners = this.rails.route(
@@ -291,7 +478,8 @@ export default class Transport extends PragmaSystem {
     return [...way, ...into];
   }
 
-  private cornersAround(at: Position2D, route: RoutePoint[], next: number, network: Network): RailStart[] {
+  private cornersAround(at: Position2D, route: RoutePoint[], next: number): RailStart[] {
+    const network = this.network;
     const tile = this.terrain.tile;
     const corners = [route[next - 1].position, route[next].position]
       .filter((position) => isOnCorner(position, tile))
@@ -310,7 +498,8 @@ export default class Transport extends PragmaSystem {
     return through || this.rails.canRide(from, to);
   }
 
-  private fromLane(spot: Position2D, station: StationPlace, network: Network): RoutePoint[] | undefined {
+  private fromLane(spot: Position2D, station: StationPlace): RoutePoint[] | undefined {
+    const network = this.network;
     const stationLeg: RouteLeg = { kind: "station", body: station.body };
     if (station.atShaft)
       return [
@@ -389,11 +578,6 @@ export default class Transport extends PragmaSystem {
     return joint.tile.x < columns.from ? columns.from : columns.to + 1;
   }
 
-  private get door() {
-    assert(this.tavernDoor !== undefined, "No tavern to ride out of");
-    return this.tavernDoor;
-  }
-
   // out of the door, along the building's deck to the shaft and over to the lane
   private outOfDoor(door: BuildingDoor, lane: number): RoutePoint[] {
     const columns = shaftColumns(this.terrain.world);
@@ -466,4 +650,10 @@ function stopOf(body: Box): Position2D {
 
 function isSame(a: Position2D, b: Position2D) {
   return a.x === b.x && a.y === b.y;
+}
+
+function travelOf(actor: PragmaActor) {
+  const travel = actor.getComponent(Travel);
+  assert(travel !== undefined, `${actor.ID.description} has no Travel`);
+  return travel;
 }

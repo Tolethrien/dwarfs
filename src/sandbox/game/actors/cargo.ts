@@ -3,9 +3,9 @@ import PragmaComponent from "@pragma/component";
 import { Draw } from "@aurora/urp/draw/draw";
 import AxiomMath from "@axiom/math";
 import Travel from "../components/travel";
+import Storage from "../components/storage";
 import Headlight from "../components/headlight";
 import { LightsID } from "../content/lights";
-import type { ResourceCost } from "../content/resources";
 import { DWARF_LOOK } from "../content/dwarfs";
 import { RENDER_SHEET, SORT_ORDER } from "../content/render";
 
@@ -19,9 +19,10 @@ const CARGO = {
 };
 
 export default class Cargo extends PragmaActor {
-  constructor(public readonly load: ResourceCost) {
+  constructor() {
     super();
     this.addComponent(Travel);
+    this.addComponent(Storage);
     this.addComponent(CargoLook);
     this.addComponent(Headlight).light = LightsID.cargo;
   }

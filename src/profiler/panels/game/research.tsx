@@ -12,7 +12,7 @@ export default function GameResearchPanel() {
   const buffs = () =>
     (gameStore.report().buffs ?? []).map((buff) => [
       buff.name,
-      buff.secondsLeft === null ? "off" : `${buff.secondsLeft.toFixed(0)} / ${buff.seconds} s`,
+      buff.hoursLeft === null ? "off" : `${buff.hoursLeft.toFixed(0)} / ${buff.hours} h`,
       buff.description,
     ]);
 

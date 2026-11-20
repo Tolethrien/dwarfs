@@ -1,5 +1,8 @@
 import PragmaComponent from "@pragma/component";
-import { Draw, Light } from "@aurora/urp/draw/draw";
+import { Draw } from "@aurora/urp/draw/draw";
+import { EMISSIVE_MATERIAL } from "@aurora/urp/draw/materials";
+import type { MaterialParams } from "@aurora/urp/draw/drawTypes";
+import type Material from "@aurora/material";
 import AxiomMath from "@axiom/math";
 import Time from "@engine/time";
 import type { BuildingsID } from "../content/structures";
@@ -9,10 +12,10 @@ import type { BuildingPlace } from "../systems/buildings";
 import Terrain from "../systems/terrain";
 import { buildingSprite, type BuildingSprite } from "../world/buildingShape";
 
-// highlight: a light breathing over the whole building, to point the player at it; radius: of the
-// sprite's longer side, seconds: one breath
+// highlight: the sprite drawn again over itself, unlit and past 1 so it blooms, its opacity
+// breathing from min to max (0..255); seconds: one breath
 const BUILDING_LOOK = {
-  highlight: { color: [255, 220, 150, 255] as RGBA, intensity: { min: 0.2, max: 3 }, radius: 1, seconds: 1.4 },
+  highlight: { intensity: 1.8, opacity: { min: 0, max: 180 }, seconds: 1.4 },
 };
 
 interface BuildingLookProps {
@@ -23,6 +26,7 @@ interface BuildingLookProps {
 export default class BuildingLook extends PragmaComponent {
   public highlighted = false;
   declare private sprite: BuildingSprite;
+  private glow: MaterialParams | undefined;
 
   constructor(
     internal: InternalPCProps,
@@ -36,7 +40,24 @@ export default class BuildingLook extends PragmaComponent {
     this.sprite = buildingSprite(this.props.id, this.props.place, terrain.tile);
   }
 
+  public get box() {
+    return this.sprite.box;
+  }
+
   render(): void {
+    this.drawSprite(StructurePlan.materialOf("plan"), StructurePlan.paramsOf("plan"));
+    if (this.highlighted && StructurePlan.materialOf("plan") === undefined) this.shineHighlight();
+  }
+
+  private shineHighlight() {
+    const look = BUILDING_LOOK.highlight;
+    this.glow ??= EMISSIVE_MATERIAL.pack({ intensity: look.intensity });
+    const breath = (Math.sin((Time.getTimeInSeconds() / look.seconds) * Math.PI * 2) + 1) / 2;
+    const opacity = AxiomMath.lerp(look.opacity.min, look.opacity.max, breath);
+    this.drawSprite(EMISSIVE_MATERIAL, this.glow, [255, 255, 255, opacity]);
+  }
+
+  private drawSprite(material: Material | undefined, params: MaterialParams | undefined, tint?: RGBA) {
     const box = this.sprite.box;
     Draw.sprite({
       position: { x: box.x, y: box.y, z: SORT_ORDER.camp },
@@ -44,21 +65,9 @@ export default class BuildingLook extends PragmaComponent {
       texture: RENDER_SHEET.buildings,
       crop: this.sprite.crop,
       flipX: this.sprite.flip,
-      material: StructurePlan.materialOf("plan"),
-      params: StructurePlan.paramsOf("plan"),
-    });
-    if (this.highlighted) this.shineHighlight();
-  }
-
-  private shineHighlight() {
-    const look = BUILDING_LOOK.highlight;
-    const box = this.sprite.box;
-    const breath = (Math.sin((Time.getTimeInSeconds() / look.seconds) * Math.PI * 2) + 1) / 2;
-    Light.point({
-      position: { x: box.x + box.w / 2, y: box.y + box.h / 2 },
-      radius: Math.max(box.w, box.h) * look.radius,
-      color: look.color,
-      intensity: AxiomMath.lerp(look.intensity.min, look.intensity.max, breath),
+      tint: tint,
+      material: material,
+      params: params,
     });
   }
 }

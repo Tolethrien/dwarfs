@@ -12,7 +12,7 @@ import Effects from "../components/effects";
 import Equipment from "../components/equipment";
 import Outfit from "../components/outfit";
 import Morale from "../components/morale";
-import { STAT_NAMES, type StatName } from "../effects/effect";
+import { STAT_NAMES, type ClassStat } from "../effects/effect";
 import { SPECIAL_BEERS } from "../content/beers";
 import { DwarfRank } from "../content/dwarfs";
 import { FOREMAN_TRAIT, MAIN_TRAITS, TRAITS, WORKER_TRAITS, type TraitData } from "../content/traits";
@@ -279,7 +279,7 @@ export default class DwarfCardUI {
   private addStats(card: UINode) {
     const stats = CARD.stats;
     this.addLabel(card, stats, "STATS");
-    const lines: { label: string; stat: StatName }[] = [
+    const lines: { label: string; stat: ClassStat }[] = [
       { label: STAT_NAMES.speed, stat: "speed" },
       { label: STAT_NAMES.power, stat: "power" },
       { label: STAT_NAMES.bph, stat: "bph" },
@@ -307,7 +307,6 @@ export default class DwarfCardUI {
     });
   }
 
-  // the scale is 0–100, a buff only moves its min and max within it
   private addMorale(card: UINode) {
     const morale = CARD.morale;
     const section = Navi.append(
@@ -331,7 +330,7 @@ export default class DwarfCardUI {
     return morale.value;
   }
 
-  private statText(stat: StatName) {
+  private statText(stat: ClassStat) {
     const effects = this.current.getComponent(Effects);
     assert(effects !== undefined, `Dwarf ${this.current.name} has no Effects`);
     const value = Math.round(effects[stat] * 10) / 10;
@@ -365,7 +364,7 @@ export default class DwarfCardUI {
     const shown = `${dwarf.ID.description}:${traits.main}:${traits.foreman}:${own}:${this.workforce.version}`;
     if (!list || shown === this.shownTraits) return;
     this.shownTraits = shown;
-    for (const child of [...list.children]) Navi.remove(child, list);
+    Navi.clear(list);
     this.addTrait(list, MAIN_TRAITS[traits.main]);
     if (traits.foreman) this.addTrait(list, FOREMAN_TRAIT);
     for (const trait of traits.list) this.addTrait(list, TRAITS[trait]);

@@ -19,7 +19,7 @@ export interface HeadquartersActions {
 }
 
 export default class HeadquartersUI {
-  private readonly window = new UIWindow({ kind: "modal", width: 420, title: "Headquarters", closeOnMove: closeOnCameraMove() });
+  private readonly window = new UIWindow({ kind: "docked", width: 420, title: "Headquarters", closeOnMove: closeOnCameraMove() });
 
   constructor(private readonly actions: HeadquartersActions) {}
 

@@ -12,9 +12,10 @@ import {
 } from "../content/resources";
 import { UI_THEME } from "../content/ui";
 import { hudLayer } from "./hud";
-import { button, UIButton } from "./elements/button";
+import { button, runClicked } from "./elements/button";
 import { counter } from "./elements/counter";
 import { divider } from "./elements/divider";
+import { panelStyle } from "./elements/panel";
 
 // Object.keys gives enum numbers as strings
 const CATEGORIES = Object.keys(RESOURCE_CATEGORIES).map(Number) as ResourceCategory[];
@@ -36,10 +37,7 @@ export default class ResourcesHud {
         position: { x: px(margin), y: px(margin) },
         size: { width: auto(), height: auto() },
         style: {
-          backgroundColor: UI_THEME.colors.panel,
-          outline: { width: UI_THEME.outline.window, color: UI_THEME.colors.frame },
-          rounded: UI_THEME.radius.window,
-          padding: UI_THEME.spacing.buttonPadding,
+          ...panelStyle("hud"),
           layout: "stack",
           direction: "col",
           gap: UI_THEME.spacing.listGap,
@@ -59,9 +57,7 @@ export default class ResourcesHud {
   }
 
   public update() {
-    const clicked = Navi.getClicked;
-    if (!(clicked instanceof UIButton) || clicked.isDisabled) return;
-    if (clicked.isDescendantOf(this.panel)) clicked.run();
+    runClicked(this.panel);
   }
 
   private hamburger() {

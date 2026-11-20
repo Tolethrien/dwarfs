@@ -1,8 +1,6 @@
 import PragmaSystem from "@pragma/system";
 import Grid from "@axiom/grid";
 import InputManager from "@engine/inputManager";
-import { debug } from "@debug";
-import { gameCommands, gamePanel } from "../debugCommands";
 import { Camera } from "@engine/camera/camera";
 import { assert } from "@axiom/utils";
 import { BlocksID } from "../content/blocks";
@@ -13,23 +11,17 @@ import Market from "../components/market";
 import Smelter from "../components/smelter";
 import Headquarters, { shaftLimitAt } from "../components/headquarters";
 import BuildingLook from "../components/buildingLook";
+import Storage from "../components/storage";
 import { shaftColumns } from "../world/shaftShape";
 import { buildingSprite } from "../world/buildingShape";
 import { SURFACE } from "../content/surface";
 import GameGlobals from "../gpu/gameGlobals";
 import Terrain from "./terrain";
-import Stations from "./stations";
+import MapView from "./mapView";
 import Rails from "./rails";
 import Transport from "./transport";
 
-// Object.keys gives enum numbers as strings
-const BUILDING_IDS = Object.keys(BUILDINGS).map(Number) as BuildingsID[];
-
 export type ShaftSide = "left" | "right";
-
-function boxText(box: Box) {
-  return `${box.x}, ${box.y} · ${box.w}×${box.h}`;
-}
 
 export interface BuildingPlace {
   side: ShaftSide;
@@ -65,57 +57,16 @@ export default class Buildings extends PragmaSystem {
   // while set, the other buildings don't take clicks (the intro points at one, or at none)
   public clickOnly: BuildingsID | "none" | undefined;
   declare private terrain: Terrain;
-  declare private stations: Stations;
+  declare private mapView: MapView;
   declare private rails: Rails;
   declare private transport: Transport;
 
   awake(): void {
     this.terrain = this.scene.getSystem(Terrain);
-    this.stations = this.scene.getSystem(Stations);
+    this.mapView = this.scene.getSystem(MapView);
     this.rails = this.scene.getSystem(Rails);
     this.transport = this.scene.getSystem(Transport);
-    debug.game.connect("buildings", () => ({
-      shaftDepth: this.terrain.world.shaftDepth,
-      rows: [...this.built.entries()].map(([id, built]) => ({
-        name: BUILDINGS[id].name,
-        side: built.place.side,
-        base: boxText(built.place.base),
-        reserve: boxText(built.place.reserve),
-      })),
-    }));
-    const buildings = this;
-    gameCommands("building", {
-      get built() {
-        return buildings.built;
-      },
-      remove: (id: BuildingsID) => this.remove(id),
-      get mineLevel() {
-        return buildings.mineLevel;
-      },
-      setMineLevel: (level: number) => {
-        this.headquarters().level = level;
-      },
-    });
-    gamePanel("buildings", {
-      title: "Buildings",
-      live: true,
-      sections: [
-        {
-          title: "Built",
-          call: "game.building.remove",
-          arg: "object",
-          fields: BUILDING_IDS.map((id) => ({
-            key: String(id),
-            label: BUILDINGS[id].name,
-            control: { kind: "button", text: "Remove" },
-          })),
-          get: () => Object.fromEntries(BUILDING_IDS.map((id) => [String(id), false])),
-          set: (values) => {
-            for (const id of BUILDING_IDS) if (values[String(id)] === true && this.built.has(id)) this.remove(id);
-          },
-        },
-      ],
-    });
+    this.build(BuildingsID.headquarters, this.surfacePlace(BuildingsID.headquarters, "right"), false);
   }
 
   update(): void {
@@ -140,11 +91,41 @@ export default class Buildings extends PragmaSystem {
     const look = built.actor.getComponent(BuildingLook);
     assert(look !== undefined, `The ${BUILDINGS[id].name} has no BuildingLook`);
     look.highlighted = on;
+    this.mapView.spotlight(on ? look.box : undefined);
+  }
+
+  public get builtIds() {
+    return [...this.built.keys()];
+  }
+
+  public setMineLevel(level: number) {
+    this.headquarters().level = level;
   }
 
   // nothing can be built before the headquarters stands
   public get mineLevel() {
-    return this.built.has(BuildingsID.headquarters) ? this.headquarters().level : 0;
+    return this.isStanding(BuildingsID.headquarters) ? this.headquarters().level : 0;
+  }
+
+  // the headquarters is there from the start, hidden until the intro raises it: it's the camp's store
+  public isStanding(id: BuildingsID) {
+    return this.built.get(id)?.actor.getVisibility() ?? false;
+  }
+
+  public get store() {
+    const built = this.built.get(BuildingsID.headquarters);
+    assert(built !== undefined, "No headquarters to keep the store");
+    const storage = built.actor.getComponent(Storage);
+    assert(storage !== undefined, "The headquarters has no Storage");
+    return storage.stock;
+  }
+
+  public show(id: BuildingsID, shown: boolean) {
+    const built = this.built.get(id);
+    assert(built !== undefined, `No ${BUILDINGS[id].name} is built to show`);
+    built.actor.setVisibility(shown);
+    this.transport.setDoor(id, shown ? built.place : undefined);
+    this.maskMist();
   }
 
   // the deepest row the shaft may be dug to
@@ -168,28 +149,36 @@ export default class Buildings extends PragmaSystem {
     const tile = this.terrain.worldToTile(Camera.screenToWorld(InputManager.getMousePos()));
     for (const [id, built] of this.built) {
       if (this.clickOnly !== undefined && id !== this.clickOnly) continue;
+      if (!built.actor.getVisibility()) continue;
       if (Grid.isTileInBox(built.place.base, tile)) return built.actor;
     }
     return undefined;
   }
 
   private openWindow(building: Building) {
-    if (building.id === BuildingsID.tavern) {
-      const tavern = building.getComponent(Tavern);
-      assert(tavern !== undefined, "The tavern has no Tavern");
-      tavern.open();
+    switch (building.id) {
+      case BuildingsID.tavern: {
+        const tavern = building.getComponent(Tavern);
+        assert(tavern !== undefined, "The tavern has no Tavern");
+        tavern.open();
+        break;
+      }
+      case BuildingsID.market: {
+        const market = building.getComponent(Market);
+        assert(market !== undefined, "The market has no Market");
+        market.open();
+        break;
+      }
+      case BuildingsID.smelter: {
+        const smelter = building.getComponent(Smelter);
+        assert(smelter !== undefined, "The smelter has no Smelter");
+        smelter.open();
+        break;
+      }
+      case BuildingsID.headquarters:
+        this.headquarters().open();
+        break;
     }
-    if (building.id === BuildingsID.market) {
-      const market = building.getComponent(Market);
-      assert(market !== undefined, "The market has no Market");
-      market.open();
-    }
-    if (building.id === BuildingsID.smelter) {
-      const smelter = building.getComponent(Smelter);
-      assert(smelter !== undefined, "The smelter has no Smelter");
-      smelter.open();
-    }
-    if (building.id === BuildingsID.headquarters) this.headquarters().open();
   }
 
   public placeAt(id: BuildingsID, tile: Position2D): BuildingPlace {
@@ -212,10 +201,6 @@ export default class Buildings extends PragmaSystem {
     };
   }
 
-  public buildHeadquarters() {
-    this.build(BuildingsID.headquarters, this.surfacePlace(BuildingsID.headquarters, "right"));
-  }
-
   public buildMarket() {
     this.build(BuildingsID.market, this.surfacePlace(BuildingsID.market, "left"));
   }
@@ -228,7 +213,7 @@ export default class Buildings extends PragmaSystem {
     return { side: side, base: base, reserve: { ...base } };
   }
 
-  public problem(id: BuildingsID, place: BuildingPlace): BuildingRefusal | undefined {
+  public problem(id: BuildingsID, place: BuildingPlace, kept: Box[]): BuildingRefusal | undefined {
     if (this.built.has(id)) return { problem: "built", tiles: [] };
     const world = this.terrain.world;
     const reserve = place.reserve;
@@ -237,7 +222,7 @@ export default class Buildings extends PragmaSystem {
     if (reserve.y + reserve.h > STRUCTURES.buildings.maxDepth) return { problem: "tooDeep", tiles: [] };
     if (place.base.y + place.base.h - 1 > world.shaftDepth) return { problem: "noShaft", tiles: [] };
     const joints = this.rails.joints.map((joint) => ({ x: joint.tile.x, y: joint.tile.y, w: 1, h: 1 }));
-    const others = [...this.places.map((other) => other.reserve), ...this.stations.footprints, ...joints];
+    const others = [...this.places.map((other) => other.reserve), ...kept, ...joints];
     const taken = Grid.tilesIn(reserve).filter((tile) => others.some((other) => Grid.isTileInBox(other, tile)));
     if (taken.length > 0) return { problem: "taken", tiles: taken };
     const rock = Grid.tilesIn(place.base).filter((tile) => world.getType(tile.x, tile.y) !== BlocksID.air);
@@ -245,7 +230,7 @@ export default class Buildings extends PragmaSystem {
     return undefined;
   }
 
-  public build(id: BuildingsID, place: BuildingPlace) {
+  public build(id: BuildingsID, place: BuildingPlace, shown = true) {
     const inMine = place.base.y >= 0;
     if (inMine) for (const tile of Grid.tilesIn(place.base)) this.terrain.place(tile.x, tile.y, BlocksID.building);
     const tile = this.terrain.tile;
@@ -253,14 +238,19 @@ export default class Buildings extends PragmaSystem {
     const ground = inMine ? 0 : SURFACE.ground;
     const middle = { x: (base.x + base.w / 2) * tile, y: (base.y + base.h / 2) * tile - ground };
     const building = new Building({ id: id, place: place, position: middle });
+    building.setVisibility(shown);
     this.built.set(id, { place: place, actor: building });
     this.maskMist();
-    if (id === BuildingsID.tavern) this.transport.setTavern(place);
+    if (shown) this.transport.setDoor(id, place);
     this.scene.spawnActor(building);
   }
 
-  // its room stays dug out
+  // its room stays dug out; the headquarters only hides, it keeps the store
   public remove(id: BuildingsID) {
+    if (id === BuildingsID.headquarters) {
+      this.show(id, false);
+      return;
+    }
     const built = this.built.get(id);
     assert(built !== undefined, `No ${BUILDINGS[id].name} is built`);
     if (built.place.base.y >= 0)
@@ -268,12 +258,13 @@ export default class Buildings extends PragmaSystem {
     this.built.delete(id);
     if (this.pressed === built.actor) this.pressed = undefined;
     this.maskMist();
-    if (id === BuildingsID.tavern) this.transport.setTavern(undefined);
+    this.transport.setDoor(id, undefined);
     this.scene.deleteActor(built.actor);
   }
 
   private maskMist() {
     const tile = this.terrain.tile;
-    GameGlobals.setBuildings([...this.built].map(([id, built]) => buildingSprite(id, built.place, tile)));
+    const shown = [...this.built].filter(([, built]) => built.actor.getVisibility());
+    GameGlobals.setBuildings(shown.map(([id, built]) => buildingSprite(id, built.place, tile)));
   }
 }

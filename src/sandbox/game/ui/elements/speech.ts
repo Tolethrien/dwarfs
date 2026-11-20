@@ -4,6 +4,7 @@ import { auto } from "@navi/units";
 import { UI_THEME } from "../../content/ui";
 import { text } from "./text";
 import { removeWorldAnchor, worldAnchor, type UIWorldAnchor } from "./world";
+import { panelStyle } from "./panel";
 
 // lift: screen pixels from the speaker's middle up to the bubble's middle
 export function speech(position: () => Position2D, line: string, lift: number) {
@@ -12,10 +13,7 @@ export function speech(position: () => Position2D, line: string, lift: number) {
     new UINode({
       size: { width: auto(), height: auto() },
       style: {
-        backgroundColor: UI_THEME.colors.panel,
-        outline: { width: UI_THEME.outline.window, color: UI_THEME.colors.frame },
-        rounded: UI_THEME.radius.window,
-        padding: UI_THEME.spacing.buttonPadding,
+        ...panelStyle("hud"),
       },
     }),
     anchor,

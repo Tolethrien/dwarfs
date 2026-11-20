@@ -9,7 +9,7 @@ import { STRUCTURES } from "../content/structures";
 import { SORT_ORDER } from "../content/render";
 import Roster from "../systems/roster";
 import Ball from "./ball";
-import Haul from "./haul";
+import Storage from "./storage";
 import Drinker from "./drinker";
 import Shift from "./shift";
 
@@ -138,9 +138,9 @@ export default class Launcher extends PragmaComponent {
     }
     const ball = dwarf.getComponent(Ball);
     assert(ball !== undefined, `Dwarf ${dwarf.name} has no Ball`);
-    const haul = this.getSibling(Haul);
-    assert(haul !== undefined, `Launcher needs Haul on actor: ${this.actor.ID.description}`);
-    ball.launch(aim.direction, AxiomMath.lerp(1, LAUNCHER.maxBoost, aim.power), this.tiles, haul);
+    const storage = this.getSibling(Storage);
+    assert(storage !== undefined, `Launcher needs Storage on actor: ${this.actor.ID.description}`);
+    ball.launch(aim.direction, AxiomMath.lerp(1, LAUNCHER.maxBoost, aim.power), this.tiles, storage);
     const center = this.actor.transform.getPosition();
     // teleport, so the render doesn't sweep from where it was last time
     dwarf.transform.teleport(center.x, center.y);

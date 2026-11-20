@@ -1,53 +1,70 @@
 import PragmaComponent from "@pragma/component";
-import { formatAmount, RESOURCES, type ResourceCost, type ResourcesID } from "../content/resources";
-import Resources from "../systems/resources";
+import type PragmaActor from "@pragma/actor";
+import { assert } from "@axiom/utils";
+import type Station from "../actors/station";
+import Cargo from "../actors/cargo";
+import Travel from "./travel";
+import Storage from "./storage";
+import { BuildingsID } from "../content/structures";
+import Buildings from "../systems/buildings";
+import Transport, { type RideOrder } from "../systems/transport";
+import GameEvents from "../systems/gameEvents";
 
-// what the station's dwarfs mined, waiting for the hourly delivery; a station torn down hands it
-// straight to the store
+// dropOff: where the hauls go, the first of them that stands
+const HAUL = { dropOff: [BuildingsID.headquarters] };
+
+// every hour what the station's dwarfs mined rides as one cargo to the drop-off; cut off on the way
+// the cargo goes on to the nearest station it still reaches and waits in its storage, with no
+// station at all it lands in the camp's store at once
 export default class Haul extends PragmaComponent {
-  private amounts: ResourceCost = {};
-  declare private resources: Resources;
+  declare private buildings: Buildings;
+  declare private transport: Transport;
+  declare private events: GameEvents;
 
   awake(): void {
-    this.resources = this.scene.getSystem(Resources);
+    this.buildings = this.scene.getSystem(Buildings);
+    this.transport = this.scene.getSystem(Transport);
+    this.events = this.scene.getSystem(GameEvents);
+    this.events.calendar.hourStarted.connect(this.send);
   }
 
   destroy(): void {
-    this.resources.addAll(this.take());
+    this.events.calendar.hourStarted.disconnect(this.send);
   }
 
-  public add(id: ResourcesID, amount: number) {
-    this.amounts[id] = (this.amounts[id] ?? 0) + amount;
+  public readonly send = () => {
+    const dropOff = HAUL.dropOff.find((id) => this.transport.hasDoor(id));
+    const stock = storageOf(this.actor).stock;
+    if (dropOff === undefined || stock.isEmpty) return;
+    const cargo = new Cargo();
+    stock.moveAllTo(storageOf(cargo).stock);
+    this.transport.send(cargo, this.actor as Station, {
+      goal: { to: "building", id: dropOff },
+      onArrive: () => this.land(cargo),
+      onCutOff: () => {
+        if (cargo.getComponent(Travel)?.riding) this.transport.redirect(cargo, this.toNearestStation(cargo));
+        else storageOf(cargo).stock.moveAllTo(stock);
+      },
+    });
+  };
+
+  private toNearestStation(cargo: Cargo): RideOrder {
+    return {
+      goal: { to: "nearestStation" },
+      onArrive: (station) => this.land(cargo, station),
+      onCutOff: () => this.land(cargo),
+    };
   }
 
-  public addAll(load: ResourceCost) {
-    for (const [id, amount] of loadEntries(load)) this.add(id, amount);
-  }
-
-  public get isEmpty() {
-    return loadEntries(this.amounts).length === 0;
-  }
-
-  public take(): ResourceCost {
-    const load = this.amounts;
-    this.amounts = {};
-    return load;
-  }
-
-  public get text() {
-    return describeLoad(this.amounts);
+  private land(cargo: Cargo, station?: Station) {
+    const to = station?.getAlive() ? storageOf(station).stock : this.buildings.store;
+    storageOf(cargo).stock.moveAllTo(to);
+    this.scene.deleteActor(cargo);
   }
 }
 
-// Object.entries gives enum numbers as strings
-export function loadEntries(load: ResourceCost) {
-  return Object.entries(load)
-    .map(([id, amount]) => [Number(id) as ResourcesID, amount ?? 0] as const)
-    .filter(([, amount]) => amount > 0);
-}
-
-export function describeLoad(load: ResourceCost) {
-  const entries = loadEntries(load);
-  if (entries.length === 0) return "empty";
-  return entries.map(([id, amount]) => `${formatAmount(id, amount)} ${RESOURCES[id].name}`).join(", ");
+function storageOf(actor: PragmaActor) {
+  const storage = actor.getComponent(Storage);
+  assert(storage !== undefined, `${actor.ID.description} has no Storage`);
+  return storage;
 }

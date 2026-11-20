@@ -10,7 +10,6 @@ import { craterCenter } from "../world/shaftShape";
 import GameGlobals from "../gpu/gameGlobals";
 import { WORLD_FOG } from "../world/world";
 import type World from "../world/world";
-import { gameSwitch } from "../debugCommands";
 import BallPhysics from "./ballPhysics";
 import Terrain from "./terrain";
 
@@ -22,8 +21,8 @@ const DISCOVERY = {
 export default class Discovery extends PragmaSystem {
   private readonly lastTile = new WeakMap<Ball, number>();
   private readonly dirty = { from: Infinity, to: -Infinity };
-  private fogShown = true;
-  private fullLight = false;
+  private fog = true;
+  private light = false;
   declare private physics: BallPhysics;
   declare private terrain: Terrain;
 
@@ -37,26 +36,11 @@ export default class Discovery extends PragmaSystem {
   awake(): void {
     this.physics = this.scene.getSystem(BallPhysics);
     this.terrain = this.scene.getSystem(Terrain);
-    gameSwitch(
-      "fog",
-      "fog of war",
-      () => this.fogShown,
-      (on) => this.showFog(on),
-    );
-    gameSwitch(
-      "fullLight",
-      "full light",
-      () => this.fullLight,
-      (on) => {
-        this.fullLight = on;
-        GameGlobals.setFullLight(on);
-      },
-    );
   }
 
   start(): void {
     this.uploadFogMask();
-    GameGlobals.setFullLight(this.fullLight);
+    GameGlobals.setFullLight(this.light);
   }
 
   update(): void {
@@ -76,7 +60,7 @@ export default class Discovery extends PragmaSystem {
   }
 
   render(): void {
-    if (!this.fogShown || this.dirty.from > this.dirty.to) return;
+    if (!this.fog || this.dirty.from > this.dirty.to) return;
     GameGlobals.writeFogRows(
       this.world.discovered,
       this.world.fogSize.width,
@@ -87,15 +71,28 @@ export default class Discovery extends PragmaSystem {
     this.dirty.to = -Infinity;
   }
 
-  private showFog(on: boolean) {
-    if (on === this.fogShown) return;
-    this.fogShown = on;
+  public get fogShown() {
+    return this.fog;
+  }
+
+  public get fullLight() {
+    return this.light;
+  }
+
+  public setFullLight(on: boolean) {
+    this.light = on;
+    GameGlobals.setFullLight(on);
+  }
+
+  public showFog(on: boolean) {
+    if (on === this.fog) return;
+    this.fog = on;
     this.uploadFogMask();
   }
 
   private uploadFogMask() {
     GameGlobals.uploadFog(
-      this.fogShown
+      this.fog
         ? this.world.discovered
         : new Uint8Array(this.world.discovered.length).fill(255),
     );

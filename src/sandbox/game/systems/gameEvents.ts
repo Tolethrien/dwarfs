@@ -2,9 +2,10 @@ import PragmaSystem from "@pragma/system";
 import { Signal } from "@axiom/events";
 import type { TerrainSignals } from "./terrain";
 import type { CalendarSignals } from "./calendar";
-import type { ResourcesSignals } from "./resources";
+import type { ResourcesSignals } from "../components/storage";
 import type { BiomesSignals } from "./biomes";
 import type { ShiftSignals } from "../components/shift";
+import type { EffectsSignals } from "../components/effects";
 import type { RailsSignals } from "./rails";
 import type { ShaftSignals } from "../components/shaftDigging";
 import type { TavernSignals } from "../components/tavern";
@@ -37,8 +38,9 @@ export default class GameEvents extends PragmaSystem {
   public readonly rails: RailsSignals = {
     changed: new Signal(),
   };
-  public readonly dwarfs: ShiftSignals = {
+  public readonly dwarfs: ShiftSignals & EffectsSignals = {
     shiftEnded: new Signal(),
+    statsChanged: new Signal(),
   };
   public readonly tavern: TavernSignals = {
     arrived: new Signal(),

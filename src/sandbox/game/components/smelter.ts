@@ -3,7 +3,8 @@ import { assert } from "@axiom/utils";
 import { formatAmount, RESOURCES } from "../content/resources";
 import { RECIPE_IDS, RECIPES, recipeCost, type RecipeID } from "../content/smelter";
 import Calendar from "../systems/calendar";
-import Resources from "../systems/resources";
+import { Stock } from "./storage";
+import Buildings from "../systems/buildings";
 import SmelterUI from "../ui/buildings/smelter";
 
 // power: kg of input an hour of game time
@@ -17,19 +18,18 @@ export interface SmelterOrder {
   progress: number;
 }
 
-// a batch takes its input when it starts and gives its output when it ends; the store keeps
-// tenths of a kg, so a frame's share of a batch would round away
+// a batch takes its input into the smelter when it starts and gives its output when it ends; the
+// store keeps tenths of a kg, so a frame's share of a batch would round away
 export default class Smelter extends PragmaComponent {
   private readonly queue: SmelterOrder[] = [];
-  // the first order's batch in the works has taken its input
-  private loaded = false;
+  private readonly input = new Stock();
   private lastTime = 0;
-  declare private resources: Resources;
+  declare private buildings: Buildings;
   declare private calendar: Calendar;
   declare private window: SmelterUI;
 
   awake(): void {
-    this.resources = this.scene.getSystem(Resources);
+    this.buildings = this.scene.getSystem(Buildings);
     this.calendar = this.scene.getSystem(Calendar);
     this.lastTime = this.calendar.time;
     this.window = new SmelterUI({
@@ -37,7 +37,7 @@ export default class Smelter extends PragmaComponent {
       power: () => SMELTER.power,
       orders: () => this.queue,
       status: () => this.status,
-      missing: (cost) => this.resources.missing(cost),
+      missing: (cost) => this.buildings.store.missing(cost),
       order: (recipe, batches) => this.order(recipe, batches),
       cancel: (order) => this.cancel(order),
     });
@@ -51,6 +51,7 @@ export default class Smelter extends PragmaComponent {
   }
 
   destroy(): void {
+    this.input.moveAllTo(this.buildings.store);
     this.window.close();
   }
 
@@ -62,23 +63,29 @@ export default class Smelter extends PragmaComponent {
     const order = this.queue[0];
     if (order === undefined) return;
     const recipe = RECIPES[order.recipe];
-    if (!this.loaded) this.loaded = this.resources.pay(recipeCost(order.recipe));
-    if (!this.loaded) return;
+    if (this.input.isEmpty && !this.load(order)) return;
     order.progress += (hours * SMELTER.power) / recipe.batch;
     if (order.progress < 1) return;
-    this.resources.add(recipe.output, recipe.yield);
+    this.input.pay(recipeCost(order.recipe));
+    this.buildings.store.add(recipe.output, recipe.yield);
     order.done++;
     order.progress = 0;
-    this.loaded = false;
     if (order.done === order.batches) this.queue.shift();
   }
 
   private get status() {
     const order = this.queue[0];
     if (order === undefined) return "Idle";
-    if (this.loaded) return `Smelting ${RECIPES[order.recipe].name}`;
-    const lacking = this.resources.missing(recipeCost(order.recipe));
+    if (!this.input.isEmpty) return `Smelting ${RECIPES[order.recipe].name}`;
+    const lacking = this.buildings.store.missing(recipeCost(order.recipe));
     return `Waiting for ${lacking.map(([id, amount]) => `${formatAmount(id, amount)} ${RESOURCES[id].name}`).join(", ")}`;
+  }
+
+  private load(order: SmelterOrder) {
+    const cost = recipeCost(order.recipe);
+    if (!this.buildings.store.pay(cost)) return false;
+    this.input.addAll(cost);
+    return true;
   }
 
   private order(recipe: RecipeID, batches: number) {
@@ -88,10 +95,7 @@ export default class Smelter extends PragmaComponent {
   private cancel(order: SmelterOrder) {
     const index = this.queue.indexOf(order);
     assert(index !== -1, "Cancelling an order not in the smelter's queue");
-    if (index === 0 && this.loaded) {
-      this.resources.addAll(recipeCost(order.recipe));
-      this.loaded = false;
-    }
+    if (index === 0) this.input.moveAllTo(this.buildings.store);
     this.queue.splice(index, 1);
   }
 }

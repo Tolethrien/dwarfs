@@ -137,6 +137,11 @@ export default class Navi {
   public static remove(node: UINode, target: UINode) {
     this.removeQueue.push({ node, target });
   }
+  // also drops the children appended this frame, which are not in target.children yet
+  public static clear(target: UINode) {
+    this.appendQueue = this.appendQueue.filter((entry) => entry.target !== target);
+    for (const child of target.children) this.remove(child, target);
+  }
   public static markLayoutDirty() {
     this.layoutDirty = true;
   }

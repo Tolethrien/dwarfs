@@ -1,6 +1,7 @@
 import Time from "../time";
 import { debug } from "@debug";
 import { Signal } from "@axiom/events";
+import { assert } from "@axiom/utils";
 
 export type CoroutineTime = "game" | "real" | "fixed";
 export type CoroutineState = "running" | "done" | "stopped" | "failed";
@@ -25,6 +26,41 @@ interface Watch<Value> {
   value: Value | undefined;
   error: unknown;
 }
+// waits for an answer the player gives through the UI (give); skipped, onSkip closes that UI and
+// gives the answer in the player's stead
+export class CoroutineAnswer<Value> implements CoroutineWait {
+  private answered = false;
+  private answer: Value | undefined;
+
+  constructor(
+    private readonly onSkip: () => Value,
+    private readonly label = "answer",
+  ) {}
+
+  public give(value: Value) {
+    if (this.answered) return;
+    this.answered = true;
+    this.answer = value;
+  }
+
+  public get value() {
+    assert(this.answered, `No ${this.label} given yet`);
+    return this.answer as Value;
+  }
+
+  public tick() {
+    return this.answered;
+  }
+
+  public skip() {
+    if (!this.answered) this.give(this.onSkip());
+  }
+
+  public describe() {
+    return this.answered ? `${this.label} given` : `${this.label} awaited`;
+  }
+}
+
 export type CoroutineScript<Result = unknown> = (
   co: Coroutine,
 ) => Generator<CoroutineWait | void, Result, void>;

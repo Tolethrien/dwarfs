@@ -15,11 +15,8 @@ const BUFF_BAR = {
   textOutline: 2,
 };
 
-export function formatBuffLeft(seconds: number) {
-  const whole = Math.ceil(seconds);
-  if (whole < 60) return `${whole}s`;
-  const rest = whole % 60;
-  return `${Math.floor(whole / 60)}:${rest < 10 ? "0" : ""}${rest}`;
+export function formatBuffLeft(hours: number) {
+  return `${Math.ceil(hours)}h`;
 }
 
 export function describeBuff(id: BuffID) {

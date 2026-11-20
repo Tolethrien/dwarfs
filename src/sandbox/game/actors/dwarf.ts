@@ -15,6 +15,7 @@ import Travel from "../components/travel";
 import Morale from "../components/morale";
 import type Buffs from "../systems/buffs";
 import type Workforce from "../systems/workforce";
+import type GameEvents from "../systems/gameEvents";
 
 interface DwarfProps {
   uuid?: string;
@@ -25,6 +26,7 @@ interface DwarfProps {
   // out of the scene most of the time, so it can't reach the systems itself
   buffs: Buffs;
   workforce: Workforce;
+  events: GameEvents;
 }
 export default class Dwarf extends PragmaActor {
   public readonly name: string;
@@ -48,7 +50,7 @@ export default class Dwarf extends PragmaActor {
     this.addComponent(Drinker);
     if (props.rank === DwarfRank.foreman) this.addComponent(Equipment);
     else this.addComponent(Outfit);
-    this.addComponent(Effects, { buffs: props.buffs, workforce: props.workforce });
+    this.addComponent(Effects, { buffs: props.buffs, workforce: props.workforce, events: props.events });
     this.addComponent(Ball, { radius: DWARF_LOOK.cell / 2 });
     this.addComponent(Shift);
     this.addComponent(Headlight);

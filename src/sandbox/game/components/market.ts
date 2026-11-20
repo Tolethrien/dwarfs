@@ -1,22 +1,22 @@
 import PragmaComponent from "@pragma/component";
 import { formatAmount, ResourcesID } from "../content/resources";
 import { buyPrice, MARKET_GOODS, type MarketGood } from "../content/market";
-import Resources from "../systems/resources";
+import Buildings from "../systems/buildings";
 import MarketUI from "../ui/buildings/market";
 import { toast } from "../ui/elements/toast";
 
 export default class Market extends PragmaComponent {
-  declare private resources: Resources;
+  declare private buildings: Buildings;
   declare private window: MarketUI;
 
   awake(): void {
-    this.resources = this.scene.getSystem(Resources);
+    this.buildings = this.scene.getSystem(Buildings);
     this.window = new MarketUI({
       goods: MARKET_GOODS,
-      have: (id) => this.resources.get(id),
+      have: (id) => this.buildings.store.get(id),
       packsHeld: (good) => this.packsHeld(good),
       packsAffordable: (good) => this.packsAffordable(good),
-      missing: (cost) => this.resources.missing(cost),
+      missing: (cost) => this.buildings.store.missing(cost),
       sell: (good, packs) => this.sell(good, packs),
       buy: (good, packs) => this.buy(good, packs),
     });
@@ -35,7 +35,7 @@ export default class Market extends PragmaComponent {
   }
 
   private packsHeld(good: MarketGood) {
-    return Math.floor(this.resources.get(good.id) / good.pack);
+    return Math.floor(this.buildings.store.get(good.id) / good.pack);
   }
 
   private sell(good: MarketGood, packs: number) {
@@ -46,13 +46,13 @@ export default class Market extends PragmaComponent {
     }
     const amount = sold * good.pack;
     const beer = sold * good.price;
-    this.resources.pay({ [good.id]: amount });
-    this.resources.add(ResourcesID.beer, beer);
+    this.buildings.store.pay({ [good.id]: amount });
+    this.buildings.store.add(ResourcesID.beer, beer);
     toast(`Sold ${formatAmount(good.id, amount)} for ${formatAmount(ResourcesID.beer, beer)}`, "success");
   }
 
   private packsAffordable(good: MarketGood) {
-    return Math.floor(this.resources.get(ResourcesID.beer) / buyPrice(good));
+    return Math.floor(this.buildings.store.get(ResourcesID.beer) / buyPrice(good));
   }
 
   private buy(good: MarketGood, packs: number) {
@@ -63,8 +63,8 @@ export default class Market extends PragmaComponent {
     }
     const amount = bought * good.pack;
     const beer = bought * buyPrice(good);
-    this.resources.pay({ [ResourcesID.beer]: beer });
-    this.resources.add(good.id, amount);
+    this.buildings.store.pay({ [ResourcesID.beer]: beer });
+    this.buildings.store.add(good.id, amount);
     toast(`Bought ${formatAmount(good.id, amount)} for ${formatAmount(ResourcesID.beer, beer)}`, "success");
   }
 }

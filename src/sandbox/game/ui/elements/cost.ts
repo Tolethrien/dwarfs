@@ -14,7 +14,7 @@ export interface CostEntry {
   tooltip?: TextContent;
 }
 
-// a resource cost as entries, the lacking ones (Resources.missing) marked; Object.entries gives
+// a resource cost as entries, the lacking ones (Stock.missing) marked; Object.entries gives
 // enum numbers as strings
 export function costEntries(resourceCost: ResourceCost, lacking: [ResourcesID, number][]): CostEntry[] {
   return Object.entries(resourceCost).map(([key, amount]) => {

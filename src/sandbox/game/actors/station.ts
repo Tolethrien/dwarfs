@@ -4,6 +4,7 @@ import Launcher from "../components/launcher";
 import StationLook from "../components/stationLook";
 import LampLight from "../components/lampLight";
 import Haul from "../components/haul";
+import Storage from "../components/storage";
 import { STRUCTURES } from "../content/structures";
 
 export const STATION = {
@@ -31,6 +32,7 @@ export default class Station extends PragmaActor {
     if (props.position) this.transform.teleport(props.position.x, props.position.y);
     else this.addComponent(ShaftBottom);
     this.addComponent(Launcher, { tile: props.tile });
+    this.addComponent(Storage);
     this.addComponent(Haul);
     this.addComponent(StationLook, { name: () => this.name });
     this.addComponent(LampLight, { light: STRUCTURES.station.look.light });

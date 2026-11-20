@@ -55,11 +55,11 @@ function onDevServer() {
       gameWindow.setFullScreen(!gameWindow.isFullScreen());
     }
   });
-  gameWindow.webContents.openDevTools({
-    mode: "detach",
-    activate: false,
-    title: "Misa Devtools",
-  });
+  // gameWindow.webContents.openDevTools({
+  //   mode: "detach",
+  //   activate: false,
+  //   title: "Misa Devtools",
+  // });
   gameWindow.webContents.on("did-start-loading", () => {
     sendToProfiler("debug:gameReloaded");
     resetLogSession();

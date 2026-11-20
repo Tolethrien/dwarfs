@@ -9,11 +9,12 @@ import AxiomMath from "@axiom/math";
 import { COLOR } from "@axiom/color";
 import { UI_THEME } from "../../content/ui";
 import { text, TextContent } from "./text";
-import { button, UIButton } from "./button";
+import { button, buttonIn } from "./button";
 import { closeMenuOf, openMenu, updateMenu } from "./contextMenu";
 import { UISlot } from "./slot";
 import { UIDropdown } from "./dropdown";
 import { takeSubmitted } from "./input";
+import { panelStyle } from "./panel";
 
 export type WindowKind = "modal" | "docked";
 export type WindowSlot = "left" | "right" | "center";
@@ -111,8 +112,7 @@ export class UIWindow {
 
   public clear() {
     if (!this.content) return;
-    for (const child of [...this.content.children])
-      Navi.remove(child, this.content);
+    Navi.clear(this.content);
   }
 
   public close() {
@@ -140,8 +140,8 @@ export class UIWindow {
       return;
     }
     for (const field of takeSubmitted(this.panel)) field.submit?.(field.value);
-    const clicked = Navi.getClicked;
-    if (clicked instanceof UIDropdown && this.isOwnButton(clicked)) {
+    const clicked = this.ownButton(Navi.getClicked);
+    if (clicked instanceof UIDropdown) {
       const box = clicked.pixelBox;
       openMenu(
         this,
@@ -151,15 +151,14 @@ export class UIWindow {
       );
       return;
     }
-    if (this.isOwnButton(clicked)) {
+    if (clicked) {
       clicked.run();
       if (clicked instanceof UISlot && clicked.doubleClicked)
         clicked.options.doubleClick?.();
       return;
     }
-    const rightClicked = Navi.getRightClicked;
-    if (!(rightClicked instanceof UISlot) || !this.isOwnButton(rightClicked))
-      return;
+    const rightClicked = this.ownButton(Navi.getRightClicked);
+    if (!(rightClicked instanceof UISlot)) return;
     const items = rightClicked.options.menu?.();
     if (items) openMenu(this, items, InputManager.getMousePos());
   }
@@ -177,9 +176,9 @@ export class UIWindow {
     return blocked;
   }
 
-  private isOwnButton(node: UINode | undefined): node is UIButton {
-    if (!(node instanceof UIButton) || node.isDisabled) return false;
-    return this.panel !== undefined && node.isDescendantOf(this.panel);
+  private ownButton(node: UINode | undefined) {
+    if (!this.panel) return undefined;
+    return buttonIn(node, this.panel);
   }
 
   private isClosedByInput() {
@@ -221,7 +220,6 @@ export class UIWindow {
   }
 
   private createPanel() {
-    const padding = UI_THEME.spacing.windowPadding;
     const margin = UI_THEME.spacing.screenMargin;
     const anchorX = { left: "start", right: "end", center: "center" } as const;
     return new UINode({
@@ -231,33 +229,24 @@ export class UIWindow {
       style: {
         anchorX: anchorX[this.slot],
         anchorY: "center",
-        backgroundColor: UI_THEME.colors.panel,
-        outline: {
-          width: UI_THEME.outline.window,
-          color: UI_THEME.colors.frame,
-        },
-        rounded: UI_THEME.radius.window,
+        ...panelStyle("window"),
+        padding: { top: 0, right: 0, bottom: 0, left: 0 },
         layout: "stack",
         direction: "col",
         alignCross: "stretch",
-        gap: UI_THEME.spacing.windowGap,
-        padding: {
-          top: padding,
-          right: padding,
-          bottom: padding,
-          left: padding,
-        },
       },
     });
   }
 
   private addHeaderAndContent(panel: UINode) {
-    const header = Navi.append(this.createRow(), panel);
+    const header = Navi.append(this.createTitleBar(), panel);
     text(header, this.options.title ?? "", {
       color: UI_THEME.colors.title,
       size: UI_THEME.text.title,
+      font: UI_THEME.font.display,
     });
-    if (!this.options.required) button(header, "×", () => this.close());
+    if (!this.options.required)
+      button(header, "X", () => this.close(), { color: UI_THEME.colors.closeButton });
     return Navi.append(this.createColumn(), panel);
   }
 
@@ -275,11 +264,15 @@ export class UIWindow {
     });
   }
 
-  private createRow() {
+  private createTitleBar() {
+    const bar = UI_THEME.panel.titleBar;
     return new UINode({
       size: { width: pw(100), height: auto() },
       style: {
-        backgroundColor: UI_THEME.colors.transparent,
+        backgroundColor: bar.color,
+        rounded: 0,
+        padding: bar.padding,
+        shadow: { color: bar.stripe, offset: { x: bar.stripeWidth, y: 0 }, inset: true },
         layout: "stack",
         direction: "row",
         alignMain: "between",
@@ -293,6 +286,7 @@ export class UIWindow {
       size: { width: pw(100), height: auto() },
       style: {
         backgroundColor: UI_THEME.colors.transparent,
+        padding: UI_THEME.panel.window.padding,
         layout: "stack",
         direction: "col",
         alignCross: "stretch",

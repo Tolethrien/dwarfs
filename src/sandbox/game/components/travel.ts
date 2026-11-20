@@ -2,7 +2,7 @@ import PragmaComponent from "@pragma/component";
 import Time from "@engine/time";
 import AxiomMath from "@axiom/math";
 import { assert } from "@axiom/utils";
-import type { RouteLeg } from "../systems/transport";
+import type { RideOrder, RouteLeg } from "../systems/transport";
 
 export interface RoutePoint {
   position: Position2D;
@@ -18,7 +18,9 @@ interface Ride {
 }
 
 export default class Travel extends PragmaComponent {
+  public order: RideOrder | undefined;
   private current: Ride | undefined;
+  private last: RoutePoint | undefined;
   private started = false;
 
   // the first point is where it stands; a destroyed actor can't start coroutines until it's
@@ -54,6 +56,10 @@ export default class Travel extends PragmaComponent {
     return this.current;
   }
 
+  public get lastPoint() {
+    return this.last;
+  }
+
   start(): void {
     if (this.current && !this.started) this.go();
   }
@@ -83,6 +89,7 @@ export default class Travel extends PragmaComponent {
           if (ride.next < ride.route.length - 1 && ride.onPoint?.(ride.next)) return;
         }
         travel.current = undefined;
+        travel.last = ride.route[ride.route.length - 1];
         ride.onArrive();
       },
       { key: "travel" },

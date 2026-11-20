@@ -1,9 +1,10 @@
 import type Coroutine from "@engine/coroutines/coroutine";
-import type { CoroutineWait } from "@engine/coroutines/coroutine";
-import type StoryEvents from "../systems/storyEvents";
-import { ResourcesID } from "./resources";
-import { MAIN_TRAITS, MainTraitsID } from "./traits";
-import { MORALE } from "../systems/welfare";
+import type { CoroutineTime, CoroutineWait } from "@engine/coroutines/coroutine";
+import type StoryEvents from "../../systems/storyEvents";
+import { ResourcesID } from "../resources";
+import { MAIN_TRAITS, MainTraitsID } from "../traits";
+import { MORALE } from "../../systems/welfare";
+import { playIntro } from "./intro";
 
 // the ids go to the save, keep them stable
 export enum StoryEventID {
@@ -11,12 +12,16 @@ export enum StoryEventID {
   tavernTutorial,
   marketOpens,
   tradeUnion,
+  intro,
 }
 
-// resource: at least amount of it in the storage; applicationsArrived: the tavern's daily newcomers;
-// headquartersLevel: the headquarters reached at least the level
+// start: the game begins; resource: at least amount of it in the storage; applicationsArrived: the
+// tavern's daily newcomers; headquartersLevel: the headquarters reached at least the level
 export type StoryTrigger =
-  { kind: "resource"; id: ResourcesID; amount: number } | { kind: "applicationsArrived" } | { kind: "headquartersLevel"; level: number };
+  | { kind: "start" }
+  | { kind: "resource"; id: ResourcesID; amount: number }
+  | { kind: "applicationsArrived" }
+  | { kind: "headquartersLevel"; level: number };
 
 const MINER = MAIN_TRAITS[MainTraitsID.miner];
 
@@ -24,10 +29,20 @@ export interface StoryEvent {
   when: StoryTrigger;
   // game hours from the trigger to the event
   after?: number;
+  // real by default, so it goes on while the game stands still
+  time?: CoroutineTime;
+  // a Skip button while it runs, the script fast-forwards (co.isSkipping)
+  skippable?: boolean;
   play(co: Coroutine, story: StoryEvents): Generator<CoroutineWait | void, void, void>;
 }
 
 export const STORY_EVENTS: Record<StoryEventID, StoryEvent> = {
+  [StoryEventID.intro]: {
+    when: { kind: "start" },
+    time: "game",
+    skippable: true,
+    play: playIntro,
+  },
   [StoryEventID.smelterTutorial]: {
     when: { kind: "resource", id: ResourcesID.ironOre, amount: 20 },
     *play(co, story) {

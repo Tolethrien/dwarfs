@@ -20,19 +20,12 @@ export class UICurtain {
   }
 
   public brighten(ms: number) {
-    return new Promise<void>((resolve) => {
-      this.node.play(
-        Tweens.fadeOut(ms, undefined, () => {
-          this.node.setActive(false);
-          resolve();
-        }),
-      );
-    });
+    return this.node.play(Tweens.fadeOut(ms, undefined, () => this.node.setActive(false)));
   }
 
   public darken(ms: number) {
     this.node.setActive(true);
-    return new Promise<void>((resolve) => this.node.play(Tweens.fadeIn(ms, undefined, resolve)));
+    return this.node.play(Tweens.fadeIn(ms));
   }
 
   public destroy() {

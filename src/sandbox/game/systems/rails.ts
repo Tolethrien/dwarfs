@@ -3,8 +3,6 @@ import AxiomMath from "@axiom/math";
 import Grid from "@axiom/grid";
 import { assert } from "@axiom/utils";
 import type { Signal } from "@axiom/events";
-import { debug } from "@debug";
-import { gameCommands } from "../debugCommands";
 import { STRUCTURES } from "../content/structures";
 import { MAP_LOOK } from "../gpu/gameGlobals";
 import { BLOCKS, BlocksID } from "../content/blocks";
@@ -91,18 +89,6 @@ export default class Rails extends PragmaSystem {
   awake(): void {
     this.terrain = this.scene.getSystem(Terrain);
     this.events = this.scene.getSystem(GameEvents);
-    debug.game.connect("rails", () => this.stats);
-    const rails = this;
-    // x, y: a tile's corner; step: one of RAIL_STEPS; no checks, it goes over anything
-    gameCommands("rail", {
-      get list() {
-        return rails.segments;
-      },
-      build: (x: number, y: number, stepX: number, stepY: number, length: number) =>
-        this.build({ from: { x: x, y: y }, step: { x: stepX, y: stepY }, length: length }),
-      break: (x: number, y: number) => this.damage({ x: x, y: y }, STRUCTURES.rails.durability),
-      repair: (x: number, y: number) => this.repair({ x: x, y: y }),
-    });
   }
 
   render(): void {
@@ -152,7 +138,7 @@ export default class Rails extends PragmaSystem {
     });
   }
 
-  private get stats() {
+  public get stats() {
     let tiles = 0;
     let damaged = 0;
     let broken = 0;

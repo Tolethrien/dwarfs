@@ -4,16 +4,18 @@ const MINE = PALETTE.MINE;
 
 export const UI_THEME = {
   colors: {
-    panel: AxiomColor.withAlpha(MINE.SOOT, 240),
-    frame: MINE.IRON,
-    row: MINE.EBONY,
-    rowHover: MINE.WALNUT,
+    panel: AxiomColor.withAlpha(MINE.CONCRETE, 245),
+    frame: MINE.SOOT,
+    row: MINE.SLAB,
+    rowHover: MINE.GRANITE,
     pressed: MINE.COAL,
-    selected: MINE.BRONZE,
-    title: MINE.BRASS,
+    selected: MINE.BANNER,
+    accent: MINE.BANNER,
+    closeButton: MINE.BANNER_DARK,
+    title: MINE.BONE,
     text: MINE.BONE,
     muted: MINE.ASH,
-    lacking: MINE.RUST,
+    lacking: MINE.ALARM,
     scrollTrack: MINE.COAL,
     scrollThumb: MINE.OAK,
     scrollThumbHover: MINE.PINE,
@@ -54,27 +56,38 @@ export const UI_THEME = {
     },
     textSize: { name: 24, type: 15, status: 15, body: 14, label: 12, button: 14, close: 18 },
   },
+  font: {
+    body: "lato",
+    display: "bebas",
+  },
   text: {
-    title: 18,
-    header: 16,
-    button: 15,
-    bigButton: 26,
+    title: 28,
+    header: 22,
+    button: 18,
+    bigButton: 28,
     body: 14,
   },
   radius: {
-    window: 4,
-    button: 3,
-    scroll: 3,
+    button: 0,
+    scroll: 0,
   },
-  outline: {
-    window: 2,
+  // frame drawn inside the box; depth: how far the hard shadow is cast down and right
+  panel: {
+    window: { frame: 1, rounded: 0, depth: 5, padding: { top: 12, right: 12, bottom: 12, left: 12 } },
+    hud: { frame: 1, rounded: 0, depth: 4, padding: { top: 6, right: 10, bottom: 6, left: 10 } },
+    small: { frame: 1, rounded: 0, depth: 3, padding: { top: 4, right: 8, bottom: 4, left: 8 } },
+    shadowColor: AxiomColor.withAlpha(COLOR.BLACK, 230),
+    // the red stripe on the bar's left edge is an inset shadow pushed in by its width
+    titleBar: { color: MINE.SOOT, stripe: MINE.BANNER, stripeWidth: 10, padding: { top: 6, right: 6, bottom: 6, left: 22 } },
+  },
+  block: {
+    edge: 3,
   },
   backdrop: {
     blur: 2,
   },
   spacing: {
     screenMargin: 16,
-    windowPadding: 12,
     windowGap: 10,
     gap: 6,
     listGap: 4,
@@ -102,7 +115,7 @@ export const UI_THEME = {
   },
   header: {
     gap: 3,
-    line: 1,
+    line: 2,
   },
   divider: {
     line: 14,
@@ -155,7 +168,6 @@ export const UI_THEME = {
   },
   menu: {
     offset: 4,
-    outline: 1,
     gap: 2,
     zIndex: 105,
     padding: { top: 4, right: 4, bottom: 4, left: 4 },
@@ -180,9 +192,7 @@ export const UI_THEME = {
     delaySeconds: 0.4,
     maxWidth: 260,
     offset: 14,
-    outline: 1,
     zIndex: 110,
-    padding: { top: 4, right: 8, bottom: 4, left: 8 },
   },
   toast: {
     seconds: 2.2,

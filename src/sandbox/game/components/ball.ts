@@ -3,7 +3,7 @@ import type Effect from "../effects/effect";
 import { assert } from "@axiom/utils";
 import PragmaComponent from "@pragma/component";
 import Effects from "./effects";
-import type Haul from "./haul";
+import type Storage from "./storage";
 import BallPhysics from "../systems/ballPhysics";
 
 const BALL = { pixelsPerSpeed: 200 };
@@ -22,8 +22,8 @@ export default class Ball extends PragmaComponent {
   public biomeArea = 0;
   public passThrough: Box | null = null;
   private launched = false;
-  // where what it mines goes: its station's haul
-  declare public haul: Haul;
+  // where what it mines goes: its station's
+  declare public storage: Storage;
   declare private effects: Effects;
   declare private physics: BallPhysics;
 
@@ -32,11 +32,11 @@ export default class Ball extends PragmaComponent {
     this.radius = props.radius;
   }
 
-  public launch(direction: Position2D, speedScale: number, passThrough: Box | null, haul: Haul) {
+  public launch(direction: Position2D, speedScale: number, passThrough: Box | null, storage: Storage) {
     this.velocity.set(direction.x, direction.y);
     this.launchScale = speedScale;
     this.passThrough = passThrough;
-    this.haul = haul;
+    this.storage = storage;
     this.launched = true;
   }
 

@@ -1,21 +1,29 @@
 import PragmaComponent from "@pragma/component";
+import type { Signal } from "@axiom/events";
+import type Dwarf from "../actors/dwarf";
 import { assert } from "@axiom/utils";
 import type Effect from "../effects/effect";
-import { STATS, type FlightModifiers, type StatModifiers, type StatName } from "../effects/effect";
+import { STATS, type ClassStat, type FlightModifiers, type StatModifiers, type StatName } from "../effects/effect";
 import { SPECIAL_BEERS } from "../content/beers";
 import { FOREMAN_TRAIT, MAIN_TRAITS, TRAITS, type MainTraitData } from "../content/traits";
 import { ITEMS } from "../content/gear";
 import type Buffs from "../systems/buffs";
 import type Workforce from "../systems/workforce";
+import type GameEvents from "../systems/gameEvents";
 import Traits from "./traits";
 import Drinker from "./drinker";
 import Equipment from "./equipment";
 import Outfit from "./outfit";
 import Ball from "./ball";
 
+export interface EffectsSignals {
+  statsChanged: Signal<Dwarf | "all">;
+}
+
 interface EffectsProps {
   buffs: Buffs;
   workforce: Workforce;
+  events: GameEvents;
 }
 
 // every effect the dwarf has now (the class, the foreman's trait, the traits, the beer, a worker's
@@ -25,6 +33,7 @@ interface EffectsProps {
 export default class Effects extends PragmaComponent {
   private readonly buffs: Buffs;
   private readonly workforce: Workforce;
+  private readonly events: GameEvents;
   private workforceVersion = -1;
   private readonly modifiers = {} as StatModifiers;
   private readonly scratch = {} as StatModifiers;
@@ -49,6 +58,7 @@ export default class Effects extends PragmaComponent {
     super(internal);
     this.buffs = props.buffs;
     this.workforce = props.workforce;
+    this.events = props.events;
   }
 
   private get stale() {
@@ -84,18 +94,24 @@ export default class Effects extends PragmaComponent {
 
   public changed() {
     this.dirty = true;
+    this.events.dwarfs.statsChanged.emit(this.actor as Dwarf);
   }
 
-  private stat(name: StatName) {
+  public modified(name: StatName, base: number) {
     if (this.stale) this.refresh();
-    if (this.timed.length === 0) return this.sum(name, this.modifiers);
+    if (this.timed.length === 0) return this.sum(name, base, this.modifiers);
     for (const stat of STATS) {
       this.scratch[stat].add = this.modifiers[stat].add;
       this.scratch[stat].multiply = this.modifiers[stat].multiply;
     }
     const seconds = this.flightSeconds();
     for (const effect of this.timed) effect.modifyAt(this.scratch, seconds);
-    return this.sum(name, this.scratch);
+    return this.sum(name, base, this.scratch);
+  }
+
+  private stat(name: ClassStat) {
+    if (this.stale) this.refresh();
+    return this.modified(name, this.base[name]);
   }
 
   private flightSeconds() {
@@ -104,10 +120,10 @@ export default class Effects extends PragmaComponent {
     return ball === undefined ? 0 : ball.flightSeconds;
   }
 
-  private sum(name: StatName, modifiers: StatModifiers) {
+  private sum(name: StatName, base: number, modifiers: StatModifiers) {
     const buffs = this.buffs.stats[name];
     const add = modifiers[name].add + buffs.add;
-    return (this.base[name] + add) * modifiers[name].multiply * buffs.multiply;
+    return (base + add) * modifiers[name].multiply * buffs.multiply;
   }
 
   private traits() {

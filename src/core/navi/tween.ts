@@ -1,4 +1,5 @@
 import Easing from "@axiom/easing";
+import type { CoroutineWait } from "@engine/coroutines/coroutine";
 
 export interface TweenSample {
   scaleX?: number;
@@ -8,13 +9,17 @@ export interface TweenSample {
   alpha?: number;
 }
 
-export interface Tween {
+// a coroutine can wait on a played one (a loop never ends); skipped, it jumps to its end
+export interface Tween extends CoroutineWait {
   ms: number;
   loop: boolean;
   delay: number;
   sample: (t: number) => TweenSample;
   onDone: (() => void) | undefined;
   elapsed: number;
+  finished: boolean;
+  tick(): boolean;
+  skip(): void;
 }
 
 export type EaseFn = (t: number) => number;
@@ -25,7 +30,21 @@ function make(
   loop = false,
   onDone?: () => void,
 ): Tween {
-  return { ms, loop, sample, onDone, elapsed: 0, delay: 0 };
+  const tween: Tween = {
+    ms,
+    loop,
+    sample,
+    onDone,
+    elapsed: 0,
+    delay: 0,
+    finished: false,
+    tick: () => tween.finished,
+    skip: () => {
+      if (!tween.loop) tween.elapsed = Math.max(tween.elapsed, tween.delay + tween.ms);
+    },
+    describe: () => `tween ${Math.round(tween.elapsed)} / ${tween.delay + tween.ms} ms`,
+  };
+  return tween;
 }
 
 export const Tweens = {

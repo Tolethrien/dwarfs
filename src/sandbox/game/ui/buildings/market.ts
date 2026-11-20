@@ -36,7 +36,7 @@ const MARKET_UI = {
 
 // one stepper a tab: what's picked to sell isn't what's picked to buy
 export default class MarketUI {
-  private readonly window = new UIWindow({ kind: "modal", width: MARKET_UI.width, title: "Market", closeOnMove: closeOnCameraMove() });
+  private readonly window = new UIWindow({ kind: "docked", width: MARKET_UI.width, title: "Market", closeOnMove: closeOnCameraMove() });
   private tab: Tab = "sell";
   private readonly picked: Record<Tab, Map<MarketGood, number>> = { sell: new Map(), buy: new Map() };
   // the price is built again on each step, the cost element is static
@@ -68,9 +68,9 @@ export default class MarketUI {
   }
 
   private showTab() {
-    clear(this.tabBar);
+    Navi.clear(this.tabBar);
     tabs(this.tabBar, TABS, this.tab, (tab) => this.pickTab(tab));
-    clear(this.body);
+    Navi.clear(this.body);
     this.priceCells.clear();
     this.buildGoods(this.body);
   }
@@ -103,7 +103,7 @@ export default class MarketUI {
   private showPrice(good: MarketGood) {
     const cell = this.priceCells.get(good);
     if (cell === undefined) return;
-    clear(cell);
+    Navi.clear(cell);
     if (this.tab === "sell") {
       cost(cell, costEntries({ [ResourcesID.beer]: this.packsOf(good) * good.price }, []));
       return;
@@ -138,8 +138,4 @@ export default class MarketUI {
     this.picked[this.tab].set(good, Math.min(Math.max(1, this.packsOf(good) + step), most));
     this.showPrice(good);
   }
-}
-
-function clear(node: UINode) {
-  for (const child of [...node.children]) Navi.remove(child, node);
 }

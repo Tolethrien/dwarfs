@@ -3,7 +3,8 @@ import UINode from "@navi/node";
 import { auto, px } from "@navi/units";
 import { UI_THEME } from "../content/ui";
 import { text } from "./elements/text";
-import { button, UIButton } from "./elements/button";
+import { button, runClicked } from "./elements/button";
+import { panelStyle } from "./elements/panel";
 
 export interface ShootingBarActions {
   stop: () => void;
@@ -14,6 +15,7 @@ export default class ShootingBarUI {
   private text: () => string = () => "";
 
   constructor(private readonly actions: ShootingBarActions) {
+    // not in the HUD layer: the intro hides the HUD, and the player shoots in it
     this.bar = Navi.append(
       new UINode({
         position: { x: px(0), y: px(UI_THEME.spacing.screenMargin) },
@@ -21,14 +23,11 @@ export default class ShootingBarUI {
         style: {
           anchorX: "center",
           anchorY: "end",
-          backgroundColor: UI_THEME.colors.panel,
-          outline: { width: UI_THEME.outline.window, color: UI_THEME.colors.frame },
-          rounded: UI_THEME.radius.window,
+          ...panelStyle("hud"),
           layout: "stack",
           direction: "row",
           alignCross: "center",
           gap: UI_THEME.spacing.windowGap,
-          padding: UI_THEME.spacing.buttonPadding,
         },
       }),
     );
@@ -38,10 +37,7 @@ export default class ShootingBarUI {
   }
 
   public update() {
-    if (!this.bar.active) return;
-    const clicked = Navi.getClicked;
-    if (!(clicked instanceof UIButton) || clicked.isDisabled) return;
-    if (clicked.isDescendantOf(this.bar)) clicked.run();
+    runClicked(this.bar);
   }
 
   public show(text: () => string) {

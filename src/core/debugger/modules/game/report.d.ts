@@ -39,8 +39,8 @@ export interface GameWorkforceReport {
 export interface GameBuffRow {
   name: string;
   description: string;
-  seconds: number;
-  secondsLeft: number | null;
+  hours: number;
+  hoursLeft: number | null;
 }
 
 export interface GameRailsReport {
@@ -105,7 +105,7 @@ export interface GameReport {
   rails: GameRailsReport;
   stations: GameStationRow[];
   buildings: GameBuildingsReport;
-  tavern: GameTavernReport;
+  tavern: GameTavernReport | undefined;
   resources: GameResourceRow[];
   date: string;
   player: GamePlayerReport;

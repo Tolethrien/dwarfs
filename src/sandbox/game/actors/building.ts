@@ -5,6 +5,7 @@ import Tavern from "../components/tavern";
 import Market from "../components/market";
 import Smelter from "../components/smelter";
 import Headquarters from "../components/headquarters";
+import Storage from "../components/storage";
 import { BUILDINGS, BuildingsID } from "../content/structures";
 import type { BuildingPlace } from "../systems/buildings";
 
@@ -22,9 +23,20 @@ export default class Building extends PragmaActor {
     this.transform.teleport(props.position.x, props.position.y);
     this.addComponent(BuildingLook, { id: props.id, place: props.place });
     this.addComponent(LampLight, { light: BUILDINGS[props.id].light });
-    if (props.id === BuildingsID.tavern) this.addComponent(Tavern);
-    if (props.id === BuildingsID.market) this.addComponent(Market);
-    if (props.id === BuildingsID.smelter) this.addComponent(Smelter);
-    if (props.id === BuildingsID.headquarters) this.addComponent(Headquarters);
+    switch (props.id) {
+      case BuildingsID.tavern:
+        this.addComponent(Tavern);
+        break;
+      case BuildingsID.market:
+        this.addComponent(Market);
+        break;
+      case BuildingsID.smelter:
+        this.addComponent(Smelter);
+        break;
+      case BuildingsID.headquarters:
+        this.addComponent(Storage, { camp: true });
+        this.addComponent(Headquarters);
+        break;
+    }
   }
 }

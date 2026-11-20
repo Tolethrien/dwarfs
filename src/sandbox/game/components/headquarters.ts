@@ -1,9 +1,11 @@
 import PragmaComponent from "@pragma/component";
+import { assert } from "@axiom/utils";
 import type { Signal } from "@axiom/events";
 import GameEvents from "../systems/gameEvents";
 import { ResourcesID, type ResourceCost } from "../content/resources";
 import { STRUCTURES } from "../content/structures";
-import Resources from "../systems/resources";
+import Storage from "./storage";
+import ResourcesHud from "../ui/resources";
 import PlayerStats from "../systems/playerStats";
 import Calendar, { type Alarm } from "../systems/calendar";
 import HeadquartersUI from "../ui/buildings/headquarters";
@@ -35,20 +37,20 @@ export function shaftLimitAt(level: number) {
 // its level is the mine's development: what can be built at all, how deep the shaft goes
 export default class Headquarters extends PragmaComponent {
   public level = 1;
-  declare private resources: Resources;
+  declare private hud: ResourcesHud;
   declare private events: GameEvents;
   declare private window: HeadquartersUI;
   declare private subsidy: Alarm;
 
   awake(): void {
-    this.resources = this.scene.getSystem(Resources);
+    this.hud = new ResourcesHud((id) => this.store.get(id));
     this.events = this.scene.getSystem(GameEvents);
     const subsidy = HEADQUARTERS.subsidy;
     const calendar = this.scene.getSystem(Calendar);
     this.subsidy = calendar.alarm(
       { hour: subsidy.hour, everyDays: 1 },
-      () => this.resources.add(ResourcesID.beer, subsidy.beer),
-      { until: () => this.level >= subsidy.untilLevel },
+      () => this.store.add(ResourcesID.beer, subsidy.beer),
+      { from: () => this.actor.getVisibility(), until: () => this.level >= subsidy.untilLevel },
     );
     const playerStats = this.scene.getSystem(PlayerStats);
     this.window = new HeadquartersUI({
@@ -56,18 +58,25 @@ export default class Headquarters extends PragmaComponent {
       level: () => this.level,
       next: () => HEADQUARTERS.levels[this.level],
       shaftLimit: (level) => shaftLimitAt(level),
-      missing: (cost) => this.resources.missing(cost),
+      missing: (cost) => this.store.missing(cost),
       upgrade: () => this.upgrade(),
     });
   }
 
   update(): void {
+    this.hud.update();
     this.window.update();
   }
 
   destroy(): void {
     this.subsidy.cancel();
     this.window.close();
+  }
+
+  private get store() {
+    const storage = this.getSibling(Storage);
+    assert(storage !== undefined, `Headquarters needs Storage on actor: ${this.actor.ID.description}`);
+    return storage.stock;
   }
 
   public open() {
@@ -77,7 +86,7 @@ export default class Headquarters extends PragmaComponent {
   private upgrade() {
     const cost = HEADQUARTERS.levels[this.level]?.cost;
     if (cost === undefined) return;
-    if (!this.resources.pay(cost)) {
+    if (!this.store.pay(cost)) {
       toast("Not enough resources", "error");
       return;
     }

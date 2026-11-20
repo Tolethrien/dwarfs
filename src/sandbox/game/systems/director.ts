@@ -1,9 +1,7 @@
 import PragmaSystem from "@pragma/system";
 import InputManager from "@engine/inputManager";
 import { Camera } from "@engine/camera/camera";
-import Navi from "@navi/navi";
 import type { ActionName } from "../content/actions";
-import { gameSwitch } from "../debugCommands";
 import { SURFACE } from "../content/surface";
 import Terrain from "./terrain";
 
@@ -19,12 +17,6 @@ export default class Director extends PragmaSystem {
 
   awake(): void {
     this.terrain = this.scene.getSystem(Terrain);
-    gameSwitch(
-      "hideUi",
-      "hide ui",
-      () => !Navi.root.active,
-      (on) => Navi.root.setActive(!on),
-    );
   }
 
   start(): void {

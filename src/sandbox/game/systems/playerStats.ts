@@ -1,6 +1,4 @@
 import PragmaSystem from "@pragma/system";
-import { debug } from "@debug";
-import { gameCommands } from "../debugCommands";
 import { BlocksID } from "../content/blocks";
 import GameEvents from "./gameEvents";
 
@@ -12,20 +10,10 @@ export default class PlayerStats extends PragmaSystem {
 
   awake(): void {
     this.scene.getSystem(GameEvents).terrain.mined.connect((struck) => this.countMined(struck.type));
-    debug.game.connect("player", () => ({
-      name: this.name,
-      minedTotal: this.total,
-      mined: [...this.mined]
-        .sort((a, b) => b[1] - a[1])
-        .map(([block, count]) => ({ block: BlocksID[block], count: count })),
-    }));
-    const stats = this;
-    gameCommands("player", {
-      get name() {
-        return stats.name;
-      },
-      rename: (name: string) => (this.name = name),
-    });
+  }
+
+  public get minedList(): ReadonlyMap<BlocksID, number> {
+    return this.mined;
   }
 
   public minedOf(block: BlocksID) {

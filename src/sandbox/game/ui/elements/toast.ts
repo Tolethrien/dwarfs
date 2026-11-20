@@ -5,6 +5,7 @@ import Easing from "@axiom/easing";
 import { Tweens } from "@navi/tween";
 import { UI_THEME } from "../../content/ui";
 import { text } from "./text";
+import { panelStyle } from "./panel";
 
 export type ToastKind = "error" | "info" | "success";
 
@@ -20,12 +21,7 @@ class UIToast extends UINode {
       size: { width: auto(), height: auto() },
       input: "none",
       style: {
-        backgroundColor: UI_THEME.colors.panel,
-        outline: {
-          width: UI_THEME.outline.window,
-          color: UI_THEME.toast.kinds[kind].frame,
-        },
-        rounded: UI_THEME.radius.window,
+        ...panelStyle("hud", UI_THEME.toast.kinds[kind].frame),
         padding: UI_THEME.toast.padding,
       },
     });
