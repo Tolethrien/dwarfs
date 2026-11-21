@@ -1,7 +1,7 @@
 import Grid from "@axiom/grid";
 import { BlocksID } from "../content/blocks";
 import { STRUCTURES } from "../content/structures";
-import type Terrain from "../systems/terrain";
+import type Terrain from "../systems/world/terrain";
 
 export function stationFootprint(body: Box): Box {
   return { x: body.x - 1, y: body.y, w: body.w + 2, h: body.h };

@@ -121,6 +121,15 @@ export class UITable {
   }
 }
 
+export function tableWindowWidth(columns: readonly TableColumn[], scrolled = true) {
+  const windowPadding = UI_THEME.panel.window.padding;
+  const rowPadding = UI_THEME.spacing.rowPadding;
+  const columnsWidth = columns.reduce((sum, column) => sum + column.width, 0);
+  const gaps = UI_THEME.spacing.gap * Math.max(columns.length - 1, 0);
+  const scroll = scrolled ? UI_THEME.scroll.width + UI_THEME.spacing.gap : 0;
+  return columnsWidth + gaps + rowPadding.left + rowPadding.right + scroll + windowPadding.left + windowPadding.right;
+}
+
 export function table(
   parent: UINode,
   columns: TableColumn[],

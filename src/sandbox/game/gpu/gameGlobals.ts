@@ -85,6 +85,7 @@ export const MAP_LOOK = {
     farMotes: { zoom: 0.25, size: 0.5 },
     fade: 15,
     spread: 1.5,
+    fullForce: 2,
     perBreak: { weak: 0.25, strong: 0.8 },
   },
   glow: {
@@ -195,10 +196,11 @@ export default class GameGlobals {
     words: Uint32Array,
     from: number,
     count: number,
+    sourceOffset = from,
   ) {
     const buffer = this.perTile.get(name);
     assert(buffer !== undefined, `No ${name} global, register first`);
-    Aurora.device.queue.writeBuffer(buffer, from * 4, words, from, count);
+    Aurora.device.queue.writeBuffer(buffer, from * 4, words, sourceOffset, count);
   }
 
   public static refreshMaterials() {

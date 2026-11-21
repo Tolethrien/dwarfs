@@ -55,7 +55,7 @@ export const BLOCKS: Record<BlocksID, BlockData> = {
   [BlocksID.dirt]: { solid: true, str: 3, sheet: "dirt" },
   [BlocksID.stone]: { solid: true, drops: { id: ResourcesID.stone, amount: 0.5 }, str: 5, sheet: "stone" },
   [BlocksID.coal]: { solid: true, drops: { id: ResourcesID.coal, amount: 0.25 }, str: 5, sheet: "coal", ownColors: true, glow: { color: [235, 115, 20], blend: 1, shine: 5 } },
-  [BlocksID.iron]: { solid: true, drops: { id: ResourcesID.ironOre, amount: 1 }, str: 5.7, sheet: "iron", ownColors: true, glow: { color: [255, 105, 40], blend: 0.85, shine: 4.5 } },
+  [BlocksID.iron]: { solid: true, drops: { id: ResourcesID.ironOre, amount: 1 }, str: 5.7, sheet: "iron", ownColors: true, glow: { color: [128, 180, 194], blend: 0.85, shine: 4.5, sparkle: { density: 0, speed: 0 } } },
   [BlocksID.fossils]: { solid: true, drops: { id: ResourcesID.boneMeal, amount: 0.1 }, str: 5, sheet: "fossils", ownColors: true, glow: { color: [235, 225, 200], blend: 0.5, shine: 1, style: "sheen", sparkle: { density: 0, speed: 0 } } },
   [BlocksID.obsidian]: { solid: true, str: Infinity, sheet: "obsidian", glow: { color: [200, 180, 255], blend: 0.6, shine: 1.5, style: "glint" } },
   [BlocksID.structure]: { solid: true, seeThrough: true, noMist: true, str: Infinity },

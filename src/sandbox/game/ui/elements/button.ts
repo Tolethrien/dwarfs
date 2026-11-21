@@ -16,6 +16,7 @@ export interface ButtonOptions {
   iconSize?: number;
   big?: boolean;
   pulse?: { amount: number; ms: number };
+  tag?: string;
 }
 
 // clicks are handled by whoever owns the button (UIWindow), not in tick: see .plans/ui-elementy.md
@@ -62,6 +63,7 @@ export function button(
   options: ButtonOptions = {},
 ) {
   const node = new UIButton(run, options.pulse ? clearProps(options) : buttonProps(options));
+  if (options.tag) node.tags.add(options.tag);
   Navi.append(node, parent);
   if (options.pulse) pulsingPlate(node, options, options.pulse);
   if (typeof options.selected === "function") node.showSelected(selectionPlate(node), options.selected);

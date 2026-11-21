@@ -1,22 +1,21 @@
-import Effect, { type FlightModifiers } from "./effect";
+import type Effect from "./effect";
 
 interface SplashProps {
   radius: number;
   damage: number;
 }
 
-export default class Splash extends Effect {
-  constructor(private readonly props: SplashProps) {
-    super();
-  }
-
-  public describe() {
-    return `Hits also strike every block ${this.props.radius} around for ${this.props.damage}`;
-  }
-
-  public modifyFlight(flight: FlightModifiers) {
-    if (this.props.radius <= flight.splashRadius) return;
-    flight.splashRadius = this.props.radius;
-    flight.splashDamage = this.props.damage;
-  }
+export function splash(props: SplashProps): Effect {
+  return {
+    name: "Splash",
+    props: props,
+    describe() {
+      return `Hits also strike every block ${props.radius} around for ${props.damage}`;
+    },
+    modifyFlight(flight) {
+      if (props.radius <= flight.splashRadius) return;
+      flight.splashRadius = props.radius;
+      flight.splashDamage = props.damage;
+    },
+  };
 }

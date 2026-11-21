@@ -1,4 +1,4 @@
-import type { EventBus } from "@axiom/events";
+import type { EventBus, SignalListener } from "@axiom/events";
 import { assert } from "@axiom/utils";
 import type Coroutine from "@engine/coroutines/coroutine";
 import type { CoroutineScript } from "@engine/coroutines/coroutine";
@@ -14,6 +14,11 @@ interface SystemListener {
   callback: (data: any) => void;
 }
 
+interface SignalConnection {
+  signal: SignalListener<any>;
+  callback: (data: any) => void;
+}
+
 abstract class PragmaSystem {
   public readonly ID: symbol;
   public readonly name: string;
@@ -23,6 +28,7 @@ abstract class PragmaSystem {
   private isSystemEnabled = true;
   private isRemoved = false;
   private readonly listeners: SystemListener[] = [];
+  private readonly signalListeners: SignalConnection[] = [];
   private readonly startedCoroutines = new Map<Coroutine, string | undefined>();
 
   constructor(internal: InternalPSProps) {
@@ -69,10 +75,24 @@ abstract class PragmaSystem {
   public offGlobalEvent<T>(name: string, cb: (data: T) => void) {
     this.unlisten(Pragma.events, name, cb);
   }
+  public connect<T>(signal: SignalListener<T>, cb: (data: T) => void) {
+    signal.connect(cb);
+    this.signalListeners.push({ signal: signal, callback: cb });
+  }
+  public disconnect<T>(signal: SignalListener<T>, cb: (data: T) => void) {
+    signal.disconnect(cb);
+    const index = this.signalListeners.findIndex(
+      (entry) => entry.signal === signal && entry.callback === cb,
+    );
+    if (index !== -1) this.signalListeners.splice(index, 1);
+  }
   public releaseListeners() {
     for (const listener of this.listeners)
       listener.bus.off(listener.name, listener.callback);
     this.listeners.length = 0;
+    for (const entry of this.signalListeners)
+      entry.signal.disconnect(entry.callback);
+    this.signalListeners.length = 0;
   }
   private listen<T>(bus: EventBus, name: string, callback: (data: T) => void) {
     bus.on(name, callback);

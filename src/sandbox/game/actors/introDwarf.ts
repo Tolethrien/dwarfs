@@ -1,5 +1,5 @@
 import PragmaActor from "@pragma/actor";
-import LayeredSprite from "../components/layeredSprite";
+import LayeredSprite from "../components/common/layeredSprite";
 import { RENDER_SHEET, SORT_ORDER } from "../content/render";
 import { DWARF_LOOK, getRandomDwarfLook } from "../content/dwarfs";
 

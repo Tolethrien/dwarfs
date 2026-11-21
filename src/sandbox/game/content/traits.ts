@@ -1,6 +1,6 @@
 import type Effect from "../effects/effect";
-import Pierce from "../effects/pierce";
-import Splash from "../effects/splash";
+import { pierce } from "../effects/pierce";
+import { splash } from "../effects/splash";
 
 export enum MainTraitsID {
   intern,
@@ -44,7 +44,7 @@ export const MAIN_TRAITS: Record<MainTraitsID, MainTraitData> = {
   [MainTraitsID.pyro]: {
     name: "Pyro",
     description: "A blasting specialist: sprinkles saltpetre around the rock, so every pick strike also hurts the blocks next to it.",
-    effects: [new Splash({ radius: 1, damage: 3 })],
+    effects: [splash({ radius: 1, damage: 3 })],
     speed: 3,
     power: 3,
     bph: 5,
@@ -60,7 +60,7 @@ export const ACTIVE_MAIN_TRAITS = (Object.keys(MAIN_TRAITS).map(Number) as MainT
 export const FOREMAN_TRAIT: TraitData = {
   name: "Foreman",
   description: "Piercing flight: breaks through blocks at the start of the shot.",
-  effects: [new Pierce({ untilSpeed: 1.05, overSpeedPower: 0.3 })],
+  effects: [pierce({ untilSpeed: 1.05, overSpeedPower: 0.3 })],
 };
 
 // the ids go to the save, keep them stable

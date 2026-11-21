@@ -17,7 +17,7 @@ import { takeSubmitted } from "./input";
 import { panelStyle } from "./panel";
 
 export type WindowKind = "modal" | "docked";
-export type WindowSlot = "left" | "right" | "center";
+export type WindowSlot = "left" | "right" | "center" | "bottomRight";
 export interface CloseOnMove {
   position: () => Position2D;
   distance: number;
@@ -27,6 +27,8 @@ export interface WindowOptions {
   width: number;
   title?: TextContent;
   slot?: WindowSlot;
+  offsetY?: number;
+  tag?: string;
   dim?: boolean;
   blur?: boolean;
   required?: boolean;
@@ -97,6 +99,7 @@ export class UIWindow {
 
     const plate = this.options.plate;
     const panel = Navi.append(plate ? this.createPlate(plate) : this.createPanel());
+    if (this.options.tag) panel.tags.add(this.options.tag);
     const content = plate ? panel : this.addHeaderAndContent(panel);
     panel.play(Tweens.popIn(UI_THEME.motion.popInMs));
     Navi.focus(panel);
@@ -221,14 +224,16 @@ export class UIWindow {
 
   private createPanel() {
     const margin = UI_THEME.spacing.screenMargin;
-    const anchorX = { left: "start", right: "end", center: "center" } as const;
+    const anchorX = { left: "start", right: "end", center: "center", bottomRight: "end" } as const;
+    const anchorY = { left: "center", right: "center", center: "center", bottomRight: "end" } as const;
+    const posY = this.slot === "bottomRight" ? margin + (this.options.offsetY ?? 0) : 0;
     return new UINode({
       focusable: true,
-      position: { x: px(this.slot === "center" ? 0 : margin), y: px(0) },
+      position: { x: px(this.slot === "center" ? 0 : margin), y: px(posY) },
       size: { width: px(this.options.width), height: auto() },
       style: {
         anchorX: anchorX[this.slot],
-        anchorY: "center",
+        anchorY: anchorY[this.slot],
         ...panelStyle("window"),
         padding: { top: 0, right: 0, bottom: 0, left: 0 },
         layout: "stack",

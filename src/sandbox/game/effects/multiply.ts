@@ -1,18 +1,16 @@
-import Effect, { STAT_NAMES, type StatModifiers, type StatName } from "./effect";
+import type Effect from "./effect";
+import { STAT_NAMES, type StatName } from "./effect";
 
-export default class Multiply extends Effect {
-  constructor(
-    public readonly stat: StatName,
-    public readonly factor: number,
-  ) {
-    super();
-  }
-
-  public describe() {
-    return `${STAT_NAMES[this.stat]} ×${this.factor}`;
-  }
-
-  public modify(modifiers: StatModifiers) {
-    modifiers[this.stat].multiply *= this.factor;
-  }
+export function multiply(stat: StatName, factor: number): Effect {
+  const props = { factor: factor };
+  return {
+    name: `Multiply ${stat}`,
+    props: props,
+    describe() {
+      return `${STAT_NAMES[stat]} ×${props.factor}`;
+    },
+    modify(modifiers) {
+      modifiers[stat].multiply *= props.factor;
+    },
+  };
 }

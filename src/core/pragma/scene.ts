@@ -185,6 +185,7 @@ export default class PragmaScene {
     for (const system of this.systemsRunning.before) system.onDestroy();
     for (const system of this.systemsRunning.after) system.onDestroy();
     this.coroutines.stopAll();
+    this.sharedData.clear();
   }
   private addPendingSystems() {
     const batch = this.systemsToAdd.splice(0);

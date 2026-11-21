@@ -7,6 +7,7 @@ import { rockAt } from "./rocks";
 import { carveCaves } from "./caves";
 import { placeBiomes } from "./biomes";
 import { placeOres } from "./ores";
+import { placeDecorations } from "./decorations";
 
 export const MAP_GEN = {
   world: { mapInTiles: { width: 320, height: 1280 }, tileInPixels: 96 },
@@ -46,6 +47,7 @@ export function generateMap(world: World, seed: number) {
   placeBiomes(world, seed);
   carveCaves(world, seed);
   placeOres(world, seed);
+  placeDecorations(world, seed);
 }
 
 function pickIndex(count: number, share: number) {

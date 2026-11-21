@@ -34,6 +34,10 @@ export default class StructurePlan {
       this.params[look] = this.material.pack({ radius: radius, center: center, look: PLAN_LOOK[look] });
   }
 
+  public static get isShown() {
+    return this.shown;
+  }
+
   // for a Draw call, nothing while the blueprint is gone; two calls, not one object: drawn every frame
   public static materialOf(look: PlanLook | undefined) {
     return this.shown && look !== undefined ? this.material : undefined;

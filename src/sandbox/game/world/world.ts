@@ -1,7 +1,18 @@
 import { BlocksID } from "../content/blocks";
 import { BackgroundsID } from "../content/backgrounds";
 import { BiomesID } from "../content/biomes";
+import type { DecoLayer, DecosID, DecoSupport } from "../content/decorations";
 import { packTile, tileLook, tileType } from "./tile";
+
+export interface DecoPlacement {
+  id: DecosID;
+  layer: DecoLayer;
+  support: DecoSupport;
+  flipX: boolean;
+  scale: number;
+  offset: number;
+  phase: number;
+}
 
 export interface BiomeArea {
   biome: BiomesID;
@@ -28,6 +39,7 @@ export default class World {
   readonly biomes: Uint16Array;
   readonly biomeAreas: BiomeArea[] = [{ biome: BiomesID.none }];
   readonly damage = new Map<number, number>();
+  readonly decos = new Map<number, DecoPlacement[]>();
   readonly discovered: Uint8Array;
   readonly fogSize: Size2D;
   shaftDepth = 0;
@@ -90,6 +102,42 @@ export default class World {
     const index = this.tileIndex(gx, gy);
     if (index === -1) return;
     this.backgrounds[index] = packTile(type, look);
+  }
+
+  getDecos(gx: number, gy: number) {
+    const index = this.tileIndex(gx, gy);
+    if (index === -1) return undefined;
+    return this.decos.get(index);
+  }
+
+  addDeco(gx: number, gy: number, deco: DecoPlacement) {
+    const index = this.tileIndex(gx, gy);
+    if (index === -1) return;
+    const list = this.decos.get(index);
+    if (list) list.push(deco);
+    else this.decos.set(index, [deco]);
+  }
+
+  removeDecos(gx: number, gy: number, match: (deco: DecoPlacement) => boolean) {
+    const index = this.tileIndex(gx, gy);
+    if (index === -1) return;
+    const list = this.decos.get(index);
+    if (!list) return;
+    const kept = list.filter((deco) => !match(deco));
+    if (kept.length === 0) this.decos.delete(index);
+    else if (kept.length !== list.length) this.decos.set(index, kept);
+  }
+
+  isTileDiscovered(gx: number, gy: number) {
+    if (!this.inside(gx, gy)) return false;
+    const perTile = WORLD_FOG.perTile;
+    const baseX = gx * perTile;
+    const baseY = gy * perTile;
+    const width = this.fogSize.width;
+    for (let py = 0; py < perTile; py++)
+      for (let px = 0; px < perTile; px++)
+        if (this.discovered[baseX + px + (baseY + py) * width] > 0) return true;
+    return false;
   }
 
   discoverTiles(tiles: Position2D[]) {

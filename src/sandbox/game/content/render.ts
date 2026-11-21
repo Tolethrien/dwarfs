@@ -31,5 +31,6 @@ export const RENDER_SHEET = {
   caveCeiling: "caveCeiling",
   caveFloor: "caveFloor",
   items: "items",
+  decoGlow: "decoGlow",
   dwarfCard: "dwarfCard",
 };

@@ -1,21 +1,27 @@
 import PragmaActor from "@pragma/actor";
-import LayeredSprite, { type SpriteLayer } from "../components/layeredSprite";
+import LayeredSprite, { type SpriteLayer } from "../components/common/layeredSprite";
 import { RENDER_SHEET, SORT_ORDER } from "../content/render";
 import { DWARF_LOOK, DwarfRank } from "../content/dwarfs";
+import { LightsID } from "../content/lights";
 import type { MainTraitsID } from "../content/traits";
-import Drinker from "../components/drinker";
-import Traits from "../components/traits";
-import Ball from "../components/ball";
-import Effects from "../components/effects";
-import Equipment from "../components/equipment";
-import Outfit from "../components/outfit";
-import Shift from "../components/shift";
-import Headlight from "../components/headlight";
-import Travel from "../components/travel";
-import Morale from "../components/morale";
-import type Buffs from "../systems/buffs";
-import type Workforce from "../systems/workforce";
-import type GameEvents from "../systems/gameEvents";
+import Drinker from "../components/dwarfs/drinker";
+import Traits from "../components/dwarfs/traits";
+import Ball from "../components/dwarfs/ball";
+import Effects from "../components/dwarfs/effects";
+import Equipment from "../components/dwarfs/equipment";
+import Outfit from "../components/dwarfs/outfit";
+import Shift from "../components/dwarfs/shift";
+import Lamp from "../components/common/lamp";
+import Revealer from "../components/common/revealer";
+import Travel from "../components/common/travel";
+import Morale from "../components/dwarfs/morale";
+import type Buffs from "../systems/dwarfs/buffs";
+import type Workforce from "../systems/dwarfs/workforce";
+import type GameEvents from "../systems/core/gameEvents";
+
+const DWARF = {
+  reveal: 20,
+};
 
 interface DwarfProps {
   uuid?: string;
@@ -53,7 +59,8 @@ export default class Dwarf extends PragmaActor {
     this.addComponent(Effects, { buffs: props.buffs, workforce: props.workforce, events: props.events });
     this.addComponent(Ball, { radius: DWARF_LOOK.cell / 2 });
     this.addComponent(Shift);
-    this.addComponent(Headlight);
+    this.addComponent(Lamp, { light: LightsID.helmet });
+    this.addComponent(Revealer, { radius: DWARF.reveal, onStart: false });
     this.addComponent(Travel);
     this.addComponent(Morale);
   }

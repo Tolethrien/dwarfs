@@ -1,13 +1,16 @@
 import PragmaActor from "@pragma/actor";
-import BuildingLook from "../components/buildingLook";
-import LampLight from "../components/lampLight";
-import Tavern from "../components/tavern";
-import Market from "../components/market";
-import Smelter from "../components/smelter";
-import Headquarters from "../components/headquarters";
-import Storage from "../components/storage";
+import { boxShape } from "../build/space";
+import BuildFootprint from "../components/structures/buildFootprint";
+import BuildingLook from "../components/buildings/buildingLook";
+import Lamp from "../components/common/lamp";
+import Revealer from "../components/common/revealer";
+import Tavern from "../components/buildings/tavern";
+import Market from "../components/buildings/market";
+import Smelter from "../components/buildings/smelter";
+import Headquarters from "../components/buildings/headquarters";
+import Storage from "../components/common/storage";
 import { BUILDINGS, BuildingsID } from "../content/structures";
-import type { BuildingPlace } from "../systems/buildings";
+import type { BuildingPlace } from "../world/buildingShape";
 
 interface BuildingProps {
   id: BuildingsID;
@@ -21,8 +24,15 @@ export default class Building extends PragmaActor {
     super();
     this.id = props.id;
     this.transform.teleport(props.position.x, props.position.y);
+    if (props.place.base.y >= 0) {
+      this.addComponent(BuildFootprint, {
+        shape: boxShape(props.place.reserve),
+        showReserve: props.place.reserve,
+      });
+    }
     this.addComponent(BuildingLook, { id: props.id, place: props.place });
-    this.addComponent(LampLight, { light: BUILDINGS[props.id].light });
+    this.addComponent(Lamp, { light: BUILDINGS[props.id].light });
+    this.addComponent(Revealer, { radius: BUILDINGS[props.id].reveal });
     switch (props.id) {
       case BuildingsID.tavern:
         this.addComponent(Tavern);

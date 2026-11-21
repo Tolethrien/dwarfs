@@ -1,6 +1,5 @@
 import BUILDING_SHEET from "@sandbox/assets/structures/camp-buildings-spritesheet.json";
 import { LightsID } from "./lights";
-import { ResourcesID, type ResourceCost } from "./resources";
 
 export const STRUCTURES = {
   plan: { line: 0.08 },
@@ -9,6 +8,7 @@ export const STRUCTURES = {
   },
   station: {
     crater: { radius: 9, built: 4, jag: 0.2, bumps: 1.5, fade: 3 },
+    reveal: 28,
     look: {
       body: { width: 4, height: 2, color: [70, 74, 86, 255] as RGBA },
       deck: { width: 5, height: 0.4, color: [118, 76, 40, 255] as RGBA },
@@ -19,6 +19,16 @@ export const STRUCTURES = {
   rails: {
     durability: 100,
     look: { width: 0.25, color: [150, 150, 160, 255] as RGBA, broken: [120, 45, 40, 255] as RGBA },
+  },
+  palisade: {
+    size: { width: 4, height: 0.8 },
+    hp: 20,
+    look: {
+      fill: [132, 92, 56, 255] as RGBA,
+      border: [86, 56, 32, 255] as RGBA,
+      borderWidth: 0.1,
+      damagedShade: 0.45,
+    },
   },
   shaft: {
     width: 20,
@@ -32,7 +42,14 @@ export const STRUCTURES = {
       post: { width: 1 },
       // spread evenly over the halves, each half's between its posts
       lanes: { count: 4 },
-      lamps: { from: 5, every: 10, light: LightsID.shaftLamp, radius: 0.2, color: [255, 200, 120, 255] as RGBA },
+      lamps: {
+        from: 5,
+        every: 10,
+        light: LightsID.shaftLamp,
+        reveal: 12.5,
+        radius: 0.2,
+        color: [255, 200, 120, 255] as RGBA,
+      },
       // a warm glow down the whole shaft, its sides fading into the rock (softness in tiles)
       glow: { color: [255, 175, 100, 255] as RGBA, intensity: 0.35, softness: 4 },
     },
@@ -57,6 +74,7 @@ export interface BuildingData {
   // the sprite's edge beam (drawn at the right) stands on the shaft's post, outside the size
   wallBeam: boolean;
   light: LightsID;
+  reveal: number;
 }
 
 export const BUILDINGS: Record<BuildingsID, BuildingData> = {
@@ -68,6 +86,7 @@ export const BUILDINGS: Record<BuildingsID, BuildingData> = {
     door: BUILDING_SHEET.frames.tavern.door,
     wallBeam: true,
     light: LightsID.buildingLamp,
+    reveal: 28,
   },
   [BuildingsID.market]: {
     name: "Market",
@@ -76,6 +95,7 @@ export const BUILDINGS: Record<BuildingsID, BuildingData> = {
     sprite: BUILDING_SHEET.frames.market.crop,
     wallBeam: false,
     light: LightsID.buildingLamp,
+    reveal: 28,
   },
   [BuildingsID.brewery]: {
     name: "Brewery",
@@ -84,6 +104,7 @@ export const BUILDINGS: Record<BuildingsID, BuildingData> = {
     sprite: BUILDING_SHEET.frames.brewery.crop,
     wallBeam: true,
     light: LightsID.buildingLamp,
+    reveal: 28,
   },
   [BuildingsID.smelter]: {
     name: "Smelter",
@@ -93,6 +114,7 @@ export const BUILDINGS: Record<BuildingsID, BuildingData> = {
     wallBeam: true,
     door: BUILDING_SHEET.frames.smelter.door,
     light: LightsID.buildingLamp,
+    reveal: 28,
   },
   [BuildingsID.headquarters]: {
     name: "Headquarters",
@@ -102,129 +124,6 @@ export const BUILDINGS: Record<BuildingsID, BuildingData> = {
     door: BUILDING_SHEET.frames.headquarters.door,
     wallBeam: false,
     light: LightsID.buildingLamp,
+    reveal: 28,
   },
 };
-
-export type BuildLayer = "main" | "deco";
-
-export enum BuildCategoryID {
-  shafts,
-  buildings,
-  stations,
-  rails,
-}
-
-export interface BuildCategoryData {
-  title: string;
-  short: string;
-  layer: BuildLayer;
-}
-
-export const BUILD_CATEGORIES: Record<BuildCategoryID, BuildCategoryData> = {
-  [BuildCategoryID.shafts]: { title: "Shafts", short: "Sh", layer: "main" },
-  [BuildCategoryID.buildings]: { title: "Buildings", short: "Bu", layer: "main" },
-  [BuildCategoryID.stations]: { title: "Stations", short: "St", layer: "main" },
-  [BuildCategoryID.rails]: { title: "Rails", short: "Ra", layer: "main" },
-};
-
-export enum BuildElementID {
-  shaft20,
-  shaft30,
-  tavern,
-  brewery,
-  smelter,
-  station,
-  rail,
-  shaftJoint,
-}
-
-export interface BuildElementData {
-  category: BuildCategoryID;
-  title: string;
-  short: string;
-  cost: ResourceCost;
-  level: number;
-  segment?: number;
-  building?: BuildingsID;
-  station?: boolean;
-  rail?: boolean;
-  joint?: boolean;
-}
-
-export const BUILD_ELEMENTS: Record<BuildElementID, BuildElementData> = {
-  [BuildElementID.shaft20]: {
-    category: BuildCategoryID.shafts,
-    title: "Shaft, 20 tiles deeper",
-    short: "20",
-    cost: { [ResourcesID.stone]: 200, [ResourcesID.beer]: 50 },
-    level: 2,
-    segment: 20,
-  },
-  [BuildElementID.shaft30]: {
-    category: BuildCategoryID.shafts,
-    title: "Shaft, 30 tiles deeper",
-    short: "30",
-    cost: { [ResourcesID.stone]: 350, [ResourcesID.beer]: 80 },
-    level: 2,
-    segment: 30,
-  },
-  [BuildElementID.tavern]: {
-    category: BuildCategoryID.buildings,
-    title: "Tavern",
-    short: "Ta",
-    cost: { [ResourcesID.stone]: 50, [ResourcesID.beer]: 100 },
-    level: 1,
-    building: BuildingsID.tavern,
-  },
-  [BuildElementID.brewery]: {
-    category: BuildCategoryID.buildings,
-    title: "Brewery",
-    short: "Br",
-    cost: { [ResourcesID.stone]: 50, [ResourcesID.beer]: 100 },
-    level: 2,
-    building: BuildingsID.brewery,
-  },
-  [BuildElementID.smelter]: {
-    category: BuildCategoryID.buildings,
-    title: "Smelter",
-    short: "Sm",
-    cost: { [ResourcesID.stone]: 50, [ResourcesID.beer]: 100 },
-    level: 1,
-    building: BuildingsID.smelter,
-  },
-  [BuildElementID.station]: {
-    category: BuildCategoryID.stations,
-    title: "Station",
-    short: "St",
-    cost: { [ResourcesID.stone]: 150, [ResourcesID.beer]: 30 },
-    level: 2,
-    station: true,
-  },
-  [BuildElementID.rail]: {
-    category: BuildCategoryID.rails,
-    title: "Rail, a tile",
-    short: "Ra",
-    cost: { [ResourcesID.stone]: 5 },
-    level: 2,
-    rail: true,
-  },
-  [BuildElementID.shaftJoint]: {
-    category: BuildCategoryID.rails,
-    title: "Shaft joint",
-    short: "Jo",
-    cost: { [ResourcesID.stone]: 20 },
-    level: 2,
-    joint: true,
-  },
-};
-
-// Object.keys gives enum numbers as strings
-export function categoriesOf(layer: BuildLayer) {
-  const ids = Object.keys(BUILD_CATEGORIES).map(Number) as BuildCategoryID[];
-  return ids.filter((id) => BUILD_CATEGORIES[id].layer === layer);
-}
-
-export function elementsOf(category: BuildCategoryID) {
-  const ids = Object.keys(BUILD_ELEMENTS).map(Number) as BuildElementID[];
-  return ids.filter((id) => BUILD_ELEMENTS[id].category === category);
-}

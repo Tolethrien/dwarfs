@@ -1,3 +1,5 @@
+import { assert } from "./utils";
+
 export interface SignalListener<T> {
   connect(cb: (data: T) => void): void;
   disconnect(cb: (data: T) => void): void;
@@ -104,27 +106,40 @@ export class Collector<T> {
     this.sources.delete(source);
   }
 }
+export class DataKey<T> {
+  public readonly id: symbol;
+  declare readonly _type: T;
+  constructor(public readonly name: string) {
+    this.id = Symbol(name);
+  }
+}
+
 export class SharedData {
-  private storage: Map<string, any> = new Map();
-  public add<T>(name: string, data: T) {
-    if (this.storage.has(name)) {
-      console.warn(
-        `sharedDataStorage already has key:${name}, use set instead to modify data`,
-      );
-      return;
-    }
-    this.storage.set(name, data);
+  private storage = new Map<symbol, unknown>();
+  public add<T>(key: DataKey<T>, data: T) {
+    assert(
+      !this.storage.has(key.id),
+      `SharedData already has key: ${key.name}, use set instead to modify data`,
+    );
+    this.storage.set(key.id, data);
   }
-  public set<T>(name: string, data: T) {
-    this.storage.set(name, data);
+  public set<T>(key: DataKey<T>, data: T) {
+    this.storage.set(key.id, data);
   }
-  public get<T>(name: string) {
-    return this.storage.get(name) as T | undefined;
+  public get<T>(key: DataKey<T>) {
+    return this.storage.get(key.id) as T | undefined;
   }
-  public delete(name: string) {
-    this.storage.delete(name);
+  public require<T>(key: DataKey<T>) {
+    assert(this.storage.has(key.id), `SharedData has no key: ${key.name}`);
+    return this.storage.get(key.id) as T;
   }
-  public has(name: string) {
-    return this.storage.has(name);
+  public delete<T>(key: DataKey<T>) {
+    this.storage.delete(key.id);
+  }
+  public has<T>(key: DataKey<T>) {
+    return this.storage.has(key.id);
+  }
+  public clear() {
+    this.storage.clear();
   }
 }

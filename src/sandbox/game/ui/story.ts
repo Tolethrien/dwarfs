@@ -87,6 +87,8 @@ export default class StoryUI {
       kind: "modal",
       width: STORY_UI.popup.width,
       title: popup.title,
+      dim: true,
+      blur: true,
       required: true,
       owner: over,
       onClose: () => {

@@ -8,6 +8,7 @@ export enum ResourcesID {
   boneMeal,
   ironBars,
   concrete,
+  wood,
 }
 
 export enum ResourceCategory {
@@ -41,6 +42,7 @@ export const RESOURCES: Record<ResourcesID, ResourceData> = {
   [ResourcesID.boneMeal]: { name: "Bone meal", unit: "kg", icon: RESOURCE_SHEET.frames.bones.crop, category: ResourceCategory.materials, viewFrom: 2 },
   [ResourcesID.ironBars]: { name: "Iron bars", unit: "kg", icon: RESOURCE_SHEET.frames.iron.crop, category: ResourceCategory.materials, viewFrom: 2 },
   [ResourcesID.concrete]: { name: "Concrete", unit: "kg", icon: RESOURCE_SHEET.frames.stone.crop, category: ResourceCategory.materials, viewFrom: 2 },
+  [ResourcesID.wood]: { name: "Wood", unit: "kg", icon: RESOURCE_SHEET.frames.wood.crop, category: ResourceCategory.materials, viewFrom: 2 },
 };
 
 // Object.keys gives enum numbers as strings

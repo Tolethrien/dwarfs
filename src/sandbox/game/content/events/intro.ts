@@ -8,24 +8,31 @@ import Grid from "@axiom/grid";
 import Noise from "@axiom/noise";
 import { assert } from "@axiom/utils";
 import IntroDwarf from "../../actors/introDwarf";
-import ShaftDigging from "../../components/shaftDigging";
-import Tavern from "../../components/tavern";
-import { HEADQUARTERS } from "../../components/headquarters";
+import ShaftDigging from "../../components/mine/shaftDigging";
+import Tavern from "../../components/buildings/tavern";
+import { HEADQUARTERS } from "../../components/buildings/headquarters";
 import { DWARF_LOOK } from "../dwarfs";
 import { BlocksID } from "../blocks";
-import { BUILD_ELEMENTS, BuildElementID, BuildingsID, STRUCTURES } from "../structures";
+import { BUILD_ELEMENTS, BuildElementID } from "../build";
+import { BuildingsID, STRUCTURES } from "../structures";
 import { SURFACE } from "../surface";
 import { formatAmount, ResourcesID, type ResourceCost } from "../resources";
 import { shaftColumns } from "../../world/shaftShape";
-import { buildingSprite } from "../../world/buildingShape";
+import { buildingPlaceAt, buildingSprite, type BuildingPlace } from "../../world/buildingShape";
 import { removeSpeech, speech } from "../../ui/elements/speech";
 import type { UIWorldAnchor } from "../../ui/elements/world";
 import { isAnyWindowOpen } from "../../ui/elements/window";
 import type { StoryLetter } from "../../ui/story";
-import type { BuildingPlace } from "../../systems/buildings";
-import type { DwarfState } from "../../systems/roster";
-import { VIEW } from "../../systems/gameMode";
-import type StoryEvents from "../../systems/storyEvents";
+import Buildings from "../../systems/mine/buildings";
+import BuildMode from "../../systems/mine/buildMode";
+import Discovery from "../../systems/world/discovery";
+import GameMode, { VIEW } from "../../systems/core/gameMode";
+import PlayerStats from "../../systems/core/playerStats";
+import Roster, { type DwarfState } from "../../systems/dwarfs/roster";
+import Stations from "../../systems/mine/stations";
+import Terrain from "../../systems/world/terrain";
+import Vfx from "../../systems/world/vfx";
+import type StoryEvents from "../../systems/core/storyEvents";
 
 // hover: pixels between the ground and the dwarf's bottom; look: the camera's spot over the ground
 // and zoom; glide: pixels a second at the start, it brakes to a stop in the middle; lift: screen
@@ -35,7 +42,7 @@ import type StoryEvents from "../../systems/storyEvents";
 // held: what the build menu keeps locked through the intro; build: the buildings the player puts up in the intro, in their niches; grant: what
 // the signed letter gives
 const INTRO = {
-  grant: { [ResourcesID.beer]: 400, [ResourcesID.stone]: 50 } as ResourceCost,
+  grant: { [ResourcesID.beer]: 400, [ResourcesID.stone]: 50, [ResourcesID.wood]: 50 } as ResourceCost,
   unsigned: "Comrade",
   hover: 30,
   // seconds of the fades from and into black
@@ -81,8 +88,28 @@ class Intro {
   private dwarf: IntroDwarf | undefined;
   private bubble: UIWorldAnchor | undefined;
   private readonly niches = new Map<BuildingsID, BuildingPlace>();
+  private readonly buildings: Buildings;
+  private readonly buildMode: BuildMode;
+  private readonly discovery: Discovery;
+  private readonly gameMode: GameMode;
+  private readonly playerStats: PlayerStats;
+  private readonly roster: Roster;
+  private readonly stations: Stations;
+  private readonly terrain: Terrain;
+  private readonly vfx: Vfx;
 
-  constructor(private readonly story: StoryEvents) {}
+  constructor(private readonly story: StoryEvents) {
+    const scene = story.scene;
+    this.buildings = scene.getSystem(Buildings);
+    this.buildMode = scene.getSystem(BuildMode);
+    this.discovery = scene.getSystem(Discovery);
+    this.gameMode = scene.getSystem(GameMode);
+    this.playerStats = scene.getSystem(PlayerStats);
+    this.roster = scene.getSystem(Roster);
+    this.stations = scene.getSystem(Stations);
+    this.terrain = scene.getSystem(Terrain);
+    this.vfx = scene.getSystem(Vfx);
+  }
 
   public *play(co: Coroutine) {
     const ui = this.story.ui;
@@ -101,13 +128,13 @@ class Intro {
     if (!co.isSkipping) {
       const signed = ui.showLetter(this.letter);
       yield signed;
-      this.story.playerStats.name = signed.value;
+      this.playerStats.name = signed.value;
     }
     this.grant();
     yield* this.line(co, INTRO.lines.signed, INTRO.pause.hold.signed);
     yield* this.offer(co, INTRO.buttons.setUpHeadquarters);
     yield ui.curtain.darken(INTRO.curtain.close * 1000);
-    this.story.buildings.show(BuildingsID.headquarters, true);
+    this.buildings.show(BuildingsID.headquarters, true);
     yield ui.curtain.brighten(INTRO.curtain.open * 1000);
     yield* this.enterHeadquarters(co, vcam);
     this.dismissDwarf();
@@ -163,70 +190,69 @@ class Intro {
   // the player takes over at the first Tab; leaving before everything stands asks for Tab again. The
   // camera already shows both niches, so it stays put, and no building opens its window yet
   private *teachBuilding(co: Coroutine) {
-    const story = this.story;
+    const ui = this.story.ui;
     const lines = INTRO.lines;
-    story.gameMode.block([...VIEW, "select"]);
-    for (const element of INTRO.held) story.buildMode.held.add(element);
-    const building = () => story.gameMode.is("build");
+    this.gameMode.block([...VIEW, "select"]);
+    for (const element of INTRO.held) this.buildMode.held.add(element);
+    const building = () => this.gameMode.is("build");
     while (!co.isSkipping && this.missing() !== undefined) {
-      story.ui.hint(lines.openBuild);
-      story.gameMode.allowInCutscene("toggleBuild");
+      ui.hint(lines.openBuild);
+      this.gameMode.allowInCutscene("toggleBuild");
       yield co.waitUntil(building, { skippable: true });
       if (co.isSkipping) break;
       this.takeOver();
       while (!co.isSkipping && building()) {
         const step = this.missing();
         if (step === undefined) break;
-        story.ui.hint(step.line);
+        ui.hint(step.line);
         yield co.waitUntil(() => this.missing() !== step || !building(), { skippable: true });
       }
     }
     if (!co.isSkipping && building()) {
-      story.ui.hint(lines.closeBuild);
+      ui.hint(lines.closeBuild);
       yield co.waitUntil(() => !building(), { skippable: true });
     }
     if (co.isSkipping) this.buildForPlayer();
   }
 
   private buildForPlayer() {
-    const story = this.story;
-    if (story.gameMode.is("build")) story.buildMode.leave();
+    if (this.gameMode.is("build")) this.buildMode.leave();
     for (const step of INTRO.build) {
-      if (story.buildings.placeOf(step.building) !== undefined) continue;
+      if (this.buildings.placeOf(step.building) !== undefined) continue;
       const niche = this.niches.get(step.building);
       assert(niche !== undefined, `The intro dug no niche for the ${BuildingsID[step.building]}`);
-      const paid = story.buildings.store.pay(BUILD_ELEMENTS[step.element].cost);
+      const paid = this.buildings.store.pay(BUILD_ELEMENTS[step.element].cost);
       assert(paid, `The grant can't pay for the ${BuildingsID[step.building]}`);
-      story.buildings.build(step.building, niche);
+      this.buildings.build(step.building, niche);
     }
   }
 
   // the camera glides to the tavern, which breathes light and alone takes clicks until the first
   // crew is hired; closing it early asks for the click again
   private *teachTavern(co: Coroutine) {
-    const story = this.story;
+    const ui = this.story.ui;
     const lines = INTRO.lines;
     yield* this.offerGlide(co, INTRO.buttons.openTavern, this.tavernSpot());
     // a tavern built just now gets its applications in its first start
-    const actor = story.buildings.actorOf(BuildingsID.tavern);
+    const actor = this.buildings.actorOf(BuildingsID.tavern);
     yield co.waitUntil(() => actor === undefined || actor.getAlive());
     const tavern = this.tavern();
     if (co.isSkipping) {
       tavern.hireAll();
       return;
     }
-    story.buildings.highlight(BuildingsID.tavern, true);
-    story.buildings.clickOnly = BuildingsID.tavern;
-    story.gameMode.unblock(["select"]);
-    story.gameMode.block(["toggleBuild", "toggleDig"]);
+    this.buildings.highlight(BuildingsID.tavern, true);
+    this.buildings.clickOnly = BuildingsID.tavern;
+    this.gameMode.unblock(["select"]);
+    this.gameMode.block(["toggleBuild", "toggleDig"]);
     const crew = tavern.startCrew;
-    const hired = () => story.roster.dwarfs.length;
+    const hired = () => this.roster.dwarfs.length;
     while (!co.isSkipping && hired() < crew) {
-      story.ui.hint(lines.clickTavern);
+      ui.hint(lines.clickTavern);
       yield co.waitUntil(() => tavern.isOpen, { skippable: true });
       while (!co.isSkipping && tavern.isOpen && hired() < crew) {
         const count = hired();
-        story.ui.hint(lines.hire(count, crew), "top");
+        ui.hint(lines.hire(count, crew), "top");
         yield co.waitUntil(() => hired() !== count || !tavern.isOpen, { skippable: true });
       }
     }
@@ -234,32 +260,32 @@ class Intro {
       tavern.hireAll();
       return;
     }
-    story.buildings.highlight(BuildingsID.tavern, false);
+    this.buildings.highlight(BuildingsID.tavern, false);
     yield* this.hintUntil(co, lines.closeTavern, () => !tavern.isOpen);
   }
 
   // the first dwarf rides from the tavern to the shaft's station and is shot into the rock; the
   // intro ends with that shot
   private *teachStation(co: Coroutine) {
-    const story = this.story;
+    const ui = this.story.ui;
     const lines = INTRO.lines;
-    const station = story.stations.stations[0];
+    const station = this.stations.stations[0];
     assert(station !== undefined, "The intro has no station at the shaft");
-    const launcher = story.stations.launcherOf(station);
-    const tile = story.terrain.tile;
+    const launcher = this.stations.launcherOf(station);
+    const tile = this.terrain.tile;
     const body = launcher.tiles;
     yield* this.offerGlide(co, INTRO.buttons.toStation, { x: (body.x + body.w / 2) * tile, y: (body.y + body.h / 2) * tile });
-    story.buildings.clickOnly = "none";
-    story.mapView.spotlight({ x: body.x * tile, y: body.y * tile, w: body.w * tile, h: body.h * tile });
-    const anyIs = (state: DwarfState) => story.roster.dwarfs.some((dwarf) => story.roster.stateOf(dwarf) === state);
-    const ordered = () => story.roster.dwarfs.some((dwarf) => story.roster.stateOf(dwarf) !== "tavern");
+    this.buildings.clickOnly = "none";
+    this.vfx.spotlight({ x: body.x * tile, y: body.y * tile, w: body.w * tile, h: body.h * tile });
+    const anyIs = (state: DwarfState) => this.roster.dwarfs.some((dwarf) => this.roster.stateOf(dwarf) === state);
+    const ordered = () => this.roster.dwarfs.some((dwarf) => this.roster.stateOf(dwarf) !== "tavern");
     while (!co.isSkipping && !ordered()) {
-      story.ui.hint(lines.clickStation);
-      yield co.waitUntil(() => story.stations.isMenuOpen, { skippable: true });
-      story.ui.hint(lines.order, "top");
-      yield co.waitUntil(() => ordered() || !story.stations.isMenuOpen, { skippable: true });
+      ui.hint(lines.clickStation);
+      yield co.waitUntil(() => this.stations.isMenuOpen, { skippable: true });
+      ui.hint(lines.order, "top");
+      yield co.waitUntil(() => ordered() || !this.stations.isMenuOpen, { skippable: true });
     }
-    story.mapView.spotlight(undefined);
+    this.vfx.spotlight(undefined);
     yield* this.hintUntil(co, lines.ride, () => launcher.queue.length > 0 || anyIs("working"));
     yield* this.hintUntil(co, lines.shoot, () => anyIs("working"));
   }
@@ -281,14 +307,14 @@ class Intro {
   }
 
   private tavernSpot() {
-    const place = this.story.buildings.placeOf(BuildingsID.tavern);
+    const place = this.buildings.placeOf(BuildingsID.tavern);
     assert(place !== undefined, "The intro has no tavern to look at");
-    const tile = this.story.terrain.tile;
+    const tile = this.terrain.tile;
     return { x: (place.base.x + place.base.w / 2) * tile, y: (place.base.y + place.base.h / 2) * tile };
   }
 
   private tavern() {
-    const actor = this.story.buildings.actorOf(BuildingsID.tavern);
+    const actor = this.buildings.actorOf(BuildingsID.tavern);
     assert(actor !== undefined, "The intro has no tavern");
     const tavern = actor.getComponent(Tavern);
     assert(tavern !== undefined, "The tavern has no Tavern");
@@ -296,7 +322,7 @@ class Intro {
   }
 
   private missing(): IntroBuild | undefined {
-    return INTRO.build.find((step) => this.story.buildings.placeOf(step.building) === undefined);
+    return INTRO.build.find((step) => this.buildings.placeOf(step.building) === undefined);
   }
 
   private takeOver() {
@@ -308,27 +334,27 @@ class Intro {
 
   // at the end, the stop or the skip; the hold (the clock, the HUD, the game mode) goes back after it
   private finish() {
-    const story = this.story;
     if (this.vcam !== undefined) this.placeCamera();
     this.takeOver();
     this.dismissDwarf();
-    for (const element of INTRO.held) story.buildMode.held.delete(element);
-    story.gameMode.unblock();
-    story.buildings.clickOnly = undefined;
-    story.mapView.spotlight(undefined);
-    story.ui.hide();
+    for (const element of INTRO.held) this.buildMode.held.delete(element);
+    this.gameMode.unblock();
+    this.buildings.clickOnly = undefined;
+    this.vfx.spotlight(undefined);
+    this.story.ui.hide();
   }
 
   private get letter(): StoryLetter {
     const grant = INTRO.grant;
     const beer = grant[ResourcesID.beer] ?? 0;
     const stone = grant[ResourcesID.stone] ?? 0;
+    const wood = grant[ResourcesID.wood] ?? 0;
     const subsidy = HEADQUARTERS.subsidy;
     return {
       title: "Directive of the Central Committee",
       lines: [
         "Comrade! By resolution of the Party, you are assigned to these mountains to found a new People's Mine and carry the Plan into the rock.",
-        `For the first shift, the People's Treasury allots you ${formatAmount(ResourcesID.beer, beer)} of beer and ${formatAmount(ResourcesID.stone, stone)} of stone. Waste is sabotage.`,
+        `For the first shift, the People's Treasury allots you ${formatAmount(ResourcesID.beer, beer)} of beer, ${formatAmount(ResourcesID.stone, stone)} of stone and ${formatAmount(ResourcesID.wood, wood)} of wood. Waste is sabotage.`,
         `Until your headquarters is raised to a Regional Headquarters, the Party will deliver ${formatAmount(ResourcesID.beer, subsidy.beer)} of beer every day at noon. The Plan allows you one week. The Plan is not late. Neither are you.`,
         "The Party trusts you, comrade. The Party is also watching. Glory to labour!",
       ],
@@ -339,9 +365,8 @@ class Intro {
 
   // a skipped letter is signed for the player
   private grant() {
-    const stats = this.story.playerStats;
-    if (stats.name === "") stats.name = INTRO.unsigned;
-    this.story.buildings.store.addAll(INTRO.grant);
+    if (this.playerStats.name === "") this.playerStats.name = INTRO.unsigned;
+    this.buildings.store.addAll(INTRO.grant);
   }
 
   private say(line: string) {
@@ -367,9 +392,9 @@ class Intro {
   private *enterHeadquarters(co: Coroutine, vcam: Vcam) {
     const dwarf = this.dwarf;
     if (co.isSkipping || dwarf === undefined) return;
-    const place = this.story.buildings.placeOf(BuildingsID.headquarters);
+    const place = this.buildings.placeOf(BuildingsID.headquarters);
     assert(place !== undefined, "No headquarters to go in");
-    const door = buildingSprite(BuildingsID.headquarters, place, this.story.terrain.tile).door;
+    const door = buildingSprite(BuildingsID.headquarters, place, this.terrain.tile).door;
     assert(door !== undefined, "The headquarters has no door in its sprite");
     const at = dwarf.transform.getPosition();
     const from = { x: at.x, y: at.y };
@@ -388,7 +413,7 @@ class Intro {
   }
 
   private get descendTarget() {
-    return { x: this.middle.x, y: ((STRUCTURES.shaft.startDepth + 1) / 2) * this.story.terrain.tile };
+    return { x: this.middle.x, y: ((STRUCTURES.shaft.startDepth + 1) / 2) * this.terrain.tile };
   }
 
   private *digShaft(co: Coroutine) {
@@ -398,8 +423,8 @@ class Intro {
     const digging = story.shaft.getComponent(ShaftDigging);
     assert(digging !== undefined, "The shaft has no ShaftDigging");
     digging.open();
-    story.stations.openShaftStation();
-    const columns = shaftColumns(story.terrain.world);
+    this.stations.openShaftStation();
+    const columns = shaftColumns(this.terrain.world);
     const walls = [columns.from - 1, columns.to + 1];
     if (AxiomMath.randomBool()) walls.reverse();
     INTRO.niche.buildings.forEach((id, index) => this.digNiche(id, walls[index]));
@@ -408,10 +433,9 @@ class Intro {
   // room for a building by the given wall of the shaft: the building's whole box, with a ragged cave
   // around it; the shaft's own tiles stay
   private digNiche(id: BuildingsID, wall: number) {
-    const story = this.story;
-    const world = story.terrain.world;
+    const world = this.terrain.world;
     const niche = INTRO.niche;
-    const place = story.buildings.placeAt(id, { x: wall, y: AxiomMath.randomInt(niche.rows.min, niche.rows.max) });
+    const place = buildingPlaceAt(world, id, { x: wall, y: AxiomMath.randomInt(niche.rows.min, niche.rows.max) });
     this.niches.set(id, place);
     const base = place.base;
     const around = { x: base.x - niche.margin, y: base.y - niche.margin, w: base.w + niche.margin * 2, h: base.h + niche.margin * 2 };
@@ -427,8 +451,8 @@ class Intro {
       const bite = AxiomMath.inverseLerp(-1, 1, noise.simplex2D(Math.cos(angle) * niche.bumps, Math.sin(angle) * niche.bumps));
       return out <= niche.margin * (1 - niche.jag * bite);
     });
-    for (const tile of tiles) story.terrain.place(tile.x, tile.y, BlocksID.air);
-    story.discovery.revealTiles(tiles);
+    for (const tile of tiles) this.terrain.place(tile.x, tile.y, BlocksID.air);
+    this.discovery.revealTiles(tiles);
   }
 
   // the pace of an ease-out matching the glide's speed at its start, so it brakes into the stop
@@ -448,8 +472,8 @@ class Intro {
   }
 
   private get middle() {
-    const columns = shaftColumns(this.story.terrain.world);
-    const tile = this.story.terrain.tile;
+    const columns = shaftColumns(this.terrain.world);
+    const tile = this.terrain.tile;
     return {
       x: ((columns.from + columns.to + 1) / 2) * tile,
       y: -SURFACE.ground - INTRO.hover - DWARF_LOOK.cell / 2,

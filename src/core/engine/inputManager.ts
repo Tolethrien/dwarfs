@@ -55,6 +55,7 @@ export default class InputManager {
   public static registerEvents() {
     window.addEventListener("mousedown", (e) => this.mouseEvents(e, "down"));
     window.addEventListener("mouseup", (e) => this.mouseEvents(e, "up"));
+    window.addEventListener("contextmenu", (e) => e.preventDefault());
     window.addEventListener("mousemove", (e) => this.mouseMove(e));
     window.addEventListener("wheel", (e) => this.wheelEvent(e), {
       passive: false,

@@ -1,5 +1,5 @@
 import type Effect from "../effects/effect";
-import Add from "../effects/add";
+import { add } from "../effects/add";
 
 export enum GearSlot {
   helmet,
@@ -36,9 +36,9 @@ export interface BaseGearData {
 
 function stats(power: number, bph: number, speed: number) {
   const effects: Effect[] = [];
-  if (power !== 0) effects.push(new Add("power", power));
-  if (bph !== 0) effects.push(new Add("bph", bph));
-  if (speed !== 0) effects.push(new Add("speed", speed));
+  if (power !== 0) effects.push(add("power", power));
+  if (bph !== 0) effects.push(add("bph", bph));
+  if (speed !== 0) effects.push(add("speed", speed));
   return effects;
 }
 

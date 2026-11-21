@@ -1,5 +1,5 @@
 const CELL_KEY_OFFSET = 1 << 15;
-type SpatialGridEntry<T> = { cellKeys: number[]; item: SpatialGridItem<T> };
+type SpatialGridEntry<T> = { cellKeys: number[]; item: SpatialGridItem<T>; stamp: number };
 type SpatialGridItem<T> = {
   id: symbol;
   bounds: Box | BoxAABB;
@@ -7,11 +7,16 @@ type SpatialGridItem<T> = {
 };
 export default class SpatialGrid<T> {
   private cellSize: Size2D;
-  private cells: Map<number, SpatialGridItem<T>[]> = new Map();
+  private cells: Map<number, SpatialGridEntry<T>[]> = new Map();
   private registry: Map<symbol, SpatialGridEntry<T>> = new Map();
+  private stamp = 0;
 
   constructor(cellSize: Size2D) {
     this.cellSize = cellSize;
+  }
+
+  public get size() {
+    return this.registry.size;
   }
 
   private computeCellKeys(shape: Box | BoxAABB): number[] {
@@ -28,33 +33,34 @@ export default class SpatialGrid<T> {
     return keys;
   }
 
-  private addToCell(key: number, item: SpatialGridItem<T>) {
+  private addToCell(key: number, entry: SpatialGridEntry<T>) {
     let cell = this.cells.get(key);
     if (!cell) {
       cell = [];
       this.cells.set(key, cell);
     }
-    cell.push(item);
+    cell.push(entry);
   }
 
-  private removeFromCell(key: number, item: SpatialGridItem<T>) {
+  private removeFromCell(key: number, entry: SpatialGridEntry<T>) {
     const cell = this.cells.get(key);
     if (!cell) return;
-    const index = cell.indexOf(item);
+    const index = cell.indexOf(entry);
     if (index !== -1) cell.splice(index, 1);
     if (cell.length === 0) this.cells.delete(key);
   }
 
   insert(item: SpatialGridItem<T>) {
     const cellKeys = this.computeCellKeys(item.bounds);
-    for (const key of cellKeys) this.addToCell(key, item);
-    this.registry.set(item.id, { cellKeys, item });
+    const entry: SpatialGridEntry<T> = { cellKeys, item, stamp: 0 };
+    for (const key of cellKeys) this.addToCell(key, entry);
+    this.registry.set(item.id, entry);
   }
 
   remove(id: symbol) {
     const entry = this.registry.get(id);
     if (!entry) return false;
-    for (const key of entry.cellKeys) this.removeFromCell(key, entry.item);
+    for (const key of entry.cellKeys) this.removeFromCell(key, entry);
     this.registry.delete(id);
     return true;
   }
@@ -68,10 +74,10 @@ export default class SpatialGrid<T> {
     const newKeysSet = new Set(newKeys);
 
     for (const key of entry.cellKeys) {
-      if (!newKeysSet.has(key)) this.removeFromCell(key, entry.item);
+      if (!newKeysSet.has(key)) this.removeFromCell(key, entry);
     }
     for (const key of newKeys) {
-      if (!oldKeysSet.has(key)) this.addToCell(key, entry.item);
+      if (!oldKeysSet.has(key)) this.addToCell(key, entry);
     }
 
     entry.item.bounds = newBounds;
@@ -79,26 +85,34 @@ export default class SpatialGrid<T> {
     return true;
   }
 
-  query(range: Box | BoxAABB): T[] {
-    const { minCellX, minCellY, maxCellX, maxCellY } = SpatialGrid.getCellRange(
-      range,
-      this.cellSize,
-    );
-    const seen = new Set<symbol>();
-    const result: T[] = [];
+  queryEach(range: Box | BoxAABB, visit: (data: T) => void) {
+    if (this.registry.size === 0) return;
+    const minX = "min" in range ? range.min.x : range.x;
+    const minY = "min" in range ? range.min.y : range.y;
+    const maxX = "min" in range ? range.max.x : range.x + range.w;
+    const maxY = "min" in range ? range.max.y : range.y + range.h;
+    const minCellX = Math.floor(minX / this.cellSize.width);
+    const minCellY = Math.floor(minY / this.cellSize.height);
+    const maxCellX = Math.floor(maxX / this.cellSize.width);
+    const maxCellY = Math.floor(maxY / this.cellSize.height);
+    const stamp = ++this.stamp;
 
     for (let cx = minCellX; cx <= maxCellX; cx++) {
       for (let cy = minCellY; cy <= maxCellY; cy++) {
         const cell = this.cells.get(SpatialGrid.cellKey(cx, cy));
         if (!cell) continue;
-        for (const item of cell) {
-          if (seen.has(item.id)) continue;
-          seen.add(item.id);
-          result.push(item.data);
+        for (const entry of cell) {
+          if (entry.stamp === stamp) continue;
+          entry.stamp = stamp;
+          visit(entry.item.data);
         }
       }
     }
+  }
 
+  query(range: Box | BoxAABB): T[] {
+    const result: T[] = [];
+    this.queryEach(range, (data) => result.push(data));
     return result;
   }
   private static cellKey(x: number, y: number) {

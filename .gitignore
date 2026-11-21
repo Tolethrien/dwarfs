@@ -111,6 +111,10 @@ CLAUDE.md
 .claude/
 plans/
 
+# gemini / antigravity
+GEMINI.md
+.agents/
+
 # game design doc (lokalny, nie wersjonowany)
 .GDD/
 

@@ -1,16 +1,30 @@
 import { Draw } from "@aurora/urp/draw/draw";
 import { STRUCTURES } from "../content/structures";
 import { SORT_ORDER } from "../content/render";
+import { shaftColumns } from "./shaftShape";
+import type World from "./world";
 
 // the rails run on the tiles' corners: point (x, y) is the top-left corner of tile (x, y), a step
 // goes one tile to the side and none or one up or down; the piece between two points lies in the
 // tile it runs along the bottom of (flat) or through from corner to corner (at 45°), so a flat rail
 // and a slanted one meet on the same corner
 
+export const RAILS = {
+  spacing: 4,
+  arms: 3,
+  depthMargin: 5,
+  jointSpacing: 15,
+};
+
 export interface RailSegment {
   from: Position2D;
   step: Position2D;
   length: number;
+}
+
+export interface ShaftJoint {
+  tile: Position2D;
+  anchor: Position2D;
 }
 
 export const RAIL_STEPS: readonly Position2D[] = [
@@ -73,4 +87,14 @@ export function railToward(from: Position2D, spot: Position2D): RailSegment | un
   const length = flat ? Math.round(Math.abs(dx)) : Math.round((Math.abs(dx) + Math.abs(dy)) / 2);
   if (side === 0 || length === 0) return undefined;
   return { from: from, step: { x: side, y: flat ? 0 : Math.sign(dy) }, length: length };
+}
+
+export function jointAt(world: World, tile: Position2D): ShaftJoint {
+  const columns = shaftColumns(world);
+  if (tile.x < (columns.from + columns.to + 1) / 2) {
+    const left = { x: columns.from - 1, y: tile.y };
+    return { tile: left, anchor: { x: left.x, y: left.y + 1 } };
+  }
+  const right = { x: columns.to + 1, y: tile.y };
+  return { tile: right, anchor: { x: right.x + 1, y: right.y + 1 } };
 }

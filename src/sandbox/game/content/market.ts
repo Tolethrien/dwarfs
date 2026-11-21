@@ -16,6 +16,7 @@ export const MARKET_GOODS: MarketGood[] = [
   { id: ResourcesID.boneMeal, pack: 1, price: 5 },
   { id: ResourcesID.ironBars, pack: 1, price: 2 },
   { id: ResourcesID.concrete, pack: 5, price: 2 },
+  { id: ResourcesID.wood, pack: 5, price: 1 },
 ];
 
 export function buyPrice(good: MarketGood) {

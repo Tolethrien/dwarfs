@@ -16,6 +16,7 @@ export const ACTIONS = {
   toggleBuild: { key: KEY.tab, mods: "NoMod" },
   cancelBuild: { key: KEY.escape, mods: "NoMod" },
   place: { mouse: "LEFT", mods: "NoMod" },
+  rotateBuild: { mouse: "RIGHT", mods: "NoMod" },
 } satisfies Record<string, ActionBinding>;
 
 export type ActionName = keyof typeof ACTIONS;

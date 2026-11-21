@@ -1,0 +1,66 @@
+import PragmaComponent from "@pragma/component";
+import type PragmaActor from "@pragma/actor";
+import { assert } from "@axiom/utils";
+import type Station from "../../actors/station";
+import Cargo from "../../actors/cargo";
+import Travel from "../common/travel";
+import Storage from "../common/storage";
+import { BuildingsID } from "../../content/structures";
+import { CAMP_STORE } from "../../sceneData";
+import Transport, { type RideOrder } from "../../systems/mine/transport";
+import GameEvents from "../../systems/core/gameEvents";
+import type { Stock } from "../common/storage";
+
+// dropOff: where the hauls go, the first of them that stands
+const HAUL = { dropOff: [BuildingsID.headquarters] };
+
+// every hour what the station's dwarfs mined rides as one cargo to the drop-off; cut off on the way
+// the cargo goes on to the nearest station it still reaches and waits in its storage, with no
+// station at all it lands in the camp's store at once
+export default class Haul extends PragmaComponent {
+  declare private store: Stock;
+  declare private transport: Transport;
+
+  awake(): void {
+    this.store = this.scene.sharedData.require(CAMP_STORE);
+    this.transport = this.scene.getSystem(Transport);
+    const events = this.scene.getSystem(GameEvents);
+    this.connect(events.calendar.hourStarted, this.send);
+  }
+
+  public readonly send = () => {
+    const dropOff = HAUL.dropOff.find((id) => this.transport.hasDoor(id));
+    const stock = storageOf(this.actor).stock;
+    if (dropOff === undefined || stock.isEmpty) return;
+    const cargo = new Cargo();
+    stock.moveAllTo(storageOf(cargo).stock);
+    this.transport.send(cargo, this.actor as Station, {
+      goal: { to: "building", id: dropOff },
+      onArrive: () => this.land(cargo),
+      onCutOff: () => {
+        if (cargo.getComponent(Travel)?.riding) this.transport.redirect(cargo, this.toNearestStation(cargo));
+        else storageOf(cargo).stock.moveAllTo(stock);
+      },
+    });
+  };
+
+  private toNearestStation(cargo: Cargo): RideOrder {
+    return {
+      goal: { to: "nearestStation" },
+      onArrive: (station) => this.land(cargo, station),
+      onCutOff: () => this.land(cargo),
+    };
+  }
+
+  private land(cargo: Cargo, station?: Station) {
+    const to = station?.getAlive() ? storageOf(station).stock : this.store;
+    storageOf(cargo).stock.moveAllTo(to);
+    this.scene.deleteActor(cargo);
+  }
+}
+
+function storageOf(actor: PragmaActor) {
+  const storage = actor.getComponent(Storage);
+  assert(storage !== undefined, `${actor.ID.description} has no Storage`);
+  return storage;
+}

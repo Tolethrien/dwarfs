@@ -1,5 +1,5 @@
 import AxiomMath from "@axiom/math";
-import type { SpriteLayer } from "../components/layeredSprite";
+import type { SpriteLayer } from "../components/common/layeredSprite";
 
 export enum DwarfRank {
   worker,

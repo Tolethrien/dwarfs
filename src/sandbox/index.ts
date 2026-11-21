@@ -12,6 +12,7 @@ import bg from "@sandbox/assets/bgs/bg.png";
 import caveCeiling from "@sandbox/assets/bgs/cave-ceiling.png";
 import caveFloor from "@sandbox/assets/bgs/cave-floor.png";
 import items from "@sandbox/assets/deco/deco.png";
+import decoGlow from "@sandbox/assets/deco/deco-glow.png";
 import icons from "@sandbox/assets/icons/resources.png";
 import buildings from "@sandbox/assets/structures/camp-buildings-spritesheet.png";
 import dwarfCard from "@sandbox/assets/ui/dwarf-card-spritesheet.png";
@@ -22,6 +23,7 @@ import Cello from "@cello/cello";
 import { MAP_GEN } from "./game/mapGen/mapGen";
 import TileMap from "./game/gpu/tileMap";
 import GameGlobals from "./game/gpu/gameGlobals";
+import Glow from "./game/gpu/glow";
 import Mist from "./game/gpu/mist";
 import StructurePlan from "./game/gpu/structurePlan";
 import { startGame } from "./game/mapSetup";
@@ -39,6 +41,7 @@ async function preload() {
       { name: "caveCeiling", albedo: caveCeiling },
       { name: "caveFloor", albedo: caveFloor },
       { name: "items", albedo: items },
+      { name: "decoGlow", albedo: decoGlow },
       { name: "buildings", albedo: buildings },
     ],
     userUI: [
@@ -70,6 +73,7 @@ async function preload() {
   });
   GameGlobals.register(MAP_GEN.world);
   TileMap.register();
+  Glow.register();
   Mist.register();
   StructurePlan.register();
 

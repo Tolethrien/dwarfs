@@ -1,6 +1,6 @@
 import PragmaActor from "@pragma/actor";
-import ShaftFrame from "../components/shaftFrame";
-import ShaftDigging from "../components/shaftDigging";
+import ShaftFrame from "../components/mine/shaftFrame";
+import ShaftDigging from "../components/mine/shaftDigging";
 
 interface ShaftProps {
   position: Position2D;

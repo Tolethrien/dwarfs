@@ -11,13 +11,13 @@ export interface TabItem<Id> {
 export function tabs<Id>(
   parent: UINode,
   items: TabItem<Id>[],
-  selected: Id,
+  selected: Id | (() => Id),
   pick: (id: Id) => void,
 ) {
   const bar = row(parent, { fit: true });
   for (const item of items)
     button(bar, item.title, () => pick(item.id), {
-      selected: item.id === selected,
+      selected: typeof selected === "function" ? () => (selected as () => Id)() === item.id : item.id === selected,
       disabled: item.locked,
     });
   return bar;

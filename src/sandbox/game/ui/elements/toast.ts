@@ -54,16 +54,17 @@ let stack: UINode | undefined;
 function getStack() {
   stack ??= Navi.append(
     new UINode({
-      position: { x: px(0), y: px(UI_THEME.toast.top) },
+      position: { x: px(UI_THEME.spacing.screenMargin), y: px(0) },
       size: { width: auto(), height: auto() },
       input: "none",
       style: {
-        anchorX: "center",
+        anchorX: "end",
+        anchorY: "center",
         backgroundColor: UI_THEME.colors.transparent,
         zIndex: UI_THEME.toast.zIndex,
         layout: "stack",
         direction: "col",
-        alignCross: "center",
+        alignCross: "end",
         gap: UI_THEME.spacing.gap,
       },
     }),

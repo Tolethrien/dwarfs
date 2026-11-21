@@ -3,8 +3,8 @@ import UINode from "@navi/node";
 import { Tweens } from "@navi/tween";
 import { auto, px } from "@navi/units";
 import { UI_THEME } from "../../content/ui";
-import { BUILD_CATEGORIES, BUILD_ELEMENTS, categoriesOf, elementsOf, type BuildLayer } from "../../content/structures";
-import type BuildMode from "../../systems/buildMode";
+import { BUILD_CATEGORIES, BUILD_ELEMENTS, categoriesOf, elementsOf, type BuildLayer } from "../../content/build";
+import type BuildMode from "../../systems/mine/buildMode";
 import type { ResourceCost, ResourcesID } from "../../content/resources";
 import { buttonProps, UIButton } from "../elements/button";
 import { cost, costEntries } from "../elements/cost";
@@ -64,7 +64,7 @@ export default class BuildMenu {
     Navi.clear(this.selection);
     if (this.buildMode.removing) {
       text(this.selection, "Removing");
-      text(this.selection, "Click a station, drag over rails and joints", { color: UI_THEME.colors.muted });
+      text(this.selection, "Click a structure, drag over rails and joints", { color: UI_THEME.colors.muted });
       return;
     }
     const element = this.buildMode.selected;
@@ -76,6 +76,7 @@ export default class BuildMenu {
     text(this.selection, data.title);
     const price = this.buildMode.costOf(element);
     cost(this.selection, costEntries(price, this.missing(price)));
+    if (data.tool.hint) text(this.selection, data.tool.hint, { color: UI_THEME.colors.muted });
   }
 
   public update() {
@@ -147,7 +148,7 @@ export default class BuildMenu {
     }
   }
 
-  private showElements() {
+  public showElements() {
     Navi.clear(this.elements);
     const category = this.buildMode.category;
     if (category === undefined) {
@@ -157,9 +158,10 @@ export default class BuildMenu {
     const cells = gridCells(this.elements);
     for (const element of elementsOf(category)) {
       const data = BUILD_ELEMENTS[element];
+      const lacking = this.buildMode.missingFor(element);
       slot(cells, {
         label: data.short,
-        tooltip: this.buildMode.needsLevel(element) ? `${data.title} · Needs headquarters level ${data.level}` : data.title,
+        tooltip: lacking.length > 0 ? `${data.title} · ${lacking.join(", ")}` : data.title,
         locked: this.buildMode.isLocked(element),
         selected: () => this.buildMode.selected === element,
         click: () => this.buildMode.pick(element),

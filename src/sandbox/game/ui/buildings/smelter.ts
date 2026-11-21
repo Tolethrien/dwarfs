@@ -2,7 +2,7 @@ import Navi from "@navi/navi";
 import type UINode from "@navi/node";
 import { formatAmount, RESOURCES, type ResourceCost, type ResourcesID } from "../../content/resources";
 import { RECIPES, recipeCost, type RecipeID } from "../../content/smelter";
-import type { SmelterOrder } from "../../components/smelter";
+import type { SmelterOrder } from "../../components/buildings/smelter";
 import { UI_THEME } from "../../content/ui";
 import { closeOnCameraMove, UIWindow } from "../elements/window";
 import { header } from "../elements/header";

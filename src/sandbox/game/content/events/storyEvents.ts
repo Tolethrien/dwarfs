@@ -1,9 +1,18 @@
 import type Coroutine from "@engine/coroutines/coroutine";
-import type { CoroutineTime, CoroutineWait } from "@engine/coroutines/coroutine";
-import type StoryEvents from "../../systems/storyEvents";
+import type {
+  CoroutineTime,
+  CoroutineWait,
+} from "@engine/coroutines/coroutine";
+import type Condition from "../../conditions/condition";
+import { hasResource } from "../../conditions/hasResource";
+import { hqLevel } from "../../conditions/hqLevel";
+import { tavernArrivals } from "../../conditions/tavernArrivals";
+import type StoryEvents from "../../systems/core/storyEvents";
+import { randomInDay, type AlarmWhen } from "../../systems/core/calendar";
 import { ResourcesID } from "../resources";
+import { BuildCategoryID } from "../build";
 import { MAIN_TRAITS, MainTraitsID } from "../traits";
-import { MORALE } from "../../systems/welfare";
+import { MORALE } from "../../components/dwarfs/morale";
 import { playIntro } from "./intro";
 
 // the ids go to the save, keep them stable
@@ -13,72 +22,78 @@ export enum StoryEventID {
   marketOpens,
   tradeUnion,
   intro,
+  palisadePlans,
 }
-
-// start: the game begins; resource: at least amount of it in the storage; applicationsArrived: the
-// tavern's daily newcomers; headquartersLevel: the headquarters reached at least the level
-export type StoryTrigger =
-  | { kind: "start" }
-  | { kind: "resource"; id: ResourcesID; amount: number }
-  | { kind: "applicationsArrived" }
-  | { kind: "headquartersLevel"; level: number };
 
 const MINER = MAIN_TRAITS[MainTraitsID.miner];
 
 export interface StoryEvent {
-  when: StoryTrigger;
+  // omitted: fires when the game starts (or at its calendar alarm)
+  when?: Condition;
+  at?: AlarmWhen;
   // game hours from the trigger to the event
   after?: number;
   // real by default, so it goes on while the game stands still
   time?: CoroutineTime;
   // a Skip button while it runs, the script fast-forwards (co.isSkipping)
   skippable?: boolean;
-  play(co: Coroutine, story: StoryEvents): Generator<CoroutineWait | void, void, void>;
+  play(
+    co: Coroutine,
+    story: StoryEvents,
+  ): Generator<CoroutineWait | void, void, void>;
 }
 
 export const STORY_EVENTS: Record<StoryEventID, StoryEvent> = {
   [StoryEventID.intro]: {
-    when: { kind: "start" },
     time: "game",
     skippable: true,
     play: playIntro,
   },
   [StoryEventID.smelterTutorial]: {
-    when: { kind: "resource", id: ResourcesID.ironOre, amount: 20 },
+    when: hasResource(ResourcesID.ironOre, 20),
     *play(co, story) {
       yield* story.popup(co, {
         title: "You've got iron ore!",
-        lines: ["Ore can be smelted into iron bars.", "Build a smelter in the empty cave by the shaft and smelt it there."],
+        lines: [
+          "Ore can be smelted into iron bars.",
+          "Build a smelter in the empty cave by the shaft and smelt it there.",
+        ],
       });
     },
   },
   // the first newcomers are two miners, the tavern brings them the same every game
   [StoryEventID.tavernTutorial]: {
-    when: { kind: "applicationsArrived" },
+    when: tavernArrivals(1),
     *play(co, story) {
       yield* story.popup(co, {
         title: "New applications!",
-        lines: ["Every day at 12:00 new recruits leave their applications in the tavern.", "Go to the tavern and look at the Applications tab."],
+        lines: [
+          "Every day at 12:00 new recruits leave their applications in the tavern.",
+          "Go to the tavern and look at the Applications tab.",
+        ],
       });
       yield co.waitUntil(() => story.tavernShows("applications"));
       yield* story.popup(
         co,
         {
           title: `A new kind of dwarf: ${MINER.name}!`,
-          lines: [MINER.description, `Speed ${MINER.speed} · Power ${MINER.power} · Drinks ${MINER.bph} beer an hour`],
+          lines: [
+            MINER.description,
+            `Speed ${MINER.speed} · Power ${MINER.power} · Drinks ${MINER.bph} beer an hour`,
+          ],
         },
         story.tavernWindow,
       );
     },
   },
   [StoryEventID.marketOpens]: {
-    when: { kind: "headquartersLevel", level: 2 },
+    when: hqLevel(2),
     *play(co, story) {
       yield* story.blackout(co, () => story.buildMarket());
     },
   },
   [StoryEventID.tradeUnion]: {
-    when: { kind: "headquartersLevel", level: 2 },
+    when: hqLevel(2),
     after: 48,
     *play(co, story) {
       yield* story.popup(co, {
@@ -92,6 +107,28 @@ export const STORY_EVENTS: Record<StoryEventID, StoryEvent> = {
         ],
       });
       story.startMorale();
+    },
+  },
+  [StoryEventID.palisadePlans]: {
+    at: randomInDay(3),
+    *play(co, story) {
+      yield* story.popup(co, {
+        title: "Plans from the Party!",
+        lines: [
+          "Comrade! The Central Committee's finest engineers have sent you the plans for their latest invention: the Palisade!",
+          "Use it to bounce your comrades in the right direction underground. Open build mode [Tab] and look under Other.",
+        ],
+      });
+      story.unlockPlan("palisade");
+      yield co.waitUntil(() => story.buildCategoryOpen(BuildCategoryID.other));
+      yield* story.popupInBuild(co, {
+        title: "Palisade unlocked!",
+        lines: [
+          "You can now build palisades in dug-out caves to redirect flying dwarfs.",
+          "Hold the right mouse button while placing to rotate a palisade to any angle.",
+          "It's a cheap first design — each hit wears it down, and after a few hits it breaks and disappears.",
+        ],
+      });
     },
   },
 };

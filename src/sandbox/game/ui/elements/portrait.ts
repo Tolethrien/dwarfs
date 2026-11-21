@@ -2,7 +2,7 @@ import Navi from "@navi/navi";
 import UINode from "@navi/node";
 import { px } from "@navi/units";
 import { COLOR } from "@axiom/color";
-import type { SpriteLayer } from "../../components/layeredSprite";
+import type { SpriteLayer } from "../../components/common/layeredSprite";
 import { RENDER_SHEET } from "../../content/render";
 import { UI_THEME } from "../../content/ui";
 

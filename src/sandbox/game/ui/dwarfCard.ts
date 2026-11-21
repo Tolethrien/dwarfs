@@ -5,19 +5,19 @@ import { auto, pw, px } from "@navi/units";
 import { assert } from "@axiom/utils";
 import { COLOR } from "@axiom/color";
 import type Dwarf from "../actors/dwarf";
-import LayeredSprite from "../components/layeredSprite";
-import Traits from "../components/traits";
-import Drinker from "../components/drinker";
-import Effects from "../components/effects";
-import Equipment from "../components/equipment";
-import Outfit from "../components/outfit";
-import Morale from "../components/morale";
+import LayeredSprite from "../components/common/layeredSprite";
+import Traits from "../components/dwarfs/traits";
+import Drinker from "../components/dwarfs/drinker";
+import Effects from "../components/dwarfs/effects";
+import Equipment from "../components/dwarfs/equipment";
+import Outfit from "../components/dwarfs/outfit";
+import Morale from "../components/dwarfs/morale";
 import { STAT_NAMES, type ClassStat } from "../effects/effect";
 import { SPECIAL_BEERS } from "../content/beers";
 import { DwarfRank } from "../content/dwarfs";
 import { FOREMAN_TRAIT, MAIN_TRAITS, TRAITS, WORKER_TRAITS, type TraitData } from "../content/traits";
 import { BASE_GEAR, GEAR_SLOT_NAMES, GEAR_SLOTS, ITEMS, RARITIES, type GearSlot } from "../content/gear";
-import type Workforce from "../systems/workforce";
+import type Workforce from "../systems/dwarfs/workforce";
 import { RENDER_SHEET } from "../content/render";
 import { UI_THEME } from "../content/ui";
 import { UIWindow } from "./elements/window";
@@ -319,7 +319,13 @@ export default class DwarfCardUI {
       card,
     );
     text(section, "MORALE", { color: LOOK.label, size: LOOK.textSize.label });
-    bar(section, { value: () => this.morale(this.current) / 100, label: () => `${Math.round(this.morale(this.current))}` });
+    bar(section, {
+      value: () => {
+        const morale = this.morale(this.current);
+        return morale.value / Math.max(morale.range.max, 1);
+      },
+      label: () => `${Math.round(this.morale(this.current).value)}`,
+    });
     section.setActive(this.moraleShown);
     return section;
   }
@@ -327,7 +333,7 @@ export default class DwarfCardUI {
   private morale(dwarf: Dwarf) {
     const morale = dwarf.getComponent(Morale);
     assert(morale !== undefined, `Dwarf ${dwarf.name} has no Morale`);
-    return morale.value;
+    return morale;
   }
 
   private statText(stat: ClassStat) {
