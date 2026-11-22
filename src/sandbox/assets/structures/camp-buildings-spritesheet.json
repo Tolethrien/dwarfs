@@ -1,7 +1,7 @@
 {
     "image":  "camp-buildings-spritesheet.png",
     "width":  3164,
-    "height":  3010,
+    "height":  3985,
     "padding":  8,
     "tileInPixels":  96,
     "coordinates":  "Pixels, origin at top-left. Scaled so the wall beam is 1 tile wide; sourceCrop is the crop in the source image.",
@@ -107,6 +107,25 @@
                                                            "width":  1712,
                                                            "height":  822
                                                        }
-                                    }
+                                    },
+                   "agh":  {
+                               "crop":  {
+                                            "x":  8,
+                                            "y":  3010,
+                                            "width":  1728,
+                                            "height":  967
+                                        },
+                               "door":  {
+                                            "x":  899,
+                                            "y":  906
+                                        },
+                               "scale":  1.2586,
+                               "sourceCrop":  {
+                                                  "x":  3,
+                                                  "y":  0,
+                                                  "width":  1373,
+                                                  "height":  768
+                                              }
+                           }
                }
 }

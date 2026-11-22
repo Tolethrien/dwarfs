@@ -13,20 +13,24 @@ import Tavern from "../../components/buildings/tavern";
 import { HEADQUARTERS } from "../../components/buildings/headquarters";
 import { DWARF_LOOK } from "../dwarfs";
 import { BlocksID } from "../blocks";
-import { BUILD_ELEMENTS, BuildElementID } from "../build";
+import { BUILD_ELEMENTS, BuildCategoryID, BuildElementID } from "../build";
 import { BuildingsID, STRUCTURES } from "../structures";
 import { SURFACE } from "../surface";
 import { formatAmount, ResourcesID, type ResourceCost } from "../resources";
+import { MAIN_TRAITS, MainTraitsID } from "../traits";
 import { shaftColumns } from "../../world/shaftShape";
 import { buildingPlaceAt, buildingSprite, type BuildingPlace } from "../../world/buildingShape";
 import { removeSpeech, speech } from "../../ui/elements/speech";
 import type { UIWorldAnchor } from "../../ui/elements/world";
-import { isAnyWindowOpen } from "../../ui/elements/window";
-import type { StoryLetter } from "../../ui/story";
+import { isAnyWindowOpen, type UIWindow } from "../../ui/elements/window";
+import type { StoryLetter, StoryPopup } from "../../ui/story";
+import { showHud } from "../../ui/hud";
+import type { UIHandle } from "../../ui/effects";
 import Buildings from "../../systems/mine/buildings";
 import BuildMode from "../../systems/mine/buildMode";
 import Discovery from "../../systems/world/discovery";
 import GameMode, { VIEW } from "../../systems/core/gameMode";
+import GameUI from "../../systems/ui/gameUI";
 import PlayerStats from "../../systems/core/playerStats";
 import Roster, { type DwarfState } from "../../systems/dwarfs/roster";
 import Stations from "../../systems/mine/stations";
@@ -57,21 +61,55 @@ const INTRO = {
     letter: "Now where did I put that blasted letter...",
     signed: "Well... that's me done for, then.",
     openBuild: "Open build mode [Tab]",
+    pickCategory: "Open Buildings",
+    pickTavern: "Pick the tavern",
     closeBuild: "Close build mode [Tab]",
     clickTavern: "Click the tavern",
-    hire: (hired: number, crew: number) => `Hire your first crew (${hired}/${crew})`,
+    hire: "Hire the intern!",
     closeTavern: "Close the tavern",
     clickStation: "Click the station",
-    order: "Order a dwarf to the station",
+    shift: "Set shift length to 4h",
+    wage: "Watch how beer cost grows with shift hours!",
+    order: "Order your intern to the station",
     ride: "Wait for your dwarf to arrive",
-    shoot: "Press Shoot, then drag back and let go",
+    pressShoot: "Press Shoot",
+    aim: "Drag back and let go to shoot",
+  },
+  popups: {
+    applications: {
+      title: "Applications",
+      lines: [
+        "This is your Applications window.",
+        "Every day at 12:00 new dwarfs will leave their applications here.",
+      ],
+    },
+    mining: {
+      title: "Off to work!",
+      lines: [
+        "Your dwarfs smash through the rock blocks of the mine as they fly.",
+        "Everything they mine is stored in the station they launched from, and transported to your main warehouse every hour.",
+      ],
+    },
+    goodLuck: {
+      title: "Good luck!",
+      lines: [
+        "The mine is yours, comrade. Remember the Party's deadline — good luck!",
+      ],
+    },
   },
   buttons: { setUpHeadquarters: "Set up headquarters", digShaft: "Dig the shaft", openTavern: "Go to the tavern", toStation: "Go to the station" },
   niche: { buildings: [BuildingsID.tavern, BuildingsID.smelter], rows: { min: 14, max: 48 }, margin: 4, jag: 0.8, bumps: 1.6 },
   descend: { zoom: 0.2, seconds: 2.5 },
+  follow: { zoom: 0.55, zoomIn: 0.9, hold: 2.6, zoomOut: 1.4, hudFadeMs: 700 },
+  shiftHours: 4,
   held: [BuildElementID.smelter],
   build: [
-    { building: BuildingsID.tavern, element: BuildElementID.tavern, line: "Build a tavern (Buildings → Tavern)" },
+    {
+      building: BuildingsID.tavern,
+      category: BuildCategoryID.buildings,
+      element: BuildElementID.tavern,
+      line: "Place the tavern in the cave by the shaft",
+    },
   ],
 };
 
@@ -92,6 +130,7 @@ class Intro {
   private readonly buildMode: BuildMode;
   private readonly discovery: Discovery;
   private readonly gameMode: GameMode;
+  private readonly gameUI: GameUI;
   private readonly playerStats: PlayerStats;
   private readonly roster: Roster;
   private readonly stations: Stations;
@@ -104,6 +143,7 @@ class Intro {
     this.buildMode = scene.getSystem(BuildMode);
     this.discovery = scene.getSystem(Discovery);
     this.gameMode = scene.getSystem(GameMode);
+    this.gameUI = scene.getSystem(GameUI);
     this.playerStats = scene.getSystem(PlayerStats);
     this.roster = scene.getSystem(Roster);
     this.stations = scene.getSystem(Stations);
@@ -113,7 +153,7 @@ class Intro {
 
   public *play(co: Coroutine) {
     const ui = this.story.ui;
-    co.take(this.story.hold({ stopClock: true, hideHud: true }));
+    co.take(this.story.hold({ stopClock: true, hideHud: true, muteToasts: true, resetSpeed: true }));
     ui.openLetterbox();
     co.defer(() => this.finish());
     const middle = this.middle;
@@ -151,6 +191,7 @@ class Intro {
     yield* this.teachBuilding(co);
     yield* this.teachTavern(co);
     yield* this.teachStation(co);
+    yield* this.watchFirstShot(co);
   }
 
   private *arrive(co: Coroutine) {
@@ -187,8 +228,6 @@ class Intro {
     this.story.ui.hide();
   }
 
-  // the player takes over at the first Tab; leaving before everything stands asks for Tab again. The
-  // camera already shows both niches, so it stays put, and no building opens its window yet
   private *teachBuilding(co: Coroutine) {
     const ui = this.story.ui;
     const lines = INTRO.lines;
@@ -204,8 +243,33 @@ class Intro {
       while (!co.isSkipping && building()) {
         const step = this.missing();
         if (step === undefined) break;
-        ui.hint(step.line);
-        yield co.waitUntil(() => this.missing() !== step || !building(), { skippable: true });
+        if (this.buildMode.category !== step.category) {
+          ui.hide();
+          const tag = `build:category:${BuildCategoryID[step.category]}`;
+          const guide = this.guide(co, tag, lines.pickCategory);
+          yield co.waitUntil(() => this.buildMode.category === step.category || this.missing() !== step || !building(), {
+            skippable: true,
+          });
+          guide.release();
+        } else if (this.buildMode.selected !== step.element) {
+          ui.hide();
+          const tag = `build:element:${BuildElementID[step.element]}`;
+          const guide = this.guide(co, tag, lines.pickTavern);
+          yield co.waitUntil(
+            () =>
+              this.buildMode.selected === step.element ||
+              this.buildMode.category !== step.category ||
+              this.missing() !== step ||
+              !building(),
+            { skippable: true },
+          );
+          guide.release();
+        } else {
+          ui.hint(step.line);
+          yield co.waitUntil(() => this.missing() !== step || this.buildMode.selected !== step.element || !building(), {
+            skippable: true,
+          });
+        }
       }
     }
     if (!co.isSkipping && building()) {
@@ -227,8 +291,6 @@ class Intro {
     }
   }
 
-  // the camera glides to the tavern, which breathes light and alone takes clicks until the first
-  // crew is hired; closing it early asks for the click again
   private *teachTavern(co: Coroutine) {
     const ui = this.story.ui;
     const lines = INTRO.lines;
@@ -247,13 +309,22 @@ class Intro {
     this.gameMode.block(["toggleBuild", "toggleDig"]);
     const crew = tavern.startCrew;
     const hired = () => this.roster.dwarfs.length;
+    let introduced = false;
     while (!co.isSkipping && hired() < crew) {
       ui.hint(lines.clickTavern);
       yield co.waitUntil(() => tavern.isOpen, { skippable: true });
-      while (!co.isSkipping && tavern.isOpen && hired() < crew) {
-        const count = hired();
-        ui.hint(lines.hire(count, crew), "top");
-        yield co.waitUntil(() => hired() !== count || !tavern.isOpen, { skippable: true });
+      if (co.isSkipping) break;
+      if (!introduced) {
+        ui.hide();
+        yield* this.popup(co, INTRO.popups.applications, tavern.uiWindow);
+        yield* this.popup(co, this.internPopup, tavern.uiWindow);
+        introduced = true;
+      }
+      if (!co.isSkipping && tavern.isOpen && hired() < crew) {
+        ui.hide();
+        const guide = this.guide(co, "tavern:hire", lines.hire, { spotlight: true });
+        yield co.waitUntil(() => hired() >= crew || !tavern.isOpen, { skippable: true });
+        guide.release();
       }
     }
     if (co.isSkipping) {
@@ -264,8 +335,6 @@ class Intro {
     yield* this.hintUntil(co, lines.closeTavern, () => !tavern.isOpen);
   }
 
-  // the first dwarf rides from the tavern to the shaft's station and is shot into the rock; the
-  // intro ends with that shot
   private *teachStation(co: Coroutine) {
     const ui = this.story.ui;
     const lines = INTRO.lines;
@@ -280,14 +349,115 @@ class Intro {
     const anyIs = (state: DwarfState) => this.roster.dwarfs.some((dwarf) => this.roster.stateOf(dwarf) === state);
     const ordered = () => this.roster.dwarfs.some((dwarf) => this.roster.stateOf(dwarf) !== "tavern");
     while (!co.isSkipping && !ordered()) {
-      ui.hint(lines.clickStation);
-      yield co.waitUntil(() => this.stations.isMenuOpen, { skippable: true });
-      ui.hint(lines.order, "top");
-      yield co.waitUntil(() => ordered() || !this.stations.isMenuOpen, { skippable: true });
+      if (!this.stations.isMenuOpen) {
+        ui.hint(lines.clickStation);
+        yield co.waitUntil(() => this.stations.isMenuOpen, { skippable: true });
+        continue;
+      }
+      ui.hide();
+      if (this.stations.selectedHours < INTRO.shiftHours) {
+        const shiftGuide = this.guide(co, "station:shiftPlus", lines.shift);
+        const wageGuide = this.guide(co, "station:wage", lines.wage, { pulse: false });
+        yield co.waitUntil(
+          () => this.stations.selectedHours >= INTRO.shiftHours || ordered() || !this.stations.isMenuOpen,
+          { skippable: true },
+        );
+        shiftGuide.release();
+        wageGuide.release();
+      } else {
+        const orderGuide = this.guide(co, "station:order", lines.order);
+        yield co.waitUntil(
+          () => ordered() || !this.stations.isMenuOpen || this.stations.selectedHours < INTRO.shiftHours,
+          { skippable: true },
+        );
+        orderGuide.release();
+      }
     }
     this.vfx.spotlight(undefined);
     yield* this.hintUntil(co, lines.ride, () => launcher.queue.length > 0 || anyIs("working"));
-    yield* this.hintUntil(co, lines.shoot, () => anyIs("working"));
+    while (!co.isSkipping && !anyIs("working")) {
+      if (this.gameMode.is("shoot")) {
+        ui.hint(lines.aim);
+        yield co.waitUntil(() => !this.gameMode.is("shoot") || anyIs("working"), { skippable: true });
+      } else if (this.stations.isMenuOpen) {
+        ui.hide();
+        const guide = this.guide(co, "station:shoot", lines.pressShoot);
+        yield co.waitUntil(() => !this.stations.isMenuOpen || this.gameMode.is("shoot") || anyIs("working"), {
+          skippable: true,
+        });
+        guide.release();
+      } else {
+        ui.hint(lines.clickStation);
+        yield co.waitUntil(() => this.stations.isMenuOpen || this.gameMode.is("shoot") || anyIs("working"), {
+          skippable: true,
+        });
+      }
+    }
+    ui.hide();
+  }
+
+  private *watchFirstShot(co: Coroutine) {
+    if (co.isSkipping) return;
+    const dwarf = this.roster.dwarfs.find((item) => this.roster.stateOf(item) === "working");
+    if (dwarf === undefined) return;
+    const follow = INTRO.follow;
+    const vcam = co.take(Camera.claim({ blend: 0.35, release: 0 }));
+    const target = () => dwarf.transform.getRenderPosition();
+    yield vcam.zoomTo(follow.zoom, { at: target, duration: follow.zoomIn, easing: "easeOutCubic" });
+    yield vcam.zoomTo(follow.zoom, { at: target, duration: follow.hold, easing: "linear" });
+    yield* this.popup(co, INTRO.popups.mining);
+    if (co.isSkipping) return;
+    const hudFade = showHud(true, follow.hudFadeMs);
+    yield co.all([
+      vcam.moveTo(this.descendTarget, { duration: follow.zoomOut, easing: "easeInOutSine" }),
+      vcam.zoomTo(INTRO.descend.zoom, { duration: follow.zoomOut, easing: "easeInOutSine" }),
+      ...(hudFade ? [hudFade] : []),
+    ]);
+    this.placeCamera();
+    vcam.release(0);
+    yield* this.popup(co, INTRO.popups.goodLuck);
+  }
+
+  private *popup(co: Coroutine, content: StoryPopup, over?: UIWindow) {
+    if (co.isSkipping) return;
+    const paused = Time.getPaused();
+    const restore = co.take({ release: () => Time.setPaused(paused) });
+    Time.setPaused(true);
+    yield this.story.ui.popup(content, over);
+    restore.release();
+  }
+
+  private guide(
+    co: Coroutine,
+    tag: string,
+    message: string,
+    options?: { spotlight?: boolean; pulse?: boolean },
+  ): UIHandle {
+    const handles: UIHandle[] = [
+      options?.spotlight ? this.gameUI.spotlight(tag) : this.gameUI.highlight(tag),
+      this.gameUI.callout(tag, message),
+    ];
+    if (options?.pulse ?? true) handles.push(this.gameUI.pulse(tag));
+    let active = true;
+    return co.take({
+      release: () => {
+        if (!active) return;
+        active = false;
+        for (const handle of handles) handle.release();
+      },
+    });
+  }
+
+  private get internPopup(): StoryPopup {
+    const intern = MAIN_TRAITS[MainTraitsID.intern];
+    return {
+      title: `Applicant: ${intern.name}`,
+      lines: [
+        `Right now you have an application from an ${intern.name}.`,
+        intern.description,
+        `Speed ${intern.speed} · Power ${intern.power} · Drinks ${intern.bph} beer an hour`,
+      ],
+    };
   }
 
   // over an open window the hint moves to the top, so it never covers it
@@ -342,6 +512,7 @@ class Intro {
     this.buildings.clickOnly = undefined;
     this.vfx.spotlight(undefined);
     this.story.ui.hide();
+    this.buildings.actorOf(BuildingsID.tavern)?.getComponent(Tavern)?.addApplication(MainTraitsID.intern);
   }
 
   private get letter(): StoryLetter {

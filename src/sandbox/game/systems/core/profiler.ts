@@ -14,6 +14,7 @@ import Equipment from "../../components/dwarfs/equipment";
 import Shift from "../../components/dwarfs/shift";
 import Traits from "../../components/dwarfs/traits";
 import Tavern, { TAVERN } from "../../components/buildings/tavern";
+import { HEADQUARTERS } from "../../components/buildings/headquarters";
 import { SMELTER } from "../../components/buildings/smelter";
 import type Effect from "../../effects/effect";
 import { STAT_NAMES, STATS, type StatName } from "../../effects/effect";
@@ -72,6 +73,7 @@ const IDS = {
   items: Object.keys(ITEMS).map(Number) as ItemID[],
   gear: Object.keys(BASE_GEAR).map(Number) as BaseGearID[],
   blocks: Object.keys(BLOCKS).map(Number) as BlocksID[],
+  storyEvents: Object.values(StoryEventID).filter((id) => typeof id === "number") as StoryEventID[],
 };
 
 type ToolMode = "dig" | "railDamage" | "railRepair";
@@ -170,6 +172,7 @@ export default class Profiler extends PragmaSystem {
     this.tuningPages();
     this.spawnPage();
     this.buildingsPage();
+    this.storyPage();
 
     this.reports();
     this.gameCommands();
@@ -427,6 +430,7 @@ export default class Profiler extends PragmaSystem {
         return [...profiler.story.pendingList].map(([id, alarm]) => `${StoryEventID[id]} in ${(alarm.at ?? 0) - profiler.calendar.time} h`);
       },
       play: (id: StoryEventID) => profiler.story.playNow(id),
+      jump: (target: "intro" | "hq2" | "agh") => profiler.jumpTo(target),
     };
   }
 
@@ -861,6 +865,65 @@ export default class Profiler extends PragmaSystem {
         },
       ],
     });
+  }
+
+  private storyPage() {
+    this.page("story", {
+      title: "Story & jump",
+      live: true,
+      sections: [
+        {
+          title: "Jump to",
+          call: "game.story.jump",
+          arg: "object",
+          fields: [
+            { key: "intro", label: "After intro (HQ 1)", control: { kind: "button", text: "Jump" } },
+            { key: "hq2", label: "Ready for HQ 2", control: { kind: "button", text: "Jump" } },
+            { key: "agh", label: "HQ 2 + AGH built", control: { kind: "button", text: "Jump" } },
+          ],
+          get: () => ({ intro: false, hq2: false, agh: false }),
+          set: (values) => {
+            if (values.intro === true) this.jumpTo("intro");
+            if (values.hq2 === true) this.jumpTo("hq2");
+            if (values.agh === true) this.jumpTo("agh");
+          },
+        },
+        {
+          title: "Play event",
+          call: "game.story.play",
+          arg: "object",
+          fields: IDS.storyEvents.map((id) => ({
+            key: String(id),
+            label: StoryEventID[id],
+            control: { kind: "button", text: "Play" },
+          })),
+          get: () => Object.fromEntries(IDS.storyEvents.map((id) => [String(id), false])),
+          set: (values) => {
+            for (const id of IDS.storyEvents) if (values[String(id)] === true) this.story.playNow(id);
+          },
+        },
+      ],
+    });
+  }
+
+  private jumpTo(target: "intro" | "hq2" | "agh") {
+    this.story.skipEvent(StoryEventID.intro);
+    if (target === "hq2") {
+      const cost = HEADQUARTERS.levels[1]?.cost;
+      if (cost) for (const [id, missing] of this.buildings.store.missing(cost)) this.buildings.store.add(id, missing);
+      toast("Jumped to HQ 2 ready", "info");
+      return;
+    }
+    if (target === "agh") {
+      this.story.markDone(StoryEventID.marketOpens);
+      this.story.markDone(StoryEventID.aghOpens);
+      if (this.buildings.mineLevel < 2) this.buildings.setMineLevel(2);
+      if (!this.buildings.isStanding(BuildingsID.market)) this.buildings.buildMarket();
+      if (!this.buildings.isStanding(BuildingsID.agh)) this.buildings.buildAgh();
+      toast("Jumped to HQ 2 + AGH", "info");
+      return;
+    }
+    toast("Jumped past intro", "info");
   }
 
   private tuningPages() {

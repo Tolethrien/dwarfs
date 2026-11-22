@@ -23,7 +23,7 @@ export const TAVERN = {
   applications: 10,
   perDay: 2,
   // the first crew and the first day's arrivals, the same every game
-  startApplications: [MainTraitsID.intern, MainTraitsID.intern, MainTraitsID.intern],
+  startApplications: [MainTraitsID.intern],
   firstArrival: [MainTraitsID.miner, MainTraitsID.miner],
   arrivalHour: 12,
   hireCost: { [ResourcesID.beer]: 20 } as ResourceCost,
@@ -105,6 +105,11 @@ export default class Tavern extends PragmaComponent {
   // hired for the player, the intro skipped; whoever can't be paid for stays
   public hireAll() {
     for (const dwarf of [...this.applications]) this.hire(dwarf);
+  }
+
+  public addApplication(main: MainTraitsID) {
+    if (this.applications.length >= TAVERN.applications) return;
+    this.applications.push(this.roster.create(main, DwarfRank.worker));
   }
 
   private arrive() {

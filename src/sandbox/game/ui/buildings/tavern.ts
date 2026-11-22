@@ -173,7 +173,7 @@ export default class TavernUI {
     const offer = row(cell, { fit: true });
     const price = this.actions.hireCost;
     cost(offer, costEntries(price, this.actions.lacking(price)));
-    button(offer, "Hire", () => this.actions.hire(dwarf));
+    button(offer, "Hire", () => this.actions.hire(dwarf), { tag: "tavern:hire" });
     button(offer, "Dismiss", () => this.actions.dismiss(dwarf));
   }
 

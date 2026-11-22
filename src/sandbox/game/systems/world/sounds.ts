@@ -57,7 +57,7 @@ export default class Sounds extends PragmaSystem {
       this.hit(SOUNDS.hit, tile, SOUNDS.hit.deflected),
     );
     this.connect(events.terrain.damaged, (tile) => {
-      const dealt = AxiomMath.clamp((tile.ratio - 0.5) / 0.5, 0, 1);
+      const dealt = AxiomMath.clamp(tile.dealt, 0, 1);
       this.hit(
         SOUNDS.hit,
         tile,

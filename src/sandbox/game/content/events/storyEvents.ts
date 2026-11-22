@@ -14,6 +14,7 @@ import { BuildCategoryID } from "../build";
 import { MAIN_TRAITS, MainTraitsID } from "../traits";
 import { MORALE } from "../../components/dwarfs/morale";
 import { playIntro } from "./intro";
+import { playAghOpens } from "./agh";
 
 // the ids go to the save, keep them stable
 export enum StoryEventID {
@@ -23,6 +24,7 @@ export enum StoryEventID {
   tradeUnion,
   intro,
   palisadePlans,
+  aghOpens,
 }
 
 const MINER = MAIN_TRAITS[MainTraitsID.miner];
@@ -45,7 +47,6 @@ export interface StoryEvent {
 
 export const STORY_EVENTS: Record<StoryEventID, StoryEvent> = {
   [StoryEventID.intro]: {
-    time: "game",
     skippable: true,
     play: playIntro,
   },
@@ -68,8 +69,8 @@ export const STORY_EVENTS: Record<StoryEventID, StoryEvent> = {
       yield* story.popup(co, {
         title: "New applications!",
         lines: [
-          "Every day at 12:00 new recruits leave their applications in the tavern.",
-          "Go to the tavern and look at the Applications tab.",
+          "New recruits have left their applications in the tavern.",
+          "Open the tavern and check the Applications tab.",
         ],
       });
       yield co.waitUntil(() => story.tavernShows("applications"));
@@ -130,5 +131,11 @@ export const STORY_EVENTS: Record<StoryEventID, StoryEvent> = {
         ],
       });
     },
+  },
+  [StoryEventID.aghOpens]: {
+    when: hqLevel(2),
+    after: 24,
+    skippable: true,
+    play: playAghOpens,
   },
 };

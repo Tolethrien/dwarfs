@@ -117,6 +117,10 @@ export default class Stations extends PragmaSystem {
     return this.menu.isOpen;
   }
 
+  public get selectedHours() {
+    return this.menu.selectedHours;
+  }
+
   public get waitingCount() {
     let waiting = 0;
     for (const station of this.stations) waiting += this.launcherOf(station).queue.length;

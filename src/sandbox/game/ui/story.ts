@@ -44,6 +44,8 @@ export type HintPlace = "bottom" | "top";
 export default class StoryUI {
   // the game opens in the dark, the intro brightens it
   public readonly curtain = new UICurtain(true);
+  // its own, a fast-forwarded script would drop the shared one in the middle of the skip
+  public readonly skipCurtain = new UICurtain(false);
   private readonly bars: Record<HintPlace, UINode>;
   private bar: UINode;
   private letterbox: UINode[] = [];
@@ -100,7 +102,7 @@ export default class StoryUI {
     this.owned = over !== undefined;
     const content = window.open();
     for (const line of popup.lines) paragraph(content, line);
-    button(content, STORY_UI.popup.close, () => window.close(), { big: true });
+    button(content, STORY_UI.popup.close, () => window.close());
     return closed;
   }
 
@@ -180,6 +182,7 @@ export default class StoryUI {
     Navi.remove(this.skip, Navi.root);
     for (const strip of this.letterbox) if (strip.parent) Navi.remove(strip, Navi.root);
     this.curtain.destroy();
+    this.skipCurtain.destroy();
   }
 
   private show(place: HintPlace) {

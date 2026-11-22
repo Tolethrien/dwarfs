@@ -90,6 +90,9 @@ export default class Time {
     this.timeSpeed = speed;
     this.speedLerp = null;
   }
+  public static getTimeSpeed() {
+    return this.timeSpeed;
+  }
   public static getSpeed() {
     return this.timeSpeed * this.warpFactor;
   }

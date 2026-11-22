@@ -30,7 +30,7 @@ export const MAIN_TRAITS: Record<MainTraitsID, MainTraitData> = {
     description: "Covers the basics of digging. Neither fast nor trained, but gets the job done.",
     effects: [],
     speed: 3,
-    power: 2,
+    power: 3,
     bph: 2,
   },
   [MainTraitsID.miner]: {

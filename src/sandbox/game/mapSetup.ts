@@ -4,6 +4,7 @@ import Conditions from "./systems/core/conditions";
 import Director from "./systems/core/director";
 import GameEvents from "./systems/core/gameEvents";
 import GameMode from "./systems/core/gameMode";
+import Glossary from "./systems/core/glossary";
 import PlayerStats from "./systems/core/playerStats";
 import Profiler from "./systems/core/profiler";
 import StoryEvents from "./systems/core/storyEvents";
@@ -54,6 +55,7 @@ export function startGame(seed: number) {
   scene.addSystem(Vfx);
   scene.addSystem(Sounds);
   scene.addSystem(PlayerStats);
+  scene.addSystem(Glossary);
   scene.addSystem(BallPhysics);
   scene.addSystem(Biomes);
   scene.addSystem(Discovery);

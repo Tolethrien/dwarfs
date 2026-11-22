@@ -12,8 +12,8 @@ import Outfit from "../../components/dwarfs/outfit";
 import Shift from "../../components/dwarfs/shift";
 import Traits from "../../components/dwarfs/traits";
 import { SPECIAL_BEERS } from "../../content/beers";
-import { BASE_GEAR, GEAR_SLOT_NAMES, ITEMS } from "../../content/gear";
-import { FOREMAN_TRAIT, MAIN_TRAITS, TRAITS, TraitsID, WORKER_TRAITS, type TraitData } from "../../content/traits";
+import { BASE_GEAR, BaseGearID, GEAR_SLOT_NAMES, ITEMS } from "../../content/gear";
+import { ACTIVE_MAIN_TRAITS, FOREMAN_TRAIT, MAIN_TRAITS, TRAITS, TraitsID, WORKER_TRAITS, type TraitData } from "../../content/traits";
 import { UI_THEME } from "../../content/ui";
 import { CALENDAR } from "../../systems/core/calendar";
 import type GameUI from "../../systems/ui/gameUI";
@@ -23,7 +23,8 @@ import type { DwarfState } from "../../systems/dwarfs/roster";
 import type Workforce from "../../systems/dwarfs/workforce";
 import { bar } from "../elements/bar";
 import { button } from "../elements/button";
-import { dropdown } from "../elements/dropdown";
+import { column } from "../elements/column";
+import { dropdown, type DropdownItem } from "../elements/dropdown";
 import { portrait } from "../elements/portrait";
 import { row } from "../elements/row";
 import { table, tableWindowWidth, type TableColumn, type UITable } from "../elements/table";
@@ -51,9 +52,18 @@ const CREW_UI = {
     { title: "Gear / Beer", width: 116 },
     { title: "", width: 56, align: "end" },
   ] as TableColumn[],
+  assignColumns: [
+    { title: "Class", width: 160 },
+    { title: "Gear", width: 240 },
+    { title: "Effects", width: 420 },
+  ] as TableColumn[],
+  assignDropdownWidth: 220,
 };
 
-type CrewTab = "all" | "working" | "tavern" | "tired";
+// Object.keys gives enum numbers as strings
+const BASE_GEAR_IDS = Object.keys(BASE_GEAR).map(Number) as BaseGearID[];
+
+type CrewTab = "all" | "working" | "tavern" | "tired" | "assign";
 type SortKey = "name" | "damage" | "speed" | "bph" | "morale" | "state";
 
 const TABS: TabItem<CrewTab>[] = [
@@ -61,6 +71,7 @@ const TABS: TabItem<CrewTab>[] = [
   { id: "working", title: "Working" },
   { id: "tavern", title: "Tavern" },
   { id: "tired", title: "Tired" },
+  { id: "assign", title: "Assign" },
 ];
 
 const SORT_ITEMS: { id: SortKey; title: string }[] = [
@@ -240,9 +251,13 @@ export function crewPanel(roster: Roster, workforce: Workforce, gameUI: GameUI):
   let tab: CrewTab = "all";
   let sortBy: SortKey = "name";
   let descending = false;
+  let sortRow: UINode | undefined;
+  let rosterView: UINode | undefined;
+  let assignView: UINode | undefined;
   let list: UITable | undefined;
   let empty: UINode | undefined;
   let lastKey = "";
+  let lastAssignVersion = -1;
 
   function filtered() {
     const all = roster.dwarfs;
@@ -353,6 +368,70 @@ export function crewPanel(roster: Roster, workforce: Workforce, gameUI: GameUI):
     return `Crew: ${total} · Active: ${active} · Tavern: ${counts.tavern} · Working BPH: ${roundOne(activeBph)} L/h · Avg DMG: ${averageDamage}`;
   }
 
+  function gearEffectsText(gear: BaseGearID | undefined) {
+    if (gear === undefined) return "None";
+    const level = workforce.level(gear);
+    const effects = BASE_GEAR[gear].levels[level - 1] ?? [];
+    if (effects.length === 0) return "No bonuses";
+    return effects.map((effect) => effect.describe()).join(", ");
+  }
+
+  function rebuildAssign() {
+    if (!assignView) return;
+    lastAssignVersion = workforce.version;
+    Navi.clear(assignView);
+    text(assignView, "Standard gear worn by each worker class on their next shift", {
+      color: UI_THEME.colors.muted,
+    });
+    const gearItems: DropdownItem<BaseGearID>[] = BASE_GEAR_IDS.map((gear) => {
+      const level = workforce.level(gear);
+      const locked = !workforce.isUnlocked(gear);
+      return {
+        id: gear,
+        title: locked ? `${BASE_GEAR[gear].name} (Locked)` : `${BASE_GEAR[gear].name} Lv.${level}`,
+        locked: locked,
+      };
+    });
+    const assignTable = table(assignView, CREW_UI.assignColumns);
+    for (const main of ACTIVE_MAIN_TRAITS) {
+      const mainData = MAIN_TRAITS[main];
+      const assigned = workforce.assignments.get(main) ?? BaseGearID.universal;
+      assignTable.row([
+        {
+          build: (cell) => {
+            const label = text(cell, mainData.name);
+            tooltip(label, () => describeTrait(mainData));
+          },
+        },
+        {
+          build: (cell) => {
+            dropdown(
+              cell,
+              gearItems,
+              assigned,
+              (picked) => {
+                workforce.assign(main, picked);
+                workforce.touch();
+                rebuildAssign();
+              },
+              { width: CREW_UI.assignDropdownWidth },
+            );
+          },
+        },
+        () => gearEffectsText(workforce.assignments.get(main)),
+      ]);
+    }
+  }
+
+  function showTab() {
+    const isAssign = tab === "assign";
+    sortRow?.setActive(!isAssign);
+    rosterView?.setActive(!isAssign);
+    assignView?.setActive(isAssign);
+    if (isAssign) rebuildAssign();
+    else rebuildRows();
+  }
+
   return {
     id: "crew",
     title: "Crew",
@@ -361,18 +440,22 @@ export function crewPanel(roster: Roster, workforce: Workforce, gameUI: GameUI):
     width: tableWindowWidth(CREW_UI.columns),
     badge: () => roster.tiredCount,
     onClose() {
+      sortRow = undefined;
+      rosterView = undefined;
+      assignView = undefined;
       list = undefined;
       empty = undefined;
       lastKey = "";
+      lastAssignVersion = -1;
     },
     build(content) {
       text(content, summaryText, { color: UI_THEME.colors.muted });
       const controls = row(content, { align: "between" });
       tabs(controls, TABS, () => tab, (picked) => {
         tab = picked;
-        rebuildRows();
+        showTab();
       });
-      const sortRow = row(controls, { fit: true });
+      sortRow = row(controls, { fit: true });
       dropdown(sortRow, SORT_ITEMS, sortBy, (picked) => {
         sortBy = picked;
         rebuildRows();
@@ -381,11 +464,17 @@ export function crewPanel(roster: Roster, workforce: Workforce, gameUI: GameUI):
         descending = !descending;
         rebuildRows();
       });
-      list = table(content, CREW_UI.columns, { height: CREW_UI.listHeight });
-      empty = text(content, "No dwarfs match this filter", { color: UI_THEME.colors.muted });
-      rebuildRows();
+      rosterView = column(content);
+      list = table(rosterView, CREW_UI.columns, { height: CREW_UI.listHeight });
+      empty = text(rosterView, "No dwarfs match this filter", { color: UI_THEME.colors.muted });
+      assignView = column(content);
+      showTab();
     },
     update() {
+      if (tab === "assign") {
+        if (assignView && workforce.version !== lastAssignVersion) rebuildAssign();
+        return;
+      }
       if (list && listSignature() !== lastKey) rebuildRows();
     },
   };

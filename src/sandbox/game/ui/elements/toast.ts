@@ -50,6 +50,12 @@ class UIToast extends UINode {
 }
 
 let stack: UINode | undefined;
+let muted = false;
+
+export function muteToasts(value: boolean) {
+  muted = value;
+  if (muted && stack) Navi.clear(stack);
+}
 
 function getStack() {
   stack ??= Navi.append(
@@ -73,6 +79,7 @@ function getStack() {
 }
 
 export function toast(message: string, kind: ToastKind = "info") {
+  if (muted) return;
   const parent = getStack();
   const shown = parent.children.filter(
     (child): child is UIToast => child instanceof UIToast && !child.isExpired,

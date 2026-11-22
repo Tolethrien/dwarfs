@@ -14,7 +14,7 @@ import { stationFootprint } from "../world/stationShape";
 export const STATION = {
   manualLimit: 3,
   spacing: 30,
-  shift: { min: 2, max: 8, start: 4 },
+  shift: { min: 2, max: 8, start: 2 },
 };
 
 interface StationProps {

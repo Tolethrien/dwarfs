@@ -34,6 +34,7 @@ export interface TileStruck {
 // no hit: not a ball's (a station's crater)
 export interface TileDamaged extends Omit<TileStruck, "hit"> {
   damage: number;
+  dealt: number;
   hit?: Hit;
 }
 export interface TileChanged {
@@ -103,10 +104,12 @@ export default class Terrain extends PragmaSystem {
       const goesThrough = piercing || ratio >= penetrateRatio;
       return goesThrough ? "penetrate" : "bounce";
     }
-    const damage = Math.round(result.damage * MAX_DAMAGE);
-    // right at the damage threshold the share rounds to nothing
-    if (result.outcome === "damage" && damage > 0) this.addDamage(gx, gy, damage, hit, ratio);
-    else this.deflect(gx, gy, hit, ratio);
+    if (result.outcome === "damage") {
+      const damage = Math.max(1, Math.round(result.damage * MAX_DAMAGE));
+      this.addDamage(gx, gy, damage, result.damage, hit, ratio);
+    } else {
+      this.deflect(gx, gy, hit, ratio);
+    }
     return "bounce";
   }
 
@@ -142,14 +145,21 @@ export default class Terrain extends PragmaSystem {
         const result = strike(power, strength);
         if (result.outcome === "break") this.open(gx, gy, options.hit, ratio);
         else if (result.outcome === "damage")
-          this.addDamage(gx, gy, Math.round(result.damage * MAX_DAMAGE), options.hit, ratio);
+          this.addDamage(
+            gx,
+            gy,
+            Math.max(1, Math.round(result.damage * MAX_DAMAGE)),
+            result.damage,
+            options.hit,
+            ratio,
+          );
         else if (options.hit) this.deflect(gx, gy, options.hit, ratio);
       }
     return reached;
   }
 
   // with no ball (a station's crater) the block only clears when it breaks
-  public addDamage(gx: number, gy: number, amount: number, hit: Hit | undefined, ratio: number) {
+  public addDamage(gx: number, gy: number, amount: number, dealt: number, hit: Hit | undefined, ratio: number) {
     if (!this.world.inside(gx, gy) || !this.isSolid(gx, gy) || amount <= 0) return;
     const damage = this.world.getDamage(gx, gy) + amount;
     if (damage >= MAX_DAMAGE) {
@@ -158,7 +168,7 @@ export default class Terrain extends PragmaSystem {
     }
     this.world.setDamage(gx, gy, damage);
     const type = this.world.getType(gx, gy);
-    this.events.terrain.damaged.emit({ gx: gx, gy: gy, type: type, damage: damage, ratio: ratio, hit: hit });
+    this.events.terrain.damaged.emit({ gx: gx, gy: gy, type: type, damage: damage, dealt: dealt, ratio: ratio, hit: hit });
   }
 
   public clear(gx: number, gy: number) {

@@ -19,8 +19,7 @@ export type { BuildLayer } from "../build/space";
 export enum BuildCategoryID {
   shafts,
   buildings,
-  stations,
-  rails,
+  transport,
   other,
 }
 
@@ -28,13 +27,18 @@ export interface BuildCategoryData {
   title: string;
   short: string;
   layer: BuildLayer;
+  requires?: Condition;
 }
 
 export const BUILD_CATEGORIES: Record<BuildCategoryID, BuildCategoryData> = {
   [BuildCategoryID.shafts]: { title: "Shafts", short: "Sh", layer: "main" },
   [BuildCategoryID.buildings]: { title: "Buildings", short: "Bu", layer: "main" },
-  [BuildCategoryID.stations]: { title: "Stations", short: "St", layer: "main" },
-  [BuildCategoryID.rails]: { title: "Rails", short: "Ra", layer: "main" },
+  [BuildCategoryID.transport]: {
+    title: "Transport",
+    short: "Tr",
+    layer: "main",
+    requires: hasPlan("railway", "Research Railway in AGH"),
+  },
   [BuildCategoryID.other]: { title: "Other", short: "Ot", layer: "main" },
 };
 
@@ -48,6 +52,7 @@ export enum BuildElementID {
   rail,
   shaftJoint,
   palisade,
+  metalPalisade,
 }
 
 export interface BuildElementData {
@@ -69,6 +74,7 @@ const COSTS = {
   rail: { [ResourcesID.stone]: 5 } as ResourceCost,
   shaftJoint: { [ResourcesID.stone]: 20 } as ResourceCost,
   palisade: { [ResourcesID.ironOre]: 20, [ResourcesID.wood]: 10 } as ResourceCost,
+  metalPalisade: { [ResourcesID.ironBars]: 15, [ResourcesID.stone]: 10 } as ResourceCost,
 };
 
 export const BUILD_ELEMENTS: Record<BuildElementID, BuildElementData> = {
@@ -113,27 +119,27 @@ export const BUILD_ELEMENTS: Record<BuildElementID, BuildElementData> = {
     tool: buildingTool(BuildingsID.smelter, "Smelter", COSTS.smelter),
   },
   [BuildElementID.station]: {
-    category: BuildCategoryID.stations,
+    category: BuildCategoryID.transport,
     title: "Station",
     short: "St",
     cost: COSTS.station,
-    requires: hqLevel(2),
+    requires: hasPlan("railway", "Research Railway in AGH"),
     tool: stationTool("Station", COSTS.station),
   },
   [BuildElementID.rail]: {
-    category: BuildCategoryID.rails,
+    category: BuildCategoryID.transport,
     title: "Rail, a tile",
     short: "Ra",
     cost: COSTS.rail,
-    requires: hqLevel(2),
+    requires: hasPlan("railway", "Research Railway in AGH"),
     tool: railTool(COSTS.rail),
   },
   [BuildElementID.shaftJoint]: {
-    category: BuildCategoryID.rails,
+    category: BuildCategoryID.transport,
     title: "Shaft joint",
     short: "Jo",
     cost: COSTS.shaftJoint,
-    requires: hqLevel(2),
+    requires: hasPlan("railway", "Research Railway in AGH"),
     tool: jointTool("Shaft joint", COSTS.shaftJoint),
   },
   [BuildElementID.palisade]: {
@@ -150,6 +156,22 @@ export const BUILD_ELEMENTS: Record<BuildElementID, BuildElementData> = {
       solid: true,
       hp: STRUCTURES.palisade.hp,
       look: STRUCTURES.palisade.look,
+    }),
+  },
+  [BuildElementID.metalPalisade]: {
+    category: BuildCategoryID.other,
+    title: "Metal palisade",
+    short: "MP",
+    cost: COSTS.metalPalisade,
+    requires: hasPlan("metalPalisade", "Research Reinforced Palisade in AGH"),
+    tool: structureTool({
+      name: "Metal palisade",
+      cost: COSTS.metalPalisade,
+      size: STRUCTURES.metalPalisade.size,
+      rotatable: true,
+      solid: true,
+      hp: STRUCTURES.metalPalisade.hp,
+      look: STRUCTURES.metalPalisade.look,
     }),
   },
 };

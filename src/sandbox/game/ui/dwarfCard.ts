@@ -90,6 +90,7 @@ export default class DwarfCardUI {
   private moraleNode: UINode | undefined;
   private readonly slotMarks = new Map<GearSlot, UINode>();
   private readonly slots = new Map<GearSlot, UINode>();
+  private workerGearLabel: UINode | undefined;
 
   constructor(
     private readonly actions: DwarfCardActions,
@@ -194,6 +195,25 @@ export default class DwarfCardUI {
       this.slotMarks.set(slot, mark);
       tooltip(node, () => this.gearText(slot));
     });
+    const labelAt = {
+      x: equipment.x + equipment.size + equipment.gap,
+      y: equipment.y + CARD.labelHeight,
+    };
+    const labelWidth = (GEAR_SLOTS.length - 1) * (equipment.size + equipment.gap);
+    this.workerGearLabel = Navi.append(
+      new UIText(() => this.workerGearTitle(), {
+        position: { x: px(labelAt.x), y: px(labelAt.y) },
+        size: { width: px(labelWidth), height: px(equipment.size) },
+        style: {
+          alignCross: "center",
+          textColor: LOOK.text,
+          textSize: LOOK.textSize.body,
+          backgroundColor: COLOR.TRANSPARENT,
+        },
+      }),
+      card,
+    );
+    tooltip(this.workerGearLabel, () => this.gearText(GEAR_SLOTS[0]));
   }
 
   private item(slot: GearSlot) {
@@ -218,6 +238,14 @@ export default class DwarfCardUI {
   private showSlots() {
     const foreman = this.traits(this.current).foreman;
     for (const [slot, node] of this.slots) if (slot !== GEAR_SLOTS[0]) node.setActive(foreman);
+    this.workerGearLabel?.setActive(!foreman);
+  }
+
+  private workerGearTitle() {
+    if (this.traits(this.current).foreman) return "";
+    const worn = this.outfit(this.current)?.worn;
+    if (worn === undefined) return "No gear";
+    return `${BASE_GEAR[worn.gear].name} Lv.${worn.level}`;
   }
 
   private slotMark(slot: GearSlot) {

@@ -121,6 +121,10 @@ export default class StationMenuUI {
     return this.window.isOpen;
   }
 
+  public get selectedHours() {
+    return this.hours;
+  }
+
   private build(content: UINode, station: Station) {
     text(content, () => `Haul: ${this.actions.haul(station)}`);
     const order = header(content, "Order");
@@ -130,19 +134,28 @@ export default class StationMenuUI {
     this.unconnected.setActive(!this.actions.connected(station));
     this.classes = gridCells(order);
     this.showClasses();
-    stepper(order, "Shift", () => `${this.hours} h`, (step) => {
-      this.hours = AxiomMath.clamp(this.hours + step, STATION.shift.min, STATION.shift.max);
-    });
+    stepper(
+      order,
+      "Shift",
+      () => `${this.hours} h`,
+      (step) => {
+        this.hours = AxiomMath.clamp(this.hours + step, STATION.shift.min, STATION.shift.max);
+      },
+      { plusTag: "station:shiftPlus" },
+    );
     const beer = row(order, { align: "between" });
     text(beer, "Beer");
     dropdown(beer, BEERS, this.beer, (id) => (this.beer = id));
     const actions = row(order, { align: "between" });
     this.wage = row(actions, { fit: true });
+    this.wage.tags.add("station:wage");
     this.shownWage = "";
     this.showWage();
     const buttons = row(actions, { fit: true });
-    this.orderButton = button(buttons, "Order", () => this.actions.order(this.main, this.hours, this.beer, station));
-    this.shootButton = button(buttons, "Shoot", () => this.actions.shoot(station));
+    this.orderButton = button(buttons, "Order", () => this.actions.order(this.main, this.hours, this.beer, station), {
+      tag: "station:order",
+    });
+    this.shootButton = button(buttons, "Shoot", () => this.actions.shoot(station), { tag: "station:shoot" });
     this.addSendNow(order, station);
 
     const ordered = header(

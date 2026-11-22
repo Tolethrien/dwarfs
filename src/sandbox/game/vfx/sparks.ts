@@ -15,6 +15,7 @@ const SPARKS = {
   viewMargin: 200,
   deflected: 0.15,
   wound: { weak: 0.35, strong: 1 },
+  mined: 1,
   count: [2, 15],
   speed: [400, 900],
   spread: 0.6,
@@ -51,14 +52,18 @@ export default class SparksLayer implements VfxLayer {
     });
     connect(ctx.events.terrain.damaged, (tile) => {
       if (!tile.hit || !isNatural(tile.type)) return;
-      const dealt = AxiomMath.clamp((tile.ratio - 0.5) / 0.5, 0, 1);
+      const dealt = AxiomMath.clamp(tile.dealt, 0, 1);
       this.burst(tile.hit, AxiomMath.lerp(SPARKS.wound.weak, SPARKS.wound.strong, dealt), ctx);
+    });
+    connect(ctx.events.terrain.mined, (tile) => {
+      if (!isNatural(tile.type)) return;
+      this.burst(tile.hit, SPARKS.mined, ctx);
     });
   }
 
-  // the saltpetre of a pyro gets its own look, the sparks are a pick's
+  // the saltpetre of a pyro and blasts get their own look, the sparks are a pick's
   public burst(hit: Hit, strength: number, ctx: VfxContext) {
-    if (hit.cause === "splash") return;
+    if (hit.cause !== "strike") return;
     if (!ctx.inView(hit.point.x, hit.point.y, 0, 0, SPARKS.viewMargin)) return;
 
     const flash = SPARKS.flash;

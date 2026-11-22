@@ -1,5 +1,3 @@
-const STRIKE = { break: 1, damage: 0.5 };
-
 export const MAX_DAMAGE = 65535;
 
 export type StrikeOutcome = "break" | "damage" | "none";
@@ -11,12 +9,8 @@ export interface Strike {
 
 // whether the ball goes on through a broken block is up to its effects (Pierce, Penetrate)
 export function strike(power: number, strength: number): Strike {
+  if (power <= 0 || strength === Infinity) return { outcome: "none", damage: 0 };
   const ratio = power / strength;
-  if (ratio >= STRIKE.break) return { outcome: "break", damage: 0 };
-  if (ratio >= STRIKE.damage)
-    return {
-      outcome: "damage",
-      damage: (ratio - STRIKE.damage) / (STRIKE.break - STRIKE.damage),
-    };
-  return { outcome: "none", damage: 0 };
+  if (ratio >= 1) return { outcome: "break", damage: 1 };
+  return { outcome: "damage", damage: ratio * ratio };
 }

@@ -1,5 +1,6 @@
 import Navi from "@navi/navi";
 import UINode from "@navi/node";
+import { Tweens } from "@navi/tween";
 import { auto, ph, pw, px } from "@navi/units";
 import { UI_THEME } from "../content/ui";
 
@@ -10,18 +11,33 @@ let topRight: UINode | undefined;
 const slots = new Map<HudSlot, UINode>();
 
 export function hudLayer() {
-  layer ??= Navi.append(
-    new UINode({
-      size: { width: pw(100), height: ph(100) },
-      input: "none",
-      style: { backgroundColor: UI_THEME.colors.transparent },
-    }),
-  );
+  if (!layer) {
+    layer = Navi.append(
+      new UINode({
+        size: { width: pw(100), height: ph(100) },
+        input: "none",
+        style: { backgroundColor: UI_THEME.colors.transparent },
+      }),
+    );
+    layer.tags.add("hud");
+  }
   return layer;
 }
 
-export function showHud(shown: boolean) {
-  hudLayer().setActive(shown);
+export function showHud(shown: boolean, fadeMs?: number) {
+  const root = hudLayer();
+  if (!shown) {
+    root.stopAllTweens();
+    root.setActive(false);
+    return undefined;
+  }
+  if (fadeMs !== undefined && !root.active) {
+    root.stopAllTweens();
+    root.setActive(true);
+    return root.play(Tweens.fadeIn(fadeMs));
+  }
+  root.setActive(true);
+  return undefined;
 }
 
 export function hudSlot(slot: HudSlot) {

@@ -21,6 +21,7 @@ export interface SlotOptions {
   doubleClick?: () => void;
   menu?: () => MenuItem[];
   tooltip?: TextContent;
+  tag?: string;
 }
 
 export class UISlot extends UIButton {
@@ -60,6 +61,7 @@ export function slot(parent: UINode, options: SlotOptions) {
   props.minSize = { width: size, height: size };
   props.style = { ...props.style, alignMain: "center" };
   const node = new UISlot(options, props);
+  if (options.tag) node.tags.add(options.tag);
   Navi.append(node, parent);
   fillButton(node, options.label ?? "", look);
   if (options.selected) node.setFrame(selectionFrame(node));

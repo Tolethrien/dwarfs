@@ -8,11 +8,21 @@ import { button } from "../elements/button";
 import { confirm } from "../elements/confirm";
 import { cost, costEntries } from "../elements/cost";
 import { header } from "../elements/header";
+import { input } from "../elements/input";
+import { row } from "../elements/row";
 import { stepper } from "../elements/stepper";
 import { text } from "../elements/text";
+import { toast } from "../elements/toast";
+
+const HQ_UI = {
+  width: 420,
+  nameWidth: 160,
+  nameMaxLength: 24,
+};
 
 export interface HeadquartersActions {
   director: () => string;
+  setDirector: (name: string) => void;
   level: () => number;
   next: () => HeadquartersLevel | undefined;
   shaftLimit: (level: number) => number;
@@ -29,7 +39,7 @@ export interface HeadquartersActions {
 }
 
 export default class HeadquartersUI {
-  private readonly window = new UIWindow({ kind: "docked", width: 420, title: "Headquarters", closeOnMove: closeOnCameraMove() });
+  private readonly window = new UIWindow({ kind: "docked", width: HQ_UI.width, title: "Headquarters", closeOnMove: closeOnCameraMove() });
 
   constructor(private readonly actions: HeadquartersActions) {}
 
@@ -48,11 +58,36 @@ export default class HeadquartersUI {
 
   private build(parent: UINode) {
     const level = this.actions.level();
-    text(parent, `Director: Comrade ${this.actions.director()}`);
+    this.buildDirector(parent);
     text(parent, `Mine level ${level}`);
     text(parent, `The shaft reaches ${this.actions.shaftLimit(level)} tiles deep`, { color: UI_THEME.colors.muted });
     this.buildUpgrade(parent, level);
     this.buildShipment(parent);
+  }
+
+  private buildDirector(parent: UINode) {
+    const line = row(parent, { align: "between" });
+    text(line, "Director: Comrade");
+    const controls = row(line, { fit: true });
+    const commit = (raw: string) => {
+      const trimmed = raw.trim();
+      if (trimmed.length === 0) {
+        field.value = this.actions.director();
+        return;
+      }
+      this.actions.setDirector(trimmed);
+      field.value = this.actions.director();
+      toast(`Director renamed to Comrade ${field.value}`, "success");
+    };
+    const field = input(controls, {
+      value: this.actions.director(),
+      placeholder: "Name",
+      width: HQ_UI.nameWidth,
+      maxLength: HQ_UI.nameMaxLength,
+      keepOnBlur: true,
+      submit: commit,
+    });
+    button(controls, "Save", () => commit(field.value));
   }
 
   private buildUpgrade(parent: UINode, level: number) {

@@ -11,6 +11,7 @@ import { mineRemoveTool } from "../../build/blueprints";
 import { BUILD_LOOK } from "../../build/look";
 import type BuildSpace from "../../build/space";
 import {
+  BUILD_CATEGORIES,
   BUILD_ELEMENTS,
   BuildCategoryID,
   BuildElementID,
@@ -73,7 +74,9 @@ export default class BuildMode extends PragmaSystem {
       if (this.on) this.menu.showSelected();
     });
     this.connect(events.player.unlocked, () => {
-      if (this.on) this.menu.showElements();
+      if (!this.on) return;
+      this.menu.showCategories();
+      this.menu.showElements();
     });
   }
 
@@ -103,10 +106,12 @@ export default class BuildMode extends PragmaSystem {
 
   public pickLayer(layer: BuildLayer) {
     this.layer = layer;
-    this.pickCategory(categoriesOf(layer)[0]);
+    const first = categoriesOf(layer).find((category) => !this.isCategoryLocked(category));
+    this.pickCategory(first);
   }
 
   public pickCategory(category: BuildCategoryID | undefined) {
+    if (category !== undefined && this.isCategoryLocked(category)) return;
     if (category !== this.category) this.pick(undefined);
     this.category = category;
   }
@@ -127,6 +132,15 @@ export default class BuildMode extends PragmaSystem {
       if (tool.onPick && !tool.onPick(this.ctx)) this.selected = undefined;
     }
     this.menu.showSelected();
+  }
+
+  public isCategoryLocked(category: BuildCategoryID) {
+    return this.missingForCategory(category).length > 0;
+  }
+
+  public missingForCategory(category: BuildCategoryID) {
+    const requires = BUILD_CATEGORIES[category].requires;
+    return requires ? this.conditions.missing(requires) : [];
   }
 
   public isLocked(element: BuildElementID) {

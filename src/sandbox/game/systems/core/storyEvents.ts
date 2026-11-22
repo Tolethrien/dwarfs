@@ -13,6 +13,7 @@ import StoryUI, { type StoryPopup } from "../../ui/story";
 import { closeAllWindows, type UIWindow } from "../../ui/elements/window";
 import type { TavernTab } from "../../ui/buildings/tavern";
 import { showHud } from "../../ui/hud";
+import { muteToasts } from "../../ui/elements/toast";
 import Conditions from "./conditions";
 import GameMode, { VIEW } from "./gameMode";
 import Buildings from "../mine/buildings";
@@ -21,10 +22,11 @@ import Calendar, { type Alarm } from "./calendar";
 import PlayerStats from "./playerStats";
 import Roster from "../dwarfs/roster";
 
-// blackout: seconds into the black, in it before and after the change, and out of it; glide: the
-// camera's flight to a spot
+// blackout: seconds into the black, in it before and after the change, and out of it; skip: the
+// same around a skipped script; glide: the camera's flight to a spot
 const STORY = {
   blackout: { close: 1.5, dark: 1, open: 2 },
+  skip: { close: 0.6, dark: 0.3, open: 1 },
   glide: { seconds: 1.2 },
   buildHold: [...VIEW, "toggleBuild", "cancelBuild", "place", "rotateBuild"] as ActionName[],
 };
@@ -35,6 +37,8 @@ export interface StoryHold {
   pause?: boolean;
   stopClock?: boolean;
   hideHud?: boolean;
+  muteToasts?: boolean;
+  resetSpeed?: boolean;
   keepMode?: boolean;
 }
 
@@ -105,12 +109,21 @@ export default class StoryEvents extends PragmaSystem {
   }
 
   public playNow(id: StoryEventID) {
+    this.markDone(id);
+    this.play(id);
+  }
+
+  public markDone(id: StoryEventID) {
     this.fired.add(id);
     this.stoppers.get(id)?.();
     this.stoppers.delete(id);
     this.pending.get(id)?.cancel();
     this.pending.delete(id);
-    this.play(id);
+  }
+
+  public skipEvent(id: StoryEventID) {
+    this.markDone(id);
+    this.skipCoroutine(`story ${StoryEventID[id]}`);
   }
 
   // the screen is taken and no input goes to the game: no camera, and no Tab, which would close
@@ -121,6 +134,7 @@ export default class StoryEvents extends PragmaSystem {
     if (options.pause) Time.setPaused(true);
     if (options.stopClock) this.calendar.isRunning = false;
     if (options.hideHud) showHud(false);
+    if (options.muteToasts) muteToasts(true);
     if (options.keepMode) this.gameMode.block(STORY.buildHold);
     else this.gameMode.set("cutscene");
     this.busy = true;
@@ -133,9 +147,13 @@ export default class StoryEvents extends PragmaSystem {
         if (options.keepMode) this.gameMode.unblock(STORY.buildHold);
         // the intro ends with the player shooting: build or shoot mode stays as it is
         else if (this.gameMode.is("cutscene")) this.gameMode.set("game");
-        if (options.pause) Time.setPaused(paused);
+        if (options.resetSpeed) {
+          Time.setTimeSpeed(1);
+          Time.setPaused(false);
+        } else if (options.pause) Time.setPaused(paused);
         if (options.stopClock) this.calendar.isRunning = true;
         if (options.hideHud) showHud(true);
+        if (options.muteToasts) muteToasts(false);
       },
     };
   }
@@ -180,8 +198,16 @@ export default class StoryEvents extends PragmaSystem {
     Camera.setPosition(spot);
   }
 
+  public *waitCanShow(co: Coroutine) {
+    yield co.waitUntil(() => this.canShow());
+  }
+
   public buildMarket() {
     this.buildings.buildMarket();
+  }
+
+  public buildAgh() {
+    if (!this.buildings.isStanding(BuildingsID.agh)) this.buildings.buildAgh();
   }
 
   public startMorale() {
@@ -220,12 +246,12 @@ export default class StoryEvents extends PragmaSystem {
     const event = STORY_EVENTS[id];
     const key = `story ${StoryEventID[id]}`;
     const story = this;
-    this.startCoroutine(
+    const script = this.startCoroutine(
       function* (co) {
         if (event.skippable) {
           story.ui.showSkip(() => {
             story.ui.showSkip(undefined);
-            story.skipCoroutine(key);
+            story.startCoroutine((fade) => story.skip(fade, key, script), { time: "real" });
           });
           co.defer(() => story.ui.showSkip(undefined));
         }
@@ -233,6 +259,17 @@ export default class StoryEvents extends PragmaSystem {
       },
       { key: key, time: event.time ?? "real" },
     );
+  }
+
+  // the script runs to its end in the dark, the game comes back already as it left it
+  private *skip(co: Coroutine, key: string, script: Coroutine) {
+    const skip = STORY.skip;
+    const curtain = this.ui.skipCurtain;
+    yield curtain.darken(skip.close * 1000);
+    this.skipCoroutine(key);
+    yield co.waitUntil(() => script.done);
+    yield co.waitSeconds(skip.dark);
+    yield curtain.brighten(skip.open * 1000);
   }
 
   private trigger(id: StoryEventID) {

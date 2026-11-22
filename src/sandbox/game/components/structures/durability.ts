@@ -16,7 +16,7 @@ export default class Durability extends PragmaComponent {
   }
 
   awake(): void {
-    this.onActorEvent<BodyHit>("hit", (contact) => this.damage(contact.ball.power));
+    this.onActorEvent<BodyHit>("hit", () => this.damage(1));
   }
 
   public get hurt() {

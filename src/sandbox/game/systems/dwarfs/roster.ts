@@ -48,7 +48,10 @@ export default class Roster extends PragmaSystem {
     );
     this.events = this.scene.getSystem(GameEvents);
     this.connect(this.events.calendar.hourStarted, () => this.hour());
-    this.connect(this.events.dwarfs.statsChanged, (changed) => this.fitMorale(changed));
+    this.connect(this.events.dwarfs.statsChanged, (changed) => {
+      if (changed === "all") this.syncTavernGear();
+      this.fitMorale(changed);
+    });
   }
 
   start(): void {
@@ -114,6 +117,7 @@ export default class Roster extends PragmaSystem {
   public enlist(dwarf: Dwarf) {
     this.dwarfs.push(dwarf);
     this.whereabouts.set(dwarf, { state: "tavern", station: undefined });
+    this.equipFromWorkforce(dwarf);
   }
 
   // out of the roster for good; take it out of the mine first
@@ -188,6 +192,22 @@ export default class Roster extends PragmaSystem {
     const whereabouts = this.whereaboutsOf(dwarf);
     whereabouts.state = "tavern";
     whereabouts.station = undefined;
+    this.equipFromWorkforce(dwarf);
+  }
+
+  private syncTavernGear() {
+    for (const dwarf of this.inTavern()) this.equipFromWorkforce(dwarf);
+  }
+
+  private equipFromWorkforce(dwarf: Dwarf) {
+    const traits = this.traitsOf(dwarf);
+    if (traits.foreman) return;
+    const outfit = dwarf.getComponent(Outfit);
+    assert(outfit !== undefined, `Worker ${dwarf.name} has no Outfit`);
+    const next = this.workforce.gearFor(traits.main);
+    const current = outfit.worn;
+    if (current?.gear === next?.gear && current?.level === next?.level) return;
+    outfit.wear(next);
   }
 
   private change(dwarf: Dwarf, from: DwarfState, to: DwarfState) {

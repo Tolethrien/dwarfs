@@ -8,6 +8,7 @@ import Tavern from "../components/buildings/tavern";
 import Market from "../components/buildings/market";
 import Smelter from "../components/buildings/smelter";
 import Headquarters from "../components/buildings/headquarters";
+import Agh from "../components/buildings/agh";
 import Storage from "../components/common/storage";
 import { BUILDINGS, BuildingsID } from "../content/structures";
 import type { BuildingPlace } from "../world/buildingShape";
@@ -46,6 +47,9 @@ export default class Building extends PragmaActor {
       case BuildingsID.headquarters:
         this.addComponent(Storage, { camp: true });
         this.addComponent(Headquarters);
+        break;
+      case BuildingsID.agh:
+        this.addComponent(Agh);
         break;
     }
   }

@@ -22,10 +22,20 @@ export const STRUCTURES = {
   },
   palisade: {
     size: { width: 4, height: 0.8 },
-    hp: 20,
+    hp: 10,
     look: {
       fill: [132, 92, 56, 255] as RGBA,
       border: [86, 56, 32, 255] as RGBA,
+      borderWidth: 0.1,
+      damagedShade: 0.45,
+    },
+  },
+  metalPalisade: {
+    size: { width: 6, height: 0.8 },
+    hp: 50,
+    look: {
+      fill: [130, 140, 152, 255] as RGBA,
+      border: [74, 82, 92, 255] as RGBA,
       borderWidth: 0.1,
       damagedShade: 0.45,
     },
@@ -62,6 +72,7 @@ export enum BuildingsID {
   brewery,
   smelter,
   headquarters,
+  agh,
 }
 
 export interface BuildingData {
@@ -122,6 +133,16 @@ export const BUILDINGS: Record<BuildingsID, BuildingData> = {
     reserve: { away: 0, up: 0, down: 0 },
     sprite: BUILDING_SHEET.frames.headquarters.crop,
     door: BUILDING_SHEET.frames.headquarters.door,
+    wallBeam: false,
+    light: LightsID.buildingLamp,
+    reveal: 28,
+  },
+  [BuildingsID.agh]: {
+    name: "AGH",
+    size: { width: 18, height: 10 },
+    reserve: { away: 0, up: 0, down: 0 },
+    sprite: BUILDING_SHEET.frames.agh.crop,
+    door: BUILDING_SHEET.frames.agh.door,
     wallBeam: false,
     light: LightsID.buildingLamp,
     reveal: 28,

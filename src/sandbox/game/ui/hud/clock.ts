@@ -14,7 +14,6 @@ const SPEEDS = [1, 2, 5, 25];
 
 export default class ClockHud {
   private readonly panel: UINode;
-  private speed = 1;
 
   constructor(calendar: Calendar) {
     this.panel = Navi.append(
@@ -48,7 +47,7 @@ export default class ClockHud {
     button(speeds, "II", () => Time.setPaused(!Time.getPaused()), { selected: () => Time.getPaused() });
     for (const option of SPEEDS)
       button(speeds, `x${option}`, () => this.select(option), {
-        selected: () => !Time.getPaused() && option === this.speed,
+        selected: () => !Time.getPaused() && option === Time.getTimeSpeed(),
       });
     this.select(1);
   }
@@ -60,6 +59,5 @@ export default class ClockHud {
   private select(speed: number) {
     Time.setPaused(false);
     Time.setTimeSpeed(speed);
-    this.speed = speed;
   }
 }

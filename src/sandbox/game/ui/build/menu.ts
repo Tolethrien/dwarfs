@@ -3,7 +3,15 @@ import UINode from "@navi/node";
 import { Tweens } from "@navi/tween";
 import { auto, px } from "@navi/units";
 import { UI_THEME } from "../../content/ui";
-import { BUILD_CATEGORIES, BUILD_ELEMENTS, categoriesOf, elementsOf, type BuildLayer } from "../../content/build";
+import {
+  BUILD_CATEGORIES,
+  BUILD_ELEMENTS,
+  BuildCategoryID,
+  BuildElementID,
+  categoriesOf,
+  elementsOf,
+  type BuildLayer,
+} from "../../content/build";
 import type BuildMode from "../../systems/mine/buildMode";
 import type { ResourceCost, ResourcesID } from "../../content/resources";
 import { buttonProps, UIButton } from "../elements/button";
@@ -91,7 +99,8 @@ export default class BuildMenu {
     this.panel.motion.offset.x = 0;
     this.toggleButton.setActive(true);
     this.panel.setActive(true);
-    // the headquarters' level may have changed since the last time
+    // the headquarters' level or unlocked plans may have changed since the last time
+    this.showCategories();
     this.showElements();
     this.showSelected();
   }
@@ -132,13 +141,16 @@ export default class BuildMenu {
     tabs(this.layers, items, this.buildMode.layer, (layer) => this.pickLayer(layer));
   }
 
-  private showCategories() {
+  public showCategories() {
     Navi.clear(this.categories);
     for (const category of categoriesOf(this.buildMode.layer)) {
       const data = BUILD_CATEGORIES[category];
+      const lacking = this.buildMode.missingForCategory(category);
       slot(this.categories, {
         label: data.short,
-        tooltip: data.title,
+        tooltip: lacking.length > 0 ? `${data.title} · ${lacking.join(", ")}` : data.title,
+        tag: `build:category:${BuildCategoryID[category]}`,
+        locked: this.buildMode.isCategoryLocked(category),
         selected: () => this.buildMode.category === category,
         click: () => {
           this.buildMode.pickCategory(category);
@@ -162,6 +174,7 @@ export default class BuildMenu {
       slot(cells, {
         label: data.short,
         tooltip: lacking.length > 0 ? `${data.title} · ${lacking.join(", ")}` : data.title,
+        tag: `build:element:${BuildElementID[element]}`,
         locked: this.buildMode.isLocked(element),
         selected: () => this.buildMode.selected === element,
         click: () => this.buildMode.pick(element),

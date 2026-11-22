@@ -127,10 +127,20 @@ export default class Buildings extends PragmaSystem {
     this.build(BuildingsID.market, this.surfacePlace(BuildingsID.market, "left"));
   }
 
-  private surfacePlace(id: BuildingsID, side: ShaftSide): BuildingPlace {
+  public buildAgh() {
+    const offset = BUILDINGS[BuildingsID.headquarters].size.width + 2;
+    this.build(BuildingsID.agh, this.surfacePlace(BuildingsID.agh, "right", offset));
+  }
+
+  public aghPlace() {
+    const offset = BUILDINGS[BuildingsID.headquarters].size.width + 2;
+    return this.surfacePlace(BuildingsID.agh, "right", offset);
+  }
+
+  private surfacePlace(id: BuildingsID, side: ShaftSide, offset = 0): BuildingPlace {
     const size = BUILDINGS[id].size;
     const columns = shaftColumns(this.terrain.world);
-    const x = side === "left" ? columns.from - size.width : columns.to + 1;
+    const x = side === "left" ? columns.from - size.width - offset : columns.to + 1 + offset;
     const base = { x: x, y: -size.height, w: size.width, h: size.height };
     return { side: side, base: base, reserve: { ...base } };
   }

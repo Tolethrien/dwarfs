@@ -71,6 +71,10 @@ export default class Headquarters extends PragmaComponent {
     const playerStats = this.scene.getSystem(PlayerStats);
     this.window = new HeadquartersUI({
       director: () => playerStats.name,
+      setDirector: (name) => {
+        const trimmed = name.trim();
+        if (trimmed.length > 0) playerStats.name = trimmed;
+      },
       level: () => this.level,
       next: () => HEADQUARTERS.levels[this.level],
       shaftLimit: (level) => shaftLimitAt(level),

@@ -365,11 +365,14 @@ export default class UINode {
     return this.children;
   }
 
+  // the first frame already drawn as the tween starts: Navi ticks tweens before the game's update,
+  // so one played from there would show its node unanimated for a frame
   public play(tween: Tween) {
     tween.elapsed = 0;
     tween.finished = false;
     this.tweens.push(tween);
     Navi.registerAnimated(this);
+    this.composeMotion();
     return tween;
   }
 
@@ -389,42 +392,15 @@ export default class UINode {
   }
   public tickTweens(dt: number, done: (() => void)[]) {
     if (this.tweens.length === 0) return;
-
-    let sx = 1;
-    let sy = 1;
-    let ox = 0;
-    let oy = 0;
-    let a = 1;
+    for (const tween of this.tweens) tween.elapsed += dt * 1000;
+    this.composeMotion();
     for (let i = this.tweens.length - 1; i >= 0; i--) {
       const tween = this.tweens[i];
-      tween.elapsed += dt * 1000;
-      const live = tween.elapsed - tween.delay;
-
-      let t: number;
-      if (live <= 0) t = 0;
-      else if (tween.ms <= 0) t = 1;
-      else if (live >= tween.ms)
-        t = tween.loop ? (live % tween.ms) / tween.ms : 1;
-      else t = live / tween.ms;
-
-      const s = tween.sample(t);
-      sx *= s.scaleX ?? 1;
-      sy *= s.scaleY ?? 1;
-      ox += s.x ?? 0;
-      oy += s.y ?? 0;
-      a *= s.alpha ?? 1;
-
-      if (!tween.loop && live >= tween.ms) {
-        this.tweens.splice(i, 1);
-        tween.finished = true;
-        if (tween.onDone) done.push(tween.onDone);
-      }
+      if (tween.loop || tween.elapsed - tween.delay < tween.ms) continue;
+      this.tweens.splice(i, 1);
+      tween.finished = true;
+      if (tween.onDone) done.push(tween.onDone);
     }
-    this.motion.scale.x = sx;
-    this.motion.scale.y = sy;
-    this.motion.offset.x = ox;
-    this.motion.offset.y = oy;
-    this.motion.alpha = a;
   }
   public maxScroll(axis: Axis) {
     if (axis === "x")
@@ -892,6 +868,33 @@ export default class UINode {
     if (!hasState) return false;
 
     return this.style.transitionMs > 0;
+  }
+
+  private composeMotion() {
+    let scaleX = 1;
+    let scaleY = 1;
+    let offsetX = 0;
+    let offsetY = 0;
+    let alpha = 1;
+    for (const tween of this.tweens) {
+      const live = tween.elapsed - tween.delay;
+      let t: number;
+      if (live <= 0) t = 0;
+      else if (tween.ms <= 0) t = 1;
+      else if (live < tween.ms) t = live / tween.ms;
+      else t = tween.loop ? (live % tween.ms) / tween.ms : 1;
+      const sample = tween.sample(t);
+      scaleX *= sample.scaleX ?? 1;
+      scaleY *= sample.scaleY ?? 1;
+      offsetX += sample.x ?? 0;
+      offsetY += sample.y ?? 0;
+      alpha *= sample.alpha ?? 1;
+    }
+    this.motion.scale.x = scaleX;
+    this.motion.scale.y = scaleY;
+    this.motion.offset.x = offsetX;
+    this.motion.offset.y = offsetY;
+    this.motion.alpha = alpha;
   }
 
   private resetMotion() {
