@@ -6,8 +6,9 @@ import InputManager from "@engine/inputManager";
 import { Camera } from "@engine/camera/camera";
 import { KEY } from "@engine/keys";
 import AxiomMath from "@axiom/math";
+import { assert } from "@axiom/utils";
 import { COLOR } from "@axiom/color";
-import { UI_THEME } from "../../content/ui";
+import { UI_SHEET, UI_THEME } from "../../content/ui";
 import { text, TextContent } from "./text";
 import { button, buttonIn } from "./button";
 import { closeMenuOf, openMenu, updateMenu } from "./contextMenu";
@@ -35,6 +36,8 @@ export interface WindowOptions {
   closeOnMove?: CloseOnMove;
   owner?: UIWindow;
   plate?: WindowPlate;
+  paper?: boolean;
+  titleGradient?: { from: RGBA; to: RGBA; start?: number; end?: number };
   onClose?: () => void;
 }
 export interface WindowPlate {
@@ -51,7 +54,10 @@ const WINDOWS = {
 
 // for a window of a building or a station: it closes when the camera leaves it behind
 export function closeOnCameraMove(): CloseOnMove {
-  return { position: () => Camera.getPosition, distance: UI_THEME.worldWindow.closeDistance };
+  return {
+    position: () => Camera.getPosition,
+    distance: UI_THEME.worldWindow.closeDistance,
+  };
 }
 
 export function isAnyWindowOpen() {
@@ -59,11 +65,13 @@ export function isAnyWindowOpen() {
 }
 
 export function closeAllWindows() {
-  while (WINDOWS.opened.length > 0) WINDOWS.opened[WINDOWS.opened.length - 1].close();
+  while (WINDOWS.opened.length > 0)
+    WINDOWS.opened[WINDOWS.opened.length - 1].close();
 }
 
 export class UIWindow {
   private panel: UINode | undefined;
+  private bodyHost: UINode | undefined;
   private content: UINode | undefined;
   private backdrop: UINode | undefined;
   private openedAt: Position2D = { x: 0, y: 0 };
@@ -74,8 +82,20 @@ export class UIWindow {
     return this.panel !== undefined;
   }
 
+  public get frame() {
+    assert(
+      this.bodyHost !== undefined,
+      "Window must be open to access its frame",
+    );
+    return this.bodyHost;
+  }
+
   private get slot() {
     return this.options.slot ?? "center";
+  }
+
+  private get isPaper() {
+    return this.options.paper ?? true;
   }
 
   public open() {
@@ -98,7 +118,9 @@ export class UIWindow {
     }
 
     const plate = this.options.plate;
-    const panel = Navi.append(plate ? this.createPlate(plate) : this.createPanel());
+    const panel = Navi.append(
+      plate ? this.createPlate(plate) : this.createPanel(),
+    );
     if (this.options.tag) panel.tags.add(this.options.tag);
     const content = plate ? panel : this.addHeaderAndContent(panel);
     panel.play(Tweens.popIn(UI_THEME.motion.popInMs));
@@ -125,6 +147,7 @@ export class UIWindow {
     Navi.remove(this.panel, Navi.root);
     if (this.backdrop) Navi.remove(this.backdrop, Navi.root);
     this.panel = undefined;
+    this.bodyHost = undefined;
     this.content = undefined;
     this.backdrop = undefined;
     if (WINDOWS.modal === this) WINDOWS.modal = undefined;
@@ -224,9 +247,26 @@ export class UIWindow {
 
   private createPanel() {
     const margin = UI_THEME.spacing.screenMargin;
-    const anchorX = { left: "start", right: "end", center: "center", bottomRight: "end" } as const;
-    const anchorY = { left: "center", right: "center", center: "center", bottomRight: "end" } as const;
-    const posY = this.slot === "bottomRight" ? margin + (this.options.offsetY ?? 0) : 0;
+    const anchorX = {
+      left: "start",
+      right: "end",
+      center: "center",
+      bottomRight: "end",
+    } as const;
+    const anchorY = {
+      left: "center",
+      right: "center",
+      center: "center",
+      bottomRight: "end",
+    } as const;
+    const posY =
+      this.slot === "bottomRight" ? margin + (this.options.offsetY ?? 0) : 0;
+    const baseStyle = this.isPaper
+      ? { backgroundColor: UI_THEME.colors.transparent }
+      : panelStyle("window");
+    const panelPad = this.isPaper
+      ? { top: 12, right: 0, bottom: 0, left: 0 }
+      : { top: 0, right: 0, bottom: 0, left: 0 };
     return new UINode({
       focusable: true,
       position: { x: px(this.slot === "center" ? 0 : margin), y: px(posY) },
@@ -234,8 +274,8 @@ export class UIWindow {
       style: {
         anchorX: anchorX[this.slot],
         anchorY: anchorY[this.slot],
-        ...panelStyle("window"),
-        padding: { top: 0, right: 0, bottom: 0, left: 0 },
+        ...baseStyle,
+        padding: panelPad,
         layout: "stack",
         direction: "col",
         alignCross: "stretch",
@@ -245,14 +285,88 @@ export class UIWindow {
 
   private addHeaderAndContent(panel: UINode) {
     const header = Navi.append(this.createTitleBar(), panel);
-    text(header, this.options.title ?? "", {
-      color: UI_THEME.colors.title,
-      size: UI_THEME.text.title,
-      font: UI_THEME.font.display,
+    this.addTitle(header);
+    if (!this.options.required) {
+      if (this.isPaper)
+        button(header, "", () => this.close(), { sprite: "close" });
+      else
+        button(header, "X", () => this.close(), {
+          color: UI_THEME.colors.closeButton,
+        });
+    }
+    const host = this.isPaper
+      ? Navi.append(this.createPaperBody(), panel)
+      : panel;
+    this.bodyHost = host;
+    return Navi.append(this.createColumn(), host);
+  }
+
+  private addTitle(header: UINode) {
+    const gradient = this.options.titleGradient;
+    const title = this.options.title ?? "";
+    if (!gradient || typeof title !== "string") {
+      text(header, title, {
+        color: this.isPaper ? UI_THEME.paper.inkCream : UI_THEME.colors.title,
+        size: UI_THEME.text.title,
+        font: UI_THEME.font.display,
+      });
+      return;
+    }
+    const letters = Navi.append(
+      new UINode({
+        size: { width: auto(), height: auto() },
+        input: "none",
+        style: {
+          backgroundColor: UI_THEME.colors.transparent,
+          layout: "stack",
+          direction: "row",
+          alignCross: "center",
+          gap: 0,
+        },
+      }),
+      header,
+    );
+    const chars = [...title];
+    const last = Math.max(1, chars.length - 1);
+    const start = gradient.start ?? 0.1;
+    const end = gradient.end ?? 0.9;
+    const shadow = { color: [0, 0, 0, 255] as RGBA, offset: { x: 1, y: 2 } };
+    chars.forEach((char, index) => {
+      const linear = index / last;
+      const u = AxiomMath.clamp(
+        AxiomMath.inverseLerp(start, end, linear),
+        0,
+        1,
+      );
+      const t = u * u * (3 - 2 * u);
+      const color: RGBA = [
+        Math.round(AxiomMath.lerp(gradient.from[0], gradient.to[0], t)),
+        Math.round(AxiomMath.lerp(gradient.from[1], gradient.to[1], t)),
+        Math.round(AxiomMath.lerp(gradient.from[2], gradient.to[2], t)),
+        Math.round(AxiomMath.lerp(gradient.from[3], gradient.to[3], t)),
+      ];
+      text(letters, char, {
+        color,
+        size: UI_THEME.text.title,
+        font: UI_THEME.font.display,
+        shadow,
+      });
     });
-    if (!this.options.required)
-      button(header, "X", () => this.close(), { color: UI_THEME.colors.closeButton });
-    return Navi.append(this.createColumn(), panel);
+  }
+
+  private createPaperBody() {
+    return new UINode({
+      size: { width: pw(100), height: auto() },
+      style: {
+        backgroundColor: COLOR.WHITE,
+        backgroundImage: UI_SHEET.image,
+        backgroundImageCrop: UI_SHEET.paper.crop,
+        backgroundImageSlice: UI_SHEET.paper.slice,
+        layout: "stack",
+        direction: "col",
+        alignCross: "stretch",
+      },
+    });
   }
 
   private createPlate(plate: WindowPlate) {
@@ -270,6 +384,26 @@ export class UIWindow {
   }
 
   private createTitleBar() {
+    if (this.isPaper) {
+      const header = UI_SHEET.headerBarA;
+      return new UINode({
+        size: { width: pw(100), height: px(60) },
+        style: {
+          backgroundColor: COLOR.WHITE,
+          backgroundImage: UI_SHEET.image,
+          backgroundImageCrop: header.crop,
+          backgroundImageSlice: header.slice,
+          overlay: true,
+          anchorY: "start",
+          zIndex: 2,
+          padding: { top: 12, right: 8, bottom: 2, left: 92 },
+          layout: "stack",
+          direction: "row",
+          alignMain: "between",
+          alignCross: "center",
+        },
+      });
+    }
     const bar = UI_THEME.panel.titleBar;
     return new UINode({
       size: { width: pw(100), height: auto() },
@@ -277,7 +411,11 @@ export class UIWindow {
         backgroundColor: bar.color,
         rounded: 0,
         padding: bar.padding,
-        shadow: { color: bar.stripe, offset: { x: bar.stripeWidth, y: 0 }, inset: true },
+        shadow: {
+          color: bar.stripe,
+          offset: { x: bar.stripeWidth, y: 0 },
+          inset: true,
+        },
         layout: "stack",
         direction: "row",
         alignMain: "between",
@@ -287,11 +425,15 @@ export class UIWindow {
   }
 
   private createColumn() {
+    const pad = UI_THEME.panel.window.padding;
+    const padding = this.isPaper
+      ? { top: 56, right: pad.right, bottom: pad.bottom, left: pad.left }
+      : pad;
     return new UINode({
       size: { width: pw(100), height: auto() },
       style: {
         backgroundColor: UI_THEME.colors.transparent,
-        padding: UI_THEME.panel.window.padding,
+        padding: padding,
         layout: "stack",
         direction: "col",
         alignCross: "stretch",

@@ -1,4 +1,4 @@
-import { Show } from "solid-js";
+import { Show, onCleanup, onMount } from "solid-js";
 import { Dynamic } from "solid-js/web";
 import {
   panelDefinition,
@@ -8,6 +8,7 @@ import {
 } from "../panels/registry";
 import PinMenu from "./pinMenu";
 import { gridArea, type Area, type Cell } from "./layouts";
+import { PanelFit } from "./layout";
 
 export default function Panel(props: {
   id: PanelId;
@@ -15,12 +16,46 @@ export default function Panel(props: {
   draggable: boolean;
   dragOffset?: Cell;
   onGrab: (event: PointerEvent) => void;
+  // fit panels only: the size in pixels the whole panel needs for its content, width unwrapped
+  onMeasure?: (size: Size2D) => void;
 }) {
   const definition = (): PanelDefinition => panelDefinition(props.id);
   const live = () => definition().live?.() ?? true;
+  const fit = definition().fit === true;
+  let section!: HTMLElement;
+  let content!: HTMLDivElement;
+  let inner!: HTMLDivElement;
+
+  // header, borders and padding: everything of the section that is not the content itself
+  function measure() {
+    const style = getComputedStyle(content);
+    const chrome = {
+      width: section.offsetWidth - content.clientWidth + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight),
+      height: section.offsetHeight - content.clientHeight + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom),
+    };
+    // the width the content takes with nothing wrapped or squeezed, read without a frame in between
+    inner.style.width = "max-content";
+    const width = inner.offsetWidth;
+    inner.style.width = "";
+    props.onMeasure?.({ width: chrome.width + width, height: chrome.height + inner.offsetHeight });
+  }
+
+  onMount(() => {
+    if (!fit) return;
+    const resize = new ResizeObserver(measure);
+    resize.observe(inner);
+    // a longer cell inside a squeezed table changes neither size of the content box
+    const mutation = new MutationObserver(measure);
+    mutation.observe(inner, { subtree: true, childList: true, characterData: true });
+    onCleanup(() => {
+      resize.disconnect();
+      mutation.disconnect();
+    });
+  });
 
   return (
     <section
+      ref={section}
       class="@container flex flex-col overflow-hidden rounded-panel border border-outline bg-panel"
       classList={{ "z-10 opacity-60 shadow-lg": !!props.dragOffset }}
       style={{
@@ -47,13 +82,21 @@ export default function Panel(props: {
         </div>
       </header>
 
-      <div class="min-h-0 flex-1 overflow-hidden p-2 text-body">
-        <Show
-          when={live()}
-          fallback={<span class="italic text-fg-dim">waiting for game</span>}
-        >
-          <Dynamic component={definition().component} />
-        </Show>
+      <div
+        ref={content}
+        class="min-h-0 flex-1 p-2 text-body"
+        classList={{ "overflow-auto": fit, "overflow-hidden": !fit }}
+      >
+        <div ref={inner} classList={{ "h-full": !fit }}>
+          <PanelFit.Provider value={fit}>
+            <Show
+              when={live()}
+              fallback={<span class="italic text-fg-dim">waiting for game</span>}
+            >
+              <Dynamic component={definition().component} />
+            </Show>
+          </PanelFit.Provider>
+        </div>
       </div>
     </section>
   );

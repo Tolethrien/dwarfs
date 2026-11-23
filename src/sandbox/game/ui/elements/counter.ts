@@ -16,6 +16,7 @@ export interface CounterOptions {
   pops?: "sum" | "each";
   iconAfter?: boolean;
   scatter?: PopScatter;
+  paper?: boolean;
 }
 export interface PopScatter {
   x: number;
@@ -87,7 +88,7 @@ export function counter(parent: UINode, options: CounterOptions) {
   Navi.append(node, parent);
   if (options.icon && !options.iconAfter)
     icon(node, options.icon, { size: UI_THEME.counter.iconSize });
-  text(node, () => format(options.value()));
+  text(node, () => format(options.value()), (options.paper ?? true) ? { color: UI_THEME.paper.ink } : {});
   if (options.icon && options.iconAfter)
     icon(node, options.icon, { size: UI_THEME.counter.iconSize });
   if (options.tooltip !== undefined) tooltip(node, options.tooltip);

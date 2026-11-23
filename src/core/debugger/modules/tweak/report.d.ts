@@ -19,6 +19,8 @@ export type TweakControl =
 export interface TweakField {
   key: string;
   label?: string;
+  // what the field is, shown on hover over its label
+  hint?: string;
   control: TweakControl;
   // release: sent when the control is let go (slider released, number blurred), for settings that rebuild the graph; default live
   apply?: "live" | "release";
@@ -30,6 +32,8 @@ export interface TweakFieldsSectionInfo {
   // object: setter takes an object of fields, value: the only field's value itself
   arg: "object" | "value";
   fields: TweakField[];
+  // sections in a row with the same group sit under one header with its name (a gear, its levels)
+  group?: string;
 }
 
 // schema computed per current element on the game side, functions do not cross IPC
@@ -41,16 +45,41 @@ export interface TweakListSectionInfo {
   itemLabels: (string | null)[];
   // false when the game has nothing to create
   addable: boolean;
+  group?: string;
 }
 
-export type TweakSectionInfo = TweakFieldsSectionInfo | TweakListSectionInfo;
+// fields are the arguments, kept by the game between runs; never exported, reverted or in presets
+export interface TweakActionSectionInfo {
+  title: string;
+  call: string;
+  arg: "action";
+  fields: TweakField[];
+  // the run button's text, default "Run"
+  button?: string;
+}
+
+export type TweakSectionInfo = TweakFieldsSectionInfo | TweakListSectionInfo | TweakActionSectionInfo;
+
+// profiler tabs that show category buttons
+export type TweakCategoryTab = "game" | "aurora";
+
+export interface TweakCategory {
+  title: string;
+  icon: string;
+}
+
+export interface TweakCategoryInfo extends TweakCategory {
+  id: string;
+  tab: TweakCategoryTab;
+}
 
 export interface TweakPanelInfo {
   name: string;
   title: string;
+  description: string | null;
   exportable: boolean;
   presets: boolean;
-  group: string | null;
+  category: string | null;
   order: number;
   sections: TweakSectionInfo[];
 }
@@ -58,7 +87,13 @@ export interface TweakPanelInfo {
 // one record per section, in schema order; list section: { items: [...] }
 export type TweakValues = Record<string, unknown>[];
 
+export interface TweakRegistry {
+  categories: TweakCategoryInfo[];
+  panels: TweakPanelInfo[];
+}
+
 export type TweakMessage =
+  | { type: "category"; category: TweakCategoryInfo }
   | { type: "add"; panel: TweakPanelInfo }
   | { type: "remove"; name: string }
   | { type: "open"; name: string; values: TweakValues }
@@ -75,9 +110,10 @@ export type TweakInput =
   | { type: "listRemove"; name: string; section: number; index: number }
   | { type: "listMove"; name: string; section: number; from: number; to: number }
   | { type: "listReplace"; name: string; section: number; items: Record<string, unknown>[] }
+  | { type: "run"; name: string; section: number }
   | { type: "revert"; name: string }
   | { type: "export"; name: string; onlyChanged: boolean }
   | { type: "close"; name: string }
   | { type: "open"; name: string }
-  | { type: "openGroup"; group: string }
-  | { type: "exportGroup"; group: string; onlyChanged: boolean };
+  | { type: "openCategory"; category: string }
+  | { type: "exportCategory"; category: string; onlyChanged: boolean };

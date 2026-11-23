@@ -10,7 +10,7 @@ import { solidAt, type VfxConnect, type VfxContext, type VfxLayer } from "./vfx"
 // strength: 0-1 of a hit that didn't break its block; a deflected one is weak, a wound grows with
 // the share of the strength it took. Sparks fly out of the face along its normal, streak behind by
 // streak seconds of their flight, cool from hot to cool and go out; one that reaches rock goes out at once
-const SPARKS = {
+export const SPARKS = {
   capacity: 1500,
   viewMargin: 200,
   deflected: 0.15,

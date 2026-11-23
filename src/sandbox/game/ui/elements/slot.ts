@@ -1,7 +1,8 @@
 import Navi from "@navi/navi";
 import UINode, { NodeProps } from "@navi/node";
 import { px } from "@navi/units";
-import { UI_THEME } from "../../content/ui";
+import { COLOR } from "@axiom/color";
+import { UI_SHEET, UI_THEME } from "../../content/ui";
 import { badge } from "./badge";
 import { buttonProps, fillButton, UIButton } from "./button";
 import { MenuItem } from "./contextMenu";
@@ -54,12 +55,20 @@ export function slot(parent: UINode, options: SlotOptions) {
     icon: options.icon,
     iconSize: UI_THEME.slot.iconSize,
     disabled: options.empty || options.locked,
-    color: options.empty ? UI_THEME.colors.slotEmpty : undefined,
+    sprite: "dark" as const,
   };
+  const sheet = UI_SHEET.slot;
   const props = buttonProps(look);
   const size = px(UI_THEME.slot.size);
   props.minSize = { width: size, height: size };
-  props.style = { ...props.style, alignMain: "center" };
+  props.style = {
+    ...props.style,
+    backgroundColor: options.empty ? UI_THEME.paper.pressTint : COLOR.WHITE,
+    backgroundImage: UI_SHEET.image,
+    backgroundImageCrop: sheet.crop,
+    backgroundImageSlice: sheet.slice,
+    alignMain: "center",
+  };
   const node = new UISlot(options, props);
   if (options.tag) node.tags.add(options.tag);
   Navi.append(node, parent);

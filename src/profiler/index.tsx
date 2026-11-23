@@ -5,7 +5,7 @@ import BottomConsole from "./console/bottomConsole";
 import { TabBar, TabContent } from "./tabs";
 import { initTheme } from "./theme";
 import TweakModal from "./tweak/modal";
-import TweakGroupWindow from "./tweak/groupWindow";
+import TweakCategoryWindow from "./tweak/categoryWindow";
 
 function App() {
   initTheme();
@@ -18,7 +18,7 @@ function App() {
       </main>
       <BottomConsole />
       <TweakModal />
-      <TweakGroupWindow />
+      <TweakCategoryWindow />
     </>
   );
 }

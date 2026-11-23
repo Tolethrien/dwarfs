@@ -8,7 +8,7 @@ import type { VfxLayer } from "./vfx";
 
 // the screen dims and blurs everywhere but around a point; vignette and blur share one shape,
 // intensity is the vignette's reach: a bigger number is a smaller clear window
-const SPOTLIGHT = {
+export const SPOTLIGHT = {
   seconds: { in: 0.4, out: 0.3 },
   home: { center: { x: 0.5, y: 0.5 }, roundness: 1 },
   vignette: { intensity: 1.4, smoothness: 0.5 },

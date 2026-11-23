@@ -1,5 +1,6 @@
 import { For, Show, createSignal } from "solid-js";
 import { useLocalStorage } from "../hooks/useLocalStorage";
+import Dropdown, { DROPDOWN_ITEM } from "../blocks/dropdown";
 import { PanelBody } from "./modal";
 import { HEADER_BUTTON } from "./section";
 import { tweakStore } from "./store";
@@ -9,12 +10,13 @@ const WINDOW = {
   defaultWidth: 560,
 };
 
-function GroupView(props: { group: string }) {
-  const [storedWidth, storeWidth] = useLocalStorage("tweak:group:width", WINDOW.defaultWidth);
+function CategoryView(props: { category: string }) {
+  const info = () => tweakStore.category(props.category);
+  const [storedWidth, storeWidth] = useLocalStorage("tweak:category:width", WINDOW.defaultWidth);
   // dragged locally, stored once on release instead of on every pointer move
   const [dragWidth, setDragWidth] = createSignal<number | null>(null);
   const width = () => dragWidth() ?? storedWidth();
-  const [full, setFull] = useLocalStorage("tweak:group:full", false);
+  const [full, setFull] = useLocalStorage("tweak:category:full", false);
 
   const startResize = (event: PointerEvent) => {
     const handle = event.currentTarget as HTMLElement;
@@ -51,18 +53,35 @@ function GroupView(props: { group: string }) {
         />
       </Show>
       <header class="flex items-center gap-2 border-b border-divider px-3 py-1.5">
-        <span class="flex-1 truncate text-value capitalize text-fg">{props.group}</span>
+        <div class="flex min-w-0 flex-1 items-center text-value">
+          <Dropdown label={`${info()?.icon ?? ""} ${info()?.title ?? props.category}`} title="Switch category" closeOnClick>
+            <For each={tweakStore.categoriesOf(info()?.tab ?? "")}>
+              {(category) => (
+                <button
+                  type="button"
+                  class={DROPDOWN_ITEM + " disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent"}
+                  classList={{ "text-live": category.id === props.category }}
+                  disabled={tweakStore.categoryPanels(category.id).length === 0}
+                  onClick={() => tweakStore.openCategory(category.id)}
+                >
+                  <span class="w-4 text-center">{category.icon}</span>
+                  {category.title}
+                </button>
+              )}
+            </For>
+          </Dropdown>
+        </div>
         <button
           class={HEADER_BUTTON}
           title="Every setting of every page"
-          onClick={() => tweakStore.requestGroupExport(props.group, false)}
+          onClick={() => tweakStore.requestCategoryExport(props.category, false)}
         >
           Export all
         </button>
         <button
           class={HEADER_BUTTON}
           title="Only settings that differ from the defaults"
-          onClick={() => tweakStore.requestGroupExport(props.group, true)}
+          onClick={() => tweakStore.requestCategoryExport(props.category, true)}
         >
           Export all changed
         </button>
@@ -79,7 +98,7 @@ function GroupView(props: { group: string }) {
       </header>
       <div class="flex min-h-0 flex-1">
         <nav class="flex w-36 shrink-0 flex-col overflow-y-auto border-r border-divider">
-          <For each={tweakStore.groupPanels(props.group)}>
+          <For each={tweakStore.categoryPanels(props.category)}>
             {(page) => (
               <button
                 class="cursor-pointer truncate px-3 py-1.5 text-left text-body text-fg-dim hover:text-fg data-[active]:bg-divider data-[active]:text-fg"
@@ -101,13 +120,13 @@ function GroupView(props: { group: string }) {
   );
 }
 
-export default function TweakGroupWindow() {
+export default function TweakCategoryWindow() {
   return (
-    <Show when={tweakStore.panel()?.group}>
-      {(group) => (
+    <Show when={tweakStore.panel()?.category}>
+      {(category) => (
         <div class="pointer-events-none fixed inset-0 z-40">
           <div class="pointer-events-auto">
-            <GroupView group={group()} />
+            <CategoryView category={category()} />
           </div>
         </div>
       )}

@@ -13,7 +13,7 @@ import Storage from "../common/storage";
 import Drinker from "../dwarfs/drinker";
 import Shift from "../dwarfs/shift";
 
-const LAUNCHER = {
+export const LAUNCHER = {
   shotCone: AxiomMath.degToRad(50),
   maxBoost: 3,
   sling: { fullPull: 300, deadzone: 12 },

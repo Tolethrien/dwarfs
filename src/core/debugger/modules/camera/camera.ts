@@ -19,10 +19,11 @@ export class CameraDevModule implements ICameraModule {
     command: ICommandModule,
     private readonly log: ILogHandle,
   ) {
+    tweak.categories("aurora", { [CAMERA_PAGES.category]: { title: "Camera", icon: "🎥" } });
     // frozen, so camera.config cannot be replaced from the console
     const root = Object.freeze({
       config: (page?: string) =>
-        page === undefined ? this.tweak.openGroup(CAMERA_PAGES.group) : this.tweak.open(page),
+        page === undefined ? this.tweak.openCategory(CAMERA_PAGES.category) : this.tweak.open(page),
       hijack: (on?: boolean) => this.setHijacked(on ?? !this.freeCam.hijacked),
     });
     command.expose("camera", () => root, {

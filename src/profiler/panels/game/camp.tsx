@@ -1,9 +1,9 @@
 import Table from "../../blocks/table";
-import StatGrid from "../../blocks/statGrid";
+import StatStrip from "../../blocks/statStrip";
 import { Block, Rows } from "../../grid/layout";
 import { gameStore } from "../../game/store";
 
-export default function GameBuildingsPanel() {
+export default function GameCampPanel() {
   const buildings = () => gameStore.report().buildings;
   const tavern = () => gameStore.report().tavern;
   const rows = () =>
@@ -12,23 +12,25 @@ export default function GameBuildingsPanel() {
   return (
     <Rows>
       <Block size="fit">
-        <StatGrid
+        <StatStrip
           stats={[
-            { label: "Shaft depth", value: String(buildings()?.shaftDepth ?? 0), unit: "tiles" },
+            { label: "Mine level", value: String(buildings()?.mineLevel ?? 0) },
+            { label: "Shaft", value: String(buildings()?.shaftDepth ?? 0), unit: "tiles" },
             { label: "Applications", value: `${tavern()?.applications ?? 0} / ${tavern()?.limit ?? 0}` },
-            { label: "New per day", value: String(tavern()?.perDay ?? 0) },
-            { label: "Arrive at", value: `${tavern()?.arrivalHour ?? 0}:00` },
-            { label: "Hire cost", value: tavern()?.hireCost ?? "—" },
+            { label: "Per day", value: String(tavern()?.perDay ?? 0) },
+            { label: "Arrive", value: `${tavern()?.arrivalHour ?? 0}:00` },
+            { label: "Hire", value: tavern()?.hireCost ?? "—" },
           ]}
         />
       </Block>
       <Block size="fill">
         <Table
+          hug
           columns={[
-            { label: "Building", width: "auto" },
-            { label: "Side", width: "auto" },
-            { label: "Body (tile · size)", width: "minmax(8rem,1fr)" },
-            { label: "Room kept for upgrades", width: "minmax(8rem,1fr)" },
+            { label: "Building" },
+            { label: "Side" },
+            { label: "Body" },
+            { label: "Reserve" },
           ]}
           rows={rows()}
           empty="no buildings"

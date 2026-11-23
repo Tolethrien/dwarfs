@@ -12,7 +12,7 @@ import GameEvents from "../../systems/core/gameEvents";
 import type { Stock } from "../common/storage";
 
 // dropOff: where the hauls go, the first of them that stands
-const HAUL = { dropOff: [BuildingsID.headquarters] };
+export const HAUL = { dropOff: [BuildingsID.headquarters] };
 
 // every hour what the station's dwarfs mined rides as one cargo to the drop-off; cut off on the way
 // the cargo goes on to the nearest station it still reaches and waits in its storage, with no

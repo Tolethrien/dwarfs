@@ -306,7 +306,7 @@ class Intro {
     this.buildings.highlight(BuildingsID.tavern, true);
     this.buildings.clickOnly = BuildingsID.tavern;
     this.gameMode.unblock(["select"]);
-    this.gameMode.block(["toggleBuild", "toggleDig"]);
+    this.gameMode.block(["toggleBuild"]);
     const crew = tavern.startCrew;
     const hired = () => this.roster.dwarfs.length;
     let introduced = false;

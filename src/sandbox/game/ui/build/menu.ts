@@ -15,6 +15,7 @@ import {
 import type BuildMode from "../../systems/mine/buildMode";
 import type { ResourceCost, ResourcesID } from "../../content/resources";
 import { buttonProps, UIButton } from "../elements/button";
+import { column } from "../elements/column";
 import { cost, costEntries } from "../elements/cost";
 import { gridCells } from "../elements/grid";
 import { row } from "../elements/row";
@@ -50,7 +51,7 @@ export default class BuildMenu {
     this.toggleButton.setActive(false);
     this.panel = Navi.append(this.createPanel());
     this.panel.setActive(false);
-    this.layers = row(this.panel, { fit: true });
+    this.layers = column(this.panel);
     const tools = row(this.panel, { fit: true });
     button(tools, () => (this.buildMode.removing ? "Stop removing" : "Remove"), () => this.buildMode.toggleRemoving());
     const body = Navi.append(this.createStack("row"), this.panel);
@@ -200,7 +201,7 @@ export default class BuildMenu {
         new UINode({
           size: { width: px(look.bars.width), height: px(look.bars.height) },
           input: "none",
-          style: { backgroundColor: UI_THEME.colors.text },
+          style: { backgroundColor: UI_THEME.paper.inkCream },
         }),
         node,
       );

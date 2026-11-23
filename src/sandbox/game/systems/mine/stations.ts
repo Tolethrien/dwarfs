@@ -71,6 +71,7 @@ export default class Stations extends PragmaSystem {
       this.stations.map((station) => ({ station: station, place: this.placeOf(station) })),
     );
     this.menu = new StationMenuUI({
+      classes: () => this.roster.recruitable(),
       freeCount: (main) => this.roster.freeCount(main),
       wage: (main, hours) => {
         const dwarf = this.roster.freeWorker(main);

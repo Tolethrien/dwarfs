@@ -1,5 +1,8 @@
+import AxiomMath from "@axiom/math";
+
 export enum LightsID {
   helmet,
+  helmetCone,
   lantern,
   soulLantern,
   mushroomAmber,
@@ -16,11 +19,19 @@ export enum LightsID {
   cargo,
 }
 
+export interface ConeData {
+  length: number;
+  spread: number;
+  softness?: number;
+  auraIntensity?: number;
+}
+
 export interface LightData {
   color: RGBA;
   radius: number;
   intensity: number;
   falloff?: number;
+  cone?: ConeData;
   flicker?: { amount: number; speed: number };
   // how bright the lamp itself is drawn, unlit: past 1 it blooms
   glow?: number;
@@ -62,7 +73,20 @@ function mushroomLight(color: RGBA, kind: "floor" | "shelf", glow: number): Ligh
 }
 
 export const LIGHTS: Record<LightsID, LightData> = {
-  [LightsID.helmet]: { color: [255, 205, 150, 255], radius: 950, intensity: 1.15, falloff: 6 },
+  [LightsID.helmet]: { color: [255, 205, 150, 255], radius: 950, intensity: 1.15, falloff: 6, glow: 3 },
+  [LightsID.helmetCone]: {
+    color: [255, 215, 165, 255],
+    radius: 260,
+    intensity: 1.35,
+    falloff: 5,
+    glow: 3,
+    cone: {
+      length: 1250,
+      spread: AxiomMath.degToRad(34),
+      softness: 0.4,
+      auraIntensity: 0.45,
+    },
+  },
   [LightsID.cargo]: { color: [255, 205, 150, 255], radius: 450, intensity: 0.8 },
   [LightsID.lantern]: {
     color: [255, 160, 80, 255],

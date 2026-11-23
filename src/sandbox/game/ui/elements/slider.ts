@@ -3,7 +3,8 @@ import UINode, { KeyInput, NodeProps } from "@navi/node";
 import { pw, px } from "@navi/units";
 import InputManager from "@engine/inputManager";
 import AxiomMath from "@axiom/math";
-import { UI_THEME } from "../../content/ui";
+import { COLOR } from "@axiom/color";
+import { UI_SHEET, UI_THEME } from "../../content/ui";
 
 export interface SliderOptions {
   min: number;
@@ -101,7 +102,8 @@ export class UISlider extends UINode {
 }
 
 export function slider(parent: UINode, options: SliderOptions) {
-  const colors = UI_THEME.colors;
+  const track = UI_SHEET.barTrack;
+  const knob = UI_SHEET.sliderKnob;
   const node = new UISlider(
     options,
     {
@@ -113,22 +115,25 @@ export function slider(parent: UINode, options: SliderOptions) {
       focusable: true,
       wantsKeys: true,
       style: {
-        backgroundColor: colors.sliderTrack,
-        rounded: UI_THEME.radius.scroll,
+        backgroundColor: COLOR.WHITE,
+        backgroundImage: UI_SHEET.image,
+        backgroundImageCrop: track.crop,
+        backgroundImageSlice: track.slice,
       },
       states: {
-        focused: { backgroundColor: colors.sliderTrackFocus },
+        focused: { backgroundColor: UI_THEME.paper.hoverTint },
       },
     },
     {
       input: "none",
       inheritState: true,
       style: {
-        backgroundColor: colors.sliderThumb,
-        rounded: UI_THEME.radius.scroll,
+        backgroundColor: COLOR.WHITE,
+        backgroundImage: UI_SHEET.image,
+        backgroundImageCrop: knob.crop,
         transitionMs: UI_THEME.motion.hoverMs,
       },
-      states: { hovered: { backgroundColor: colors.sliderThumbHover } },
+      states: { hovered: { backgroundColor: UI_THEME.paper.hoverTint } },
     },
   );
   Navi.append(node, parent);

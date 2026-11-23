@@ -11,7 +11,13 @@ import type { PostDraw } from "@aurora/urp/draw/drawPost";
 import type { LightDraw } from "@aurora/urp/draw/drawLight";
 import type { SortProps, URPProps } from "@aurora/urp/urp";
 import type { TexturePreview } from "@aurora/urp/passes/previewPass";
-import type { TweakField, TweakFieldsSectionInfo } from "./modules/tweak/report";
+import type {
+  TweakCategory,
+  TweakCategoryTab,
+  TweakActionSectionInfo,
+  TweakField,
+  TweakFieldsSectionInfo,
+} from "./modules/tweak/report";
 import type Coroutine from "@engine/coroutines/coroutine";
 import type { GameReport } from "./modules/game/report";
 
@@ -127,6 +133,7 @@ export interface TweakListSection {
   title: string;
   call: string;
   arg: "list";
+  group?: string;
   item: TweakListItem;
   get(): Record<string, unknown>[];
   // always the whole list, never a patch at an index
@@ -136,26 +143,62 @@ export interface TweakListSection {
   // the whole export line, default call(formatLiteral(items))
   format?(items: Record<string, unknown>[]): string;
 }
-export type TweakSection = TweakFieldsSection | TweakListSection;
+export interface TweakActionSection extends TweakActionSectionInfo {
+  // starting argument values, a field without one starts at its control's empty value
+  defaults?: Record<string, unknown>;
+  run(args: Record<string, unknown>): void;
+}
+export type TweakSection = TweakFieldsSection | TweakListSection | TweakActionSection;
+export type TuneRange = [min: number, max: number, step: number];
+// ranges, labels, hints and skip are keyed by a field's key ("perDay") or by its path below the object
+// with "*" for any element ("spikes.perBand.*.min"); the path wins
+export interface TuneOptions {
+  title: string;
+  // what the object drives in the game, shown under the page's header
+  description: string;
+  category?: string;
+  order?: number;
+  // when an edit shows up in the game, if not at once (read only when a dwarf is made, when the map is generated)
+  applies?: string;
+  // number fields within a range become sliders
+  ranges?: Record<string, TuneRange>;
+  // instead of the key spelled out in words
+  labels?: Record<string, string>;
+  hints?: Record<string, string>;
+  // left out with everything under them: ids, salts, looks that are no numbers to tune
+  skip?: string[];
+  // a nested object's section title, for elements known by an id (a rock layer by its block)
+  nameOf?: (value: object, key: string) => string | undefined;
+  // after every edit, for game state built from the object
+  onChange?: () => void;
+}
 export interface TweakPanel {
   title: string;
+  // what the page is for, shown under its header
+  description?: string;
   // sections is a getter, the schema is rebuilt while the panel is open; the section count must stay the same
   live?: boolean;
   // default true, false hides the export buttons
   exportable?: boolean;
   // default true, false hides Revert and the preset bar
   presets?: boolean;
-  group?: string;
-  // page order inside the group
+  // one of the registered categories, without it the page opens on its own
+  category?: string;
+  // page order inside the category
   order?: number;
   // default true, false skips the console command (code opens the panel)
   command?: boolean;
   sections: TweakSection[];
 }
 export interface ITweakModule {
+  // an id registered again is replaced in place, the button keeps its spot
+  categories(tab: TweakCategoryTab, categories: Readonly<Record<string, Readonly<TweakCategory>>>): void;
   register(name: string, panel: TweakPanel): () => void;
+  // a page editing the object in place: numbers, toggles and colors, a section per nested object;
+  // the export is the object's literal under name
+  tune(name: string, target: object, options: TuneOptions): () => void;
   open(name: string): void;
-  openGroup(group: string): void;
+  openCategory(category: string): void;
   endFrame(): void;
 }
 export interface CameraView {

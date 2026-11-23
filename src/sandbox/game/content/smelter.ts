@@ -1,3 +1,5 @@
+import { always } from "../drops/always";
+import type { ResourceDrop } from "../drops/resources";
 import { ResourcesID, type ResourceCost } from "./resources";
 
 export enum RecipeID {
@@ -5,25 +7,34 @@ export enum RecipeID {
   concrete,
 }
 
-// one batch: takes batch of input and coal, gives yield of output
+// one batch: takes input, runs for hours of game time, rolls output
 export interface RecipeData {
   name: string;
-  input: ResourcesID;
-  batch: number;
-  coal: number;
-  output: ResourcesID;
-  yield: number;
+  input: ResourceCost;
+  hours: number;
+  output: ResourceDrop;
 }
 
 export const RECIPES: Record<RecipeID, RecipeData> = {
-  [RecipeID.ironBars]: { name: "Iron bars", input: ResourcesID.ironOre, batch: 4, coal: 1, output: ResourcesID.ironBars, yield: 1 },
-  [RecipeID.concrete]: { name: "Concrete", input: ResourcesID.stone, batch: 2, coal: 0, output: ResourcesID.concrete, yield: 1 },
+  [RecipeID.ironBars]: {
+    name: "Iron bars",
+    input: { [ResourcesID.ironOre]: 4 },
+    hours: 0.1,
+    output: always(ResourcesID.ironBars, 1),
+  },
+  [RecipeID.concrete]: {
+    name: "Concrete",
+    input: { [ResourcesID.stone]: 2 },
+    hours: 0.05,
+    output: always(ResourcesID.concrete, 1),
+  },
 };
 
 export function recipeCost(id: RecipeID, batches = 1): ResourceCost {
-  const recipe = RECIPES[id];
-  const cost: ResourceCost = { [recipe.input]: recipe.batch * batches };
-  if (recipe.coal > 0) cost[ResourcesID.coal] = recipe.coal * batches;
+  const cost: ResourceCost = {};
+  for (const [resource, amount] of Object.entries(RECIPES[id].input)) {
+    if (amount) cost[Number(resource) as ResourcesID] = amount * batches;
+  }
   return cost;
 }
 

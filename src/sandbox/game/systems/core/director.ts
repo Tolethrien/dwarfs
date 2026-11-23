@@ -7,7 +7,7 @@ import { WORLD } from "../../sceneData";
 import { startTile } from "../../world/shaftShape";
 import type World from "../../world/world";
 
-const DIRECTOR = {
+export const DIRECTOR = {
   startZoom: 0.25,
   zoomSmoothing: 4,
   zoomLimits: { min: 0.0625, max: 4 },

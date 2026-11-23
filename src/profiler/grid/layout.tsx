@@ -1,4 +1,7 @@
-import type { JSX } from "solid-js";
+import { createContext, useContext, type JSX } from "solid-js";
+
+// true inside a panel sized to its content: blocks take their natural height and the panel scrolls as a whole
+export const PanelFit = createContext(false);
 
 export function Rows(props: { children: JSX.Element }) {
   return (
@@ -22,7 +25,8 @@ export function Block(props: {
   class?: string;
   children: JSX.Element;
 }) {
-  const fill = () => props.size === "fill";
+  const panelFit = useContext(PanelFit);
+  const fill = () => props.size === "fill" && !panelFit;
   return (
     <div
       class={props.class}

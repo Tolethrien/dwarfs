@@ -8,6 +8,7 @@ export default function Dropdown(props: {
   title?: string;
   highlighted?: boolean;
   align?: "left" | "right";
+  closeOnClick?: boolean;
   children: JSX.Element;
 }) {
   const [open, setOpen] = createSignal(false);
@@ -43,6 +44,9 @@ export default function Dropdown(props: {
         <div
           class="absolute top-full z-50 mt-1 min-w-44 border border-outline bg-panel py-1 shadow-lg"
           classList={{ "right-0": props.align === "right", "left-0": props.align !== "right" }}
+          onClick={(event) => {
+            if (props.closeOnClick && (event.target as Element).closest("button:enabled")) setOpen(false);
+          }}
         >
           {props.children}
         </div>

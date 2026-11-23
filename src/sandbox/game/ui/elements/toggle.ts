@@ -1,9 +1,10 @@
 import Navi from "@navi/navi";
 import UINode from "@navi/node";
-import { px } from "@navi/units";
-import { UI_THEME } from "../../content/ui";
-import { button } from "./button";
-import { TextContent } from "./text";
+import { auto, px } from "@navi/units";
+import { COLOR } from "@axiom/color";
+import { UI_SHEET, UI_THEME } from "../../content/ui";
+import { UIButton } from "./button";
+import { text, TextContent } from "./text";
 
 export function toggle(
   parent: UINode,
@@ -12,23 +13,44 @@ export function toggle(
   change: (on: boolean) => void,
 ) {
   let isOn = on;
-  const node = button(parent, label, () => {
-    isOn = !isOn;
-    paint();
-    change(isOn);
-  });
+  const node = new UIButton(
+    () => {
+      isOn = !isOn;
+      paint();
+      change(isOn);
+    },
+    {
+      size: { width: auto(), height: auto() },
+      input: "absorb",
+      style: {
+        backgroundColor: UI_THEME.colors.transparent,
+        padding: { top: 4, right: 6, bottom: 4, left: 2 },
+        layout: "stack",
+        direction: "row",
+        alignCross: "center",
+        gap: UI_THEME.spacing.gap,
+      },
+      states: {
+        hovered: { backgroundColor: UI_THEME.colors.row },
+      },
+    },
+  );
+  Navi.append(node, parent);
   const size = UI_THEME.toggle.box;
   const box = Navi.append(
     new UINode({
       size: { width: px(size), height: px(size) },
       input: "none",
-      style: { rounded: UI_THEME.radius.scroll },
+      style: {
+        backgroundColor: COLOR.WHITE,
+        backgroundImage: UI_SHEET.image,
+      },
     }),
     node,
   );
+  text(node, label);
   function paint() {
-    const colors = UI_THEME.colors;
-    box.style.backgroundColor = isOn ? colors.toggleOn : colors.toggleOff;
+    box.style.backgroundImageCrop = isOn ? UI_SHEET.checkboxChecked.crop : UI_SHEET.checkboxEmpty.crop;
   }
   paint();
   return node;

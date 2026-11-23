@@ -26,7 +26,7 @@ import type {
 import type {
   TweakInput,
   TweakMessage,
-  TweakPanelInfo,
+  TweakRegistry,
 } from "../core/debugger/modules/tweak/report";
 
 export const DEBUG = {
@@ -93,7 +93,7 @@ export const DEBUG = {
   onTweak: (callback: (message: TweakMessage) => void) =>
     on("debug:tweak", callback),
   getTweakRegistry: () =>
-    ipcRenderer.invoke("debug:tweakRegistry") as Promise<TweakPanelInfo[]>,
+    ipcRenderer.invoke("debug:tweakRegistry") as Promise<TweakRegistry>,
   sendTweakInput: (input: TweakInput) =>
     ipcRenderer.send("debug:tweakInput", input),
   onTweakInput: (callback: (input: TweakInput) => void) =>

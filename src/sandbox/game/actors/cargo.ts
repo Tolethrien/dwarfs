@@ -10,7 +10,7 @@ import { LightsID } from "../content/lights";
 import { DWARF_LOOK } from "../content/dwarfs";
 import { RENDER_SHEET, SORT_ORDER } from "../content/render";
 
-const CARGO = {
+export const CARGO = {
   size: DWARF_LOOK.cell,
   looks: [DECORATIONS[DecosID.barrel].crop, DECORATIONS[DecosID.crate].crop],
 };

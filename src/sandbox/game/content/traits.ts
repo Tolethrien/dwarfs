@@ -1,6 +1,7 @@
 import type Effect from "../effects/effect";
 import { pierce } from "../effects/pierce";
 import { splash } from "../effects/splash";
+import { LightsID } from "./lights";
 
 export enum MainTraitsID {
   intern,
@@ -20,8 +21,9 @@ export interface MainTraitData extends TraitData {
   power: number;
   // beer per game hour, the wage is shift hours × bph
   bph: number;
-  // kept in the table, but never recruited nor ordered
-  disabled?: boolean;
+  light: LightsID;
+  // shows up among the tavern's applications only once the player has this plan
+  plan?: string;
 }
 
 export const MAIN_TRAITS: Record<MainTraitsID, MainTraitData> = {
@@ -32,6 +34,7 @@ export const MAIN_TRAITS: Record<MainTraitsID, MainTraitData> = {
     speed: 3,
     power: 3,
     bph: 2,
+    light: LightsID.helmet,
   },
   [MainTraitsID.miner]: {
     name: "Miner",
@@ -40,6 +43,7 @@ export const MAIN_TRAITS: Record<MainTraitsID, MainTraitData> = {
     speed: 3,
     power: 4,
     bph: 4,
+    light: LightsID.helmetCone,
   },
   [MainTraitsID.pyro]: {
     name: "Pyro",
@@ -48,14 +52,13 @@ export const MAIN_TRAITS: Record<MainTraitsID, MainTraitData> = {
     speed: 3,
     power: 3,
     bph: 5,
-    disabled: true,
+    light: LightsID.helmet,
+    plan: "pyro",
   },
 };
 
 // Object.keys gives enum numbers as strings
-export const ACTIVE_MAIN_TRAITS = (Object.keys(MAIN_TRAITS).map(Number) as MainTraitsID[]).filter(
-  (main) => !MAIN_TRAITS[main].disabled,
-);
+export const MAIN_TRAIT_IDS = Object.keys(MAIN_TRAITS).map(Number) as MainTraitsID[];
 
 export const FOREMAN_TRAIT: TraitData = {
   name: "Foreman",

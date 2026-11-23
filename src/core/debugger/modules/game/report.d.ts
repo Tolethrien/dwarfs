@@ -5,6 +5,7 @@ export interface GameDwarfRow {
   state: string;
   station: string | null;
   shiftHoursLeft: number | null;
+  morale: number | null;
   beer: string | null;
   speed: number;
   power: number;
@@ -27,7 +28,6 @@ export interface GameGearRow {
 
 export interface GameResearchRow {
   name: string;
-  description: string;
   researched: boolean;
 }
 
@@ -38,9 +38,19 @@ export interface GameWorkforceReport {
 
 export interface GameBuffRow {
   name: string;
-  description: string;
   hours: number;
-  hoursLeft: number | null;
+  hoursLeft: number;
+}
+
+export interface GameStatTotal {
+  stat: string;
+  text: string;
+}
+
+export interface GameBuffsReport {
+  // only the stats the active buffs change
+  totals: GameStatTotal[];
+  active: GameBuffRow[];
 }
 
 export interface GameRailsReport {
@@ -70,6 +80,7 @@ export interface GameBuildingRow {
 }
 
 export interface GameBuildingsReport {
+  mineLevel: number;
   shaftDepth: number;
   rows: GameBuildingRow[];
 }
@@ -98,10 +109,44 @@ export interface GamePlayerReport {
   mined: GameMinedRow[];
 }
 
+export interface GameMarketRow {
+  good: string;
+  pack: string;
+  sell: string;
+  buy: string;
+}
+
+export interface GameRecipeRow {
+  name: string;
+  takes: string;
+  gives: string;
+  hours: number;
+}
+
+export interface GameCostRow {
+  name: string;
+  cost: string;
+}
+
+export interface GameEconomyReport {
+  market: GameMarketRow[];
+  recipes: GameRecipeRow[];
+  costs: GameCostRow[];
+}
+
+export interface GameEventRow {
+  name: string;
+  state: "played" | "pending" | "waiting";
+  // pending only: game hours until it plays
+  hours: number | null;
+  // null: plays on its own once the game starts
+  requirement: string | null;
+}
+
 export interface GameReport {
   dwarfs: GameDwarfsReport;
   workforce: GameWorkforceReport;
-  buffs: GameBuffRow[];
+  buffs: GameBuffsReport;
   rails: GameRailsReport;
   stations: GameStationRow[];
   buildings: GameBuildingsReport;
@@ -109,4 +154,6 @@ export interface GameReport {
   resources: GameResourceRow[];
   date: string;
   player: GamePlayerReport;
+  events: GameEventRow[];
+  economy: GameEconomyReport;
 }

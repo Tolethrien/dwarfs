@@ -386,6 +386,7 @@ export default class Navi {
   }
 
   private static arrangeTree(node: UINode) {
+    node.clampScroll();
     node.layoutChildren(this.scale);
     for (const child of node.children) this.arrangeTree(child);
   }

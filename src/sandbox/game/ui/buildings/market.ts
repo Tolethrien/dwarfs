@@ -49,7 +49,7 @@ export default class MarketUI {
   public open() {
     if (this.window.isOpen) return;
     const content = this.window.open();
-    this.tabBar = row(content, { fit: true });
+    this.tabBar = column(content);
     this.body = column(content);
     this.showTab();
   }
@@ -115,11 +115,11 @@ export default class MarketUI {
   private addDeal(cell: UINode, good: MarketGood) {
     const buttons = row(cell, { fit: true });
     if (this.tab === "sell") {
-      button(buttons, "Sell", () => this.deal(() => this.actions.sell(good, this.packsOf(good))));
+      button(buttons, "Sell", () => this.deal(() => this.actions.sell(good, this.packsOf(good))), { sprite: "red" });
       button(buttons, "Sell all", () => this.deal(() => this.actions.sell(good, this.actions.packsHeld(good))));
       return;
     }
-    button(buttons, "Buy", () => this.deal(() => this.actions.buy(good, this.packsOf(good))));
+    button(buttons, "Buy", () => this.deal(() => this.actions.buy(good, this.packsOf(good))), { sprite: "red" });
   }
 
   // the store and the beer changed: every stepper follows them down, every price is marked anew

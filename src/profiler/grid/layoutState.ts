@@ -15,15 +15,29 @@ export interface TabLayout {
 
 const DEFAULT_LAYOUT: TabLayout = { mode: "shelf", sort: "size", positions: {} };
 
+// cells of older layouts, by stored version (none: 90px cells, 2: 90px columns and 30px rows),
+// scaled to the current 45px columns and 30px rows
+const LAYOUT = {
+  version: 3,
+  scales: { none: { x: 2, y: 3 }, 2: { x: 2, y: 1 } } as Record<string, Cell>,
+};
+
 const storageKey = (tabId: string) => `layout.${tabId}`;
 
 const layouts = new Map<string, Signal<TabLayout>>();
+
+function scaledPositions(positions: Record<string, Cell>, version: number | undefined) {
+  const scale = version === LAYOUT.version ? { x: 1, y: 1 } : LAYOUT.scales[version ?? "none"];
+  return Object.fromEntries(
+    Object.entries(positions).map(([id, cell]) => [id, { x: cell.x * scale.x, y: cell.y * scale.y }]),
+  );
+}
 
 function load(tabId: string): TabLayout {
   try {
     const stored = JSON.parse(
       localStorage.getItem(storageKey(tabId)) ?? "null",
-    ) as Partial<TabLayout> | null;
+    ) as (Partial<TabLayout> & { version?: number }) | null;
     return {
       mode: (LAYOUT_MODES as readonly unknown[]).includes(stored?.mode)
         ? stored!.mode!
@@ -33,7 +47,7 @@ function load(tabId: string): TabLayout {
         : DEFAULT_LAYOUT.sort,
       positions:
         stored?.positions && typeof stored.positions === "object"
-          ? stored.positions
+          ? scaledPositions(stored.positions, stored.version)
           : {},
     };
   } catch {
@@ -53,7 +67,7 @@ export function tabLayout(tabId: string) {
   const update = (patch: Partial<TabLayout>) => {
     const next = { ...layout(), ...patch };
     setLayout(next);
-    localStorage.setItem(storageKey(tabId), JSON.stringify(next));
+    localStorage.setItem(storageKey(tabId), JSON.stringify({ ...next, version: LAYOUT.version }));
   };
 
   return { layout, update };

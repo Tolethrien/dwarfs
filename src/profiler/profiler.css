@@ -134,7 +134,8 @@
 
 /* read by grid/grid.tsx to compute the column count */
 :root {
-  --grid-cell: 90px;
+  --grid-column: 45px;
+  --grid-row: 30px;
   --grid-gap: 8px;
 }
 

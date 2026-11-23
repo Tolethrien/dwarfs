@@ -2,11 +2,16 @@ import type {
   ICommandModule,
   ILogHandle,
   ITweakModule,
+  TuneOptions,
+  TweakActionSection,
   TweakListSection,
   TweakPanel,
   TweakSection,
 } from "../../interfaces";
 import type {
+  TweakCategory,
+  TweakCategoryTab,
+  TweakControl,
   TweakInput,
   TweakMessage,
   TweakPanelInfo,
@@ -16,6 +21,7 @@ import type {
 import { profilerState } from "../../profilerState";
 import { formatLiteral } from "../command/parse";
 import { isValueControl } from "./controls";
+import { tunePanel } from "./tune";
 import { assert } from "@axiom/utils";
 
 const TWEAK = {
@@ -31,6 +37,8 @@ const STRUCTURAL: ReadonlySet<TweakInput["type"]> = new Set([
   "listRemove",
   "listMove",
   "listReplace",
+  // the arguments set before a run apply before it, later ones after
+  "run",
 ]);
 
 interface TweakRecord {
@@ -52,7 +60,9 @@ export class DevTweak implements ITweakModule {
   // a structural list edit closes the segment
   private pending: Map<string, TweakInput>[] = [new Map()];
   private opened: OpenedPanel | null = null;
-  private lastGroupPage = new Map<string, string>();
+  private categoryIds = new Set<string>();
+  private lastCategoryPage = new Map<string, string>();
+  private actionArgs = new Map<string, Record<string, unknown>>();
   private lastPoll = -Infinity;
   private readonly readErrors: ILogHandle;
 
@@ -71,7 +81,18 @@ export class DevTweak implements ITweakModule {
     });
   }
 
+  public categories(tab: TweakCategoryTab, categories: Readonly<Record<string, Readonly<TweakCategory>>>) {
+    for (const [id, category] of Object.entries(categories)) {
+      this.categoryIds.add(id);
+      this.send({ type: "category", category: { id, tab, title: category.title, icon: category.icon } });
+    }
+  }
+
   public register(name: string, panel: TweakPanel) {
+    assert(
+      panel.category === undefined || this.categoryIds.has(panel.category),
+      `tweak "${name}": category "${panel.category}" is not registered`,
+    );
     for (const section of panel.sections)
       assert(
         section.arg !== "value" || section.fields.length === 1,
@@ -120,6 +141,10 @@ export class DevTweak implements ITweakModule {
     this.poll(this.opened);
   }
 
+  public tune(name: string, target: object, options: TuneOptions) {
+    return this.register(name, tunePanel(name, target, options));
+  }
+
   public open(name: string) {
     if (!profilerState.isOpen) {
       this.log.warn(`"${name}" opens in the profiler, which is closed (openProfiler())`);
@@ -130,7 +155,7 @@ export class DevTweak implements ITweakModule {
       this.log.warn(`tweak panel "${name}" is not registered`);
       return;
     }
-    if (record.info.group !== null) this.lastGroupPage.set(record.info.group, name);
+    if (record.info.category !== null) this.lastCategoryPage.set(record.info.category, name);
     const values = this.read(record);
     const opened: OpenedPanel = {
       name,
@@ -142,36 +167,36 @@ export class DevTweak implements ITweakModule {
     this.send({ type: "open", name, values });
   }
 
-  public openGroup(group: string) {
-    const pages = this.groupRecords(group);
+  public openCategory(category: string) {
+    const pages = this.categoryRecords(category);
     if (pages.length === 0) {
-      this.log.warn(`tweak group "${group}" has no panels`);
+      this.log.warn(`tweak category "${category}" has no pages`);
       return;
     }
-    const last = pages.find((record) => record.info.name === this.lastGroupPage.get(group));
+    const last = pages.find((record) => record.info.name === this.lastCategoryPage.get(category));
     this.open((last ?? pages[0]).info.name);
   }
 
-  private groupRecords(group: string) {
+  private categoryRecords(category: string) {
     return [...this.records.values()]
-      .filter((record) => record.info.group === group)
+      .filter((record) => record.info.category === category)
       .sort((a, b) => a.info.order - b.info.order);
   }
 
   private apply(input: TweakInput) {
     switch (input.type) {
-      case "openGroup":
-        this.openGroup(input.group);
+      case "openCategory":
+        this.openCategory(input.category);
         return;
-      case "exportGroup": {
-        const text = this.groupRecords(input.group)
+      case "exportCategory": {
+        const text = this.categoryRecords(input.category)
           .filter((record) => record.info.exportable)
           .map((record) => this.export(record, input.onlyChanged))
           .filter((part) => part !== "")
           .join("\n\n");
-        this.send({ type: "export", name: input.group, text });
+        this.send({ type: "export", name: input.category, text });
         const kind = input.onlyChanged ? "changed" : "all";
-        this.log.log(`${input.group} export (${kind})\n${text}`);
+        this.log.log(`${input.category} export (${kind})\n${text}`);
         return;
       }
       case "open":
@@ -184,6 +209,10 @@ export class DevTweak implements ITweakModule {
       case "set": {
         const section = record.panel.sections[input.section];
         if (!section || section.arg === "list") return;
+        if (section.arg === "action") {
+          this.argsOf(input.name, input.section, section)[input.key] = input.value;
+          return;
+        }
         this.write(input.name, section.title, () =>
           section.set({ [input.key]: input.value }),
         );
@@ -194,7 +223,16 @@ export class DevTweak implements ITweakModule {
         if (!section || section.arg === "list") return;
         if (!section.defaults || !(input.key in section.defaults)) return;
         const value = structuredClone(section.defaults[input.key]);
-        this.write(input.name, section.title, () => section.set({ [input.key]: value }));
+        if (section.arg === "action") this.argsOf(input.name, input.section, section)[input.key] = value;
+        else this.write(input.name, section.title, () => section.set({ [input.key]: value }));
+        this.lastPoll = -Infinity;
+        return;
+      }
+      case "run": {
+        const section = record.panel.sections[input.section];
+        if (section?.arg !== "action") return;
+        const args = structuredClone(this.argsOf(input.name, input.section, section));
+        this.write(input.name, section.title, () => section.run(args));
         this.lastPoll = -Infinity;
         return;
       }
@@ -202,6 +240,7 @@ export class DevTweak implements ITweakModule {
         const opened = this.opened;
         if (opened?.name !== input.name) return;
         record.panel.sections.forEach((section, index) => {
+          if (section.arg === "action") return;
           if (section.arg === "list") {
             const items = opened.snapshot[index]?.items as ListItems | undefined;
             if (items) this.write(input.name, section.title, () => section.set(structuredClone(items)));
@@ -303,9 +342,24 @@ export class DevTweak implements ITweakModule {
     }
   }
 
+  // an action's arguments live here between runs, by panel and section index: a live panel's
+  // sections are new objects on every schema rebuild
+  private argsOf(name: string, index: number, section: TweakActionSection) {
+    const key = `${name}|${index}`;
+    let args = this.actionArgs.get(key);
+    if (!args) {
+      args = Object.fromEntries(
+        section.fields.map((field) => [field.key, structuredClone(section.defaults?.[field.key] ?? emptyValue(field.control))]),
+      );
+      this.actionArgs.set(key, args);
+    }
+    return args;
+  }
+
   private read(record: TweakRecord): TweakValues {
-    return record.panel.sections.map((section) => {
+    return record.panel.sections.map((section, index) => {
       try {
+        if (section.arg === "action") return structuredClone(this.argsOf(record.info.name, index, section));
         if (section.arg === "list") return { items: structuredClone(section.get()) };
         return structuredClone(section.get());
       } catch (error) {
@@ -340,6 +394,7 @@ export class DevTweak implements ITweakModule {
     const lines: string[] = [];
     record.panel.sections.forEach((section, index) => {
       const current = values[index];
+      if (section.arg === "action") return;
       if (section.arg === "list") {
         if (!Array.isArray(current.items)) return;
         const items = roundDeep(current.items) as ListItems;
@@ -383,9 +438,10 @@ export class DevTweak implements ITweakModule {
     return {
       name,
       title: panel.title,
+      description: panel.description ?? null,
       exportable: panel.exportable ?? true,
       presets: panel.presets ?? true,
-      group: panel.group ?? null,
+      category: panel.category ?? null,
       order: panel.order ?? 0,
       sections: panel.sections.map((section) => this.describeSection(name, section)),
     };
@@ -393,20 +449,22 @@ export class DevTweak implements ITweakModule {
 
   private describeSection(name: string, section: TweakSection): TweakSectionInfo {
     const { title, call } = section;
-    if (section.arg !== "list") return { title, call, arg: section.arg, fields: section.fields };
+    if (section.arg === "action") return { title, call, arg: "action", fields: section.fields, button: section.button };
+    if (section.arg !== "list") return { title, call, arg: section.arg, fields: section.fields, group: section.group };
     try {
       const items = section.get();
       return {
         title,
         call,
         arg: "list",
+        group: section.group,
         itemFields: items.map((item) => section.item.fields(item)),
         itemLabels: items.map((item) => section.item.label?.(item) ?? null),
         addable: section.item.create() !== null,
       };
     } catch (error) {
       this.readErrors.error(`${name}: describing "${title}" failed`, error);
-      return { title, call, arg: "list", itemFields: [], itemLabels: [], addable: false };
+      return { title, call, arg: "list", group: section.group, itemFields: [], itemLabels: [], addable: false };
     }
   }
 
@@ -423,16 +481,41 @@ function inputKey(input: TweakInput) {
     case "listSet":
     case "listReset":
       return `${input.type}|${input.name}|${input.section}|${input.index}|${input.key}`;
+    case "run":
+      return `${input.type}|${input.name}|${input.section}`;
     case "listAdd":
     case "listRemove":
     case "listMove":
     case "listReplace":
       return `${input.type}|${input.name}|${input.section}`;
-    case "openGroup":
-    case "exportGroup":
-      return `${input.type}|${input.group}`;
+    case "openCategory":
+    case "exportCategory":
+      return `${input.type}|${input.category}`;
     default:
       return `${input.type}|${input.name}`;
+  }
+}
+
+// an argument without a default: what its control shows when nothing is set
+function emptyValue(control: TweakControl): unknown {
+  switch (control.kind) {
+    case "slider":
+      return control.min;
+    case "toggle":
+    case "button":
+      return false;
+    case "select":
+      return control.options[0] ?? "";
+    case "color":
+      return [255, 255, 255, 255];
+    case "point":
+      return { x: 0.5, y: 0.5 };
+    case "stick":
+      return { x: 0, y: 0 };
+    case "info":
+      return "";
+    default:
+      return 0;
   }
 }
 
@@ -453,7 +536,9 @@ function roundDeep(value: unknown): unknown {
 const noop = () => {};
 export const prodTweak: ITweakModule = {
   register: () => noop,
+  tune: () => noop,
   open: noop,
-  openGroup: noop,
+  categories: noop,
+  openCategory: noop,
   endFrame: noop,
 };

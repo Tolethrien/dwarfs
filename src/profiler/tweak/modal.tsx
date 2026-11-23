@@ -73,6 +73,16 @@ function PresetBar() {
   );
 }
 
+// the group's name over the first of its sections in a row
+function groupStarts(panel: TweakPanelInfo, index: number) {
+  const groupOf = (at: number) => {
+    const section = panel.sections[at];
+    return section && section.arg !== "action" ? section.group : undefined;
+  };
+  const group = groupOf(index);
+  return group !== undefined && group !== groupOf(index - 1) ? group : undefined;
+}
+
 export function PanelBody(props: { panel: () => TweakPanelInfo; onClose?: () => void }) {
   return (
     <>
@@ -112,9 +122,23 @@ export function PanelBody(props: { panel: () => TweakPanelInfo; onClose?: () => 
         <Show when={tweakStore.exported()}>
           {(text) => <ExportBlock text={text()} />}
         </Show>
+        <Show when={props.panel().description}>
+          {(description) => (
+            <p class="border-b border-divider px-3 py-2 text-body text-fg-dim">{description()}</p>
+          )}
+        </Show>
         <Index each={props.panel().sections}>
           {(section, index) => (
-            <Section panelName={props.panel().name} index={index} section={section()} />
+            <>
+              <Show when={groupStarts(props.panel(), index)}>
+                {(group) => (
+                  <div class="border-b border-divider bg-window px-3 pb-1 pt-2.5 text-value font-semibold text-fg">
+                    {group()}
+                  </div>
+                )}
+              </Show>
+              <Section panelName={props.panel().name} index={index} section={section()} />
+            </>
           )}
         </Index>
       </div>
@@ -133,7 +157,7 @@ function PanelView(props: { panel: () => TweakPanelInfo }) {
 export default function TweakModal() {
   return (
     // keyed by name: another panel remounts, so the per-panel local storage keys are read again
-    <Show when={tweakStore.panel()?.group === null ? tweakStore.name() : null} keyed>
+    <Show when={tweakStore.panel()?.category === null ? tweakStore.name() : null} keyed>
       {(_name) => (
         <div class="pointer-events-none fixed inset-0 z-40">
           <div class="pointer-events-auto">

@@ -5,7 +5,7 @@ import GameEvents from "../core/gameEvents";
 import { BASE_GEAR, BaseGearID } from "../../content/gear";
 import { MAIN_TRAITS, WORKER_TRAITS, type MainTraitsID, type WorkerTraitID } from "../../content/traits";
 
-const WORKFORCE = { startGear: BaseGearID.universal };
+export const WORKFORCE = { startGear: BaseGearID.universal };
 
 // Object.keys gives enum numbers as strings
 const GEAR_IDS = Object.keys(BASE_GEAR).map(Number) as BaseGearID[];

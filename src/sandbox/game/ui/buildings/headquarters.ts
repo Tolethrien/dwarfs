@@ -99,7 +99,12 @@ export default class HeadquartersUI {
     const section = header(parent, `Level ${level + 1}`);
     text(section, `The shaft reaches ${this.actions.shaftLimit(level + 1)} tiles deep`);
     cost(section, costEntries(next, this.actions.missing(next)));
-    button(section, "Upgrade", () => confirm(this.window, `Raise the headquarters to level ${level + 1}?`, () => this.actions.upgrade()));
+    button(
+      section,
+      "Upgrade",
+      () => confirm(this.window, `Raise the headquarters to level ${level + 1}?`, () => this.actions.upgrade()),
+      { sprite: "red" },
+    );
   }
 
   private buildShipment(parent: UINode) {

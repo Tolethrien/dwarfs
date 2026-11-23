@@ -32,6 +32,10 @@ interface PlayObject {
   volume?: number;
   randomPitch?: number; //0-1 - 0.1 small diff
   rate?: number;
+  offset?: number;
+  duration?: number;
+  fadeIn?: number;
+  fadeOut?: number;
   position?: Position2D;
   maxConcurrent?: number;
   categories: string[];
@@ -130,7 +134,25 @@ export default class Cello {
 
     //individual volume control
     const instanceGain = this.ctx.createGain();
-    instanceGain.gain.value = props.volume ?? 1;
+    const targetVolume = props.volume ?? 1;
+    const now = this.ctx.currentTime;
+    const offset = props.offset ?? 0;
+    const rawDuration = props.duration ?? Math.max(0, buffer.duration - offset);
+    const scaledDuration = rawDuration / source.playbackRate.value;
+    const fadeIn = Math.min(props.fadeIn ?? 0, scaledDuration * 0.5);
+    const fadeOut = Math.min(props.fadeOut ?? 0, scaledDuration * 0.5);
+
+    if (fadeIn > 0) {
+      instanceGain.gain.setValueAtTime(0, now);
+      instanceGain.gain.linearRampToValueAtTime(targetVolume, now + fadeIn);
+    } else {
+      instanceGain.gain.setValueAtTime(targetVolume, now);
+    }
+    if (fadeOut > 0 && !source.loop) {
+      const fadeOutStart = now + scaledDuration - fadeOut;
+      instanceGain.gain.setValueAtTime(targetVolume, fadeOutStart);
+      instanceGain.gain.linearRampToValueAtTime(0, now + scaledDuration);
+    }
     source.connect(instanceGain);
 
     //effects loop
@@ -177,7 +199,13 @@ export default class Cello {
       if (props.maxConcurrent !== undefined)
         this.activeCounts.set(name, (this.activeCounts.get(name) ?? 1) - 1);
     };
-    source.start(0);
+    if (props.duration !== undefined) {
+      source.start(0, offset, props.duration);
+    } else if (offset > 0) {
+      source.start(0, offset);
+    } else {
+      source.start(0);
+    }
 
     return {
       stop: () => source.stop(),
@@ -191,6 +219,9 @@ export default class Cello {
       },
       sourceNode: source,
     };
+  }
+  public static getDuration(name: string): number | undefined {
+    return this.buffers.get(name)?.duration;
   }
   public static registerEffect(name: string, strategy: EffectStrategy) {
     if (this.effectRegistry.has(name)) {

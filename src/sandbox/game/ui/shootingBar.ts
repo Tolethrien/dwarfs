@@ -1,10 +1,10 @@
 import Navi from "@navi/navi";
 import UINode from "@navi/node";
 import { auto, px } from "@navi/units";
-import { UI_THEME } from "../content/ui";
+import { COLOR } from "@axiom/color";
+import { UI_SHEET, UI_THEME } from "../content/ui";
 import { text } from "./elements/text";
 import { button, runClicked } from "./elements/button";
-import { panelStyle } from "./elements/panel";
 
 export interface ShootingBarActions {
   stop: () => void;
@@ -15,6 +15,7 @@ export default class ShootingBarUI {
   private text: () => string = () => "";
 
   constructor(private readonly actions: ShootingBarActions) {
+    const sheet = UI_SHEET.hudBarMedA;
     // not in the HUD layer: the intro hides the HUD, and the player shoots in it
     this.bar = Navi.append(
       new UINode({
@@ -23,7 +24,11 @@ export default class ShootingBarUI {
         style: {
           anchorX: "center",
           anchorY: "end",
-          ...panelStyle("hud"),
+          backgroundColor: COLOR.WHITE,
+          backgroundImage: UI_SHEET.image,
+          backgroundImageCrop: sheet.crop,
+          backgroundImageSlice: sheet.slice,
+          padding: { top: 13, right: 20, bottom: 13, left: 22 },
           layout: "stack",
           direction: "row",
           alignCross: "center",
@@ -31,8 +36,12 @@ export default class ShootingBarUI {
         },
       }),
     );
-    text(this.bar, () => this.text(), { size: UI_THEME.text.button });
-    button(this.bar, "Stop shooting", () => this.actions.stop());
+    text(this.bar, () => this.text(), {
+      color: UI_THEME.paper.inkCream,
+      size: UI_THEME.text.button,
+      font: UI_THEME.font.display,
+    });
+    button(this.bar, "Stop shooting", () => this.actions.stop(), { sprite: "red" });
     this.bar.setActive(false);
   }
 

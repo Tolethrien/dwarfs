@@ -1,6 +1,7 @@
 import Navi from "@navi/navi";
 import UINode from "@navi/node";
 import { auto, px } from "@navi/units";
+import { COLOR } from "@axiom/color";
 import {
   formatAmount,
   RESOURCE_CATEGORIES,
@@ -10,12 +11,11 @@ import {
   type ResourcesID,
   type ResourceView,
 } from "../../content/resources";
-import { UI_THEME } from "../../content/ui";
+import { UI_SHEET, UI_THEME } from "../../content/ui";
 import { hudSlot } from "../hud";
 import { button, runClicked } from "../elements/button";
 import { counter } from "../elements/counter";
 import { divider } from "../elements/divider";
-import { panelStyle } from "../elements/panel";
 
 // Object.keys gives enum numbers as strings
 const CATEGORIES = Object.keys(RESOURCE_CATEGORIES).map(Number) as ResourceCategory[];
@@ -31,11 +31,16 @@ export default class ResourcesHud {
   private view: ResourceView = 1;
 
   constructor(private readonly amountOf: (id: ResourcesID) => number) {
+    const sheet = UI_SHEET.paper;
     this.panel = Navi.append(
       new UINode({
         size: { width: auto(), height: auto() },
         style: {
-          ...panelStyle("hud"),
+          backgroundColor: COLOR.WHITE,
+          backgroundImage: UI_SHEET.image,
+          backgroundImageCrop: sheet.crop,
+          backgroundImageSlice: sheet.slice,
+          padding: { top: 14, right: 16, bottom: 14, left: 16 },
           layout: "stack",
           direction: "col",
           gap: UI_THEME.spacing.listGap,
@@ -49,7 +54,7 @@ export default class ResourcesHud {
     for (const category of CATEGORIES) {
       const ids = RESOURCE_IDS.filter((id) => RESOURCES[id].category === category);
       const viewFrom = Math.min(...ids.map((id) => RESOURCES[id].viewFrom)) as ResourceView;
-      this.shown.push({ node: divider(this.panel, RESOURCE_CATEGORIES[category]), viewFrom: viewFrom });
+      this.shown.push({ node: divider(this.panel, RESOURCE_CATEGORIES[category], true), viewFrom: viewFrom });
       for (const id of ids) this.counter(id);
     }
     this.show();
@@ -61,10 +66,15 @@ export default class ResourcesHud {
 
   private hamburger() {
     const theme = UI_THEME.hamburger;
-    const node = button(this.panel, "", () => {
-      this.view = ((this.view % 3) + 1) as ResourceView;
-      this.show();
-    });
+    const node = button(
+      this.panel,
+      "",
+      () => {
+        this.view = ((this.view % 3) + 1) as ResourceView;
+        this.show();
+      },
+      { sprite: "dark" },
+    );
     const bars = Navi.append(
       new UINode({
         size: { width: auto(), height: auto() },
@@ -78,7 +88,7 @@ export default class ResourcesHud {
         new UINode({
           size: { width: px(theme.width), height: px(theme.bar) },
           input: "none",
-          style: { backgroundColor: UI_THEME.colors.text },
+          style: { backgroundColor: UI_THEME.paper.inkCream },
         }),
         bars,
       );
@@ -90,6 +100,7 @@ export default class ResourcesHud {
       icon: RESOURCES[id].icon,
       tooltip: RESOURCES[id].name,
       format: (amount) => formatAmount(id, amount),
+      paper: true,
     });
     this.shown.push({ node: node, viewFrom: RESOURCES[id].viewFrom });
   }

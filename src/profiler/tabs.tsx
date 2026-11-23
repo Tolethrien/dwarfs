@@ -9,40 +9,50 @@ import CustomTab from "./tabs/custom";
 import OptionsMenu from "./components/optionsMenu";
 import { tweakStore } from "./tweak/store";
 import { tabVisibility } from "./tabVisibility";
+import Dropdown, { DROPDOWN_ITEM } from "./blocks/dropdown";
 
-export type TabId = "custom" | "console" | "watch" | "game" | "aurora" | "coroutines" | "mapGen";
+export type TabId = "custom" | "console" | "watch" | "game" | "aurora" | "coroutines";
 
 interface TabDefinition {
   label: string;
   component?: Component;
   panels?: PanelId[] | (() => PanelId[]);
   empty?: string;
-  actions?: Component;
 }
 
-function GroupButton(props: { group: string; label: string }) {
+function CategoryMenu() {
+  const categories = () => tweakStore.categoriesOf(activeTab());
+  const isOpen = (id: string) => tweakStore.panel()?.category === id;
   return (
-    <button
-      class="cursor-pointer rounded border border-divider px-2 py-0.5 text-fg-dim not-disabled:hover:text-fg disabled:cursor-default disabled:opacity-40"
-      disabled={tweakStore.groupPanels(props.group).length === 0}
-      onClick={() => tweakStore.openGroup(props.group)}
-    >
-      {props.label}
-    </button>
+    <Show when={categories().length > 0}>
+      <span class="uppercase tracking-[0.1em] text-fg-dim">Tweak</span>
+      <Dropdown
+        label="☰ Categories"
+        align="right"
+        closeOnClick
+        highlighted={categories().some((category) => isOpen(category.id))}
+      >
+        <For each={categories()}>
+          {(category) => {
+            const empty = () => tweakStore.categoryPanels(category.id).length === 0;
+            return (
+              <button
+                type="button"
+                class={DROPDOWN_ITEM + " disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent"}
+                classList={{ "text-live": isOpen(category.id) }}
+                disabled={empty()}
+                title={empty() ? "no pages yet" : undefined}
+                onClick={() => tweakStore.openCategory(category.id)}
+              >
+                <span class="w-4 text-center">{category.icon}</span>
+                {category.title}
+              </button>
+            );
+          }}
+        </For>
+      </Dropdown>
+    </Show>
   );
-}
-
-function AuroraActions() {
-  return (
-    <div class="flex gap-1">
-      <GroupButton group="aurora" label="⚙ Settings" />
-      <GroupButton group="camera" label="🎥 Camera" />
-    </div>
-  );
-}
-
-function GameActions() {
-  return <GroupButton group="game" label="🎮 Game" />;
 }
 
 export const TABS: Record<TabId, TabDefinition> = {
@@ -55,13 +65,22 @@ export const TABS: Record<TabId, TabDefinition> = {
   },
   game: {
     label: "Game",
-    actions: GameActions,
-    panels: ["gameDwarfs", "gameNetwork", "gameBuildings", "gameGear", "gameResearch", "gameEconomy", "gamePlayer"],
-    empty: "game panels: 🎮 Game",
+    panels: [
+      "gameDwarfs",
+      "gameNetwork",
+      "gameCamp",
+      "gameStored",
+      "gameEvents",
+      "gameMarket",
+      "gameSmelter",
+      "gameCosts",
+      "gameWorkforce",
+      "gameBuffs",
+      "gamePlayer",
+    ],
   },
   aurora: {
     label: "Aurora",
-    actions: AuroraActions,
     panels: [
       "auroraFrame",
       "auroraGpuTimings",
@@ -76,11 +95,6 @@ export const TABS: Record<TabId, TabDefinition> = {
   coroutines: {
     label: "Coroutines",
     panels: ["coroutinesRunning", "coroutinesFinished"],
-  },
-  mapGen: {
-    label: "MapGen",
-    panels: [],
-    empty: "map generator: nothing here yet, it gets rewritten for the new generator",
   },
 };
 
@@ -136,7 +150,7 @@ export function TabContent() {
               : ((tab().panels as PanelId[] | undefined) ?? [])
           }
           empty={tab().empty}
-          actions={tab().actions}
+          actions={CategoryMenu}
         />
       }
     >

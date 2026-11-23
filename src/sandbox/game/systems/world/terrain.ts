@@ -57,7 +57,7 @@ export interface BlastOptions {
   hit?: Hit;
 }
 
-const TERRAIN = {
+export const TERRAIN = {
   blastBumps: 1.5,
 };
 

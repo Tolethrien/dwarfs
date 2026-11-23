@@ -1,5 +1,6 @@
 import { createSignal } from "solid-js";
 import type {
+  TweakCategoryInfo,
   TweakMessage,
   TweakPanelInfo,
   TweakValues,
@@ -11,6 +12,7 @@ interface OpenPanel {
   values: TweakValues;
 }
 
+const [categories, setCategories] = createSignal<TweakCategoryInfo[]>([]);
 const [registry, setRegistry] = createSignal<TweakPanelInfo[]>([]);
 const [opened, setOpened] = createSignal<OpenPanel | null>(null);
 const [exported, setExported] = createSignal<string | null>(null);
@@ -99,6 +101,9 @@ function mergeValues(incoming: TweakValues, current: TweakValues) {
 
 function apply(message: TweakMessage) {
   switch (message.type) {
+    case "category":
+      addCategory(message.category);
+      return;
     case "add":
       addPanel(message.panel);
       return;
@@ -125,16 +130,24 @@ function apply(message: TweakMessage) {
     case "export": {
       const current = opened();
       if (!current) return;
-      const group = registry().find((entry) => entry.name === current.name)?.group;
-      if (current.name === message.name || group === message.name) setExported(message.text);
+      const category = registry().find((entry) => entry.name === current.name)?.category;
+      if (current.name === message.name || category === message.name) setExported(message.text);
       return;
     }
   }
 }
 
-function groupPanels(group: string) {
+function addCategory(category: TweakCategoryInfo) {
+  setCategories((previous) =>
+    previous.some((entry) => entry.id === category.id)
+      ? previous.map((entry) => (entry.id === category.id ? category : entry))
+      : [...previous, category],
+  );
+}
+
+function categoryPanels(category: string) {
   return registry()
-    .filter((entry) => entry.group === group)
+    .filter((entry) => entry.category === category)
     .sort((a, b) => a.order - b.order);
 }
 
@@ -143,12 +156,13 @@ function openPage(name: string) {
 }
 
 // the game remembers the last page, so the button and aurora.config() open the same one
-function openGroup(group: string) {
-  if (groupPanels(group).length > 0) window.API.DEBUG.sendTweakInput({ type: "openGroup", group });
+function openCategory(category: string) {
+  if (categoryPanels(category).length > 0)
+    window.API.DEBUG.sendTweakInput({ type: "openCategory", category });
 }
 
-function requestGroupExport(group: string, onlyChanged: boolean) {
-  window.API.DEBUG.sendTweakInput({ type: "exportGroup", group, onlyChanged });
+function requestCategoryExport(category: string, onlyChanged: boolean) {
+  window.API.DEBUG.sendTweakInput({ type: "exportCategory", category, onlyChanged });
 }
 
 // apply "release": the value changes only here until commitValue sends it
@@ -320,6 +334,11 @@ function revert() {
   if (current) window.API.DEBUG.sendTweakInput({ type: "revert", name: current.name });
 }
 
+function run(section: number) {
+  const current = opened();
+  if (current) window.API.DEBUG.sendTweakInput({ type: "run", name: current.name, section });
+}
+
 function requestExport(onlyChanged: boolean) {
   const current = opened();
   if (current)
@@ -331,20 +350,22 @@ window.API.DEBUG.onTweak((message) => {
   else history.queue.push(message);
 });
 
-window.API.DEBUG.getTweakRegistry().then((panels) => {
-  panels.forEach(addPanel);
+window.API.DEBUG.getTweakRegistry().then((stored) => {
+  stored.categories.forEach(addCategory);
+  stored.panels.forEach(addPanel);
   history.queue.forEach(apply);
   history.queue.length = 0;
   history.ready = true;
 });
 
-// one listener for the modal and the group window, whichever is showing the opened panel
+// one listener for the modal and the category window, whichever is showing the opened panel
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && opened() !== null) close();
 });
 
-// the reloaded game registers its panels again, a page it no longer has must not stay
+// the reloaded game registers its categories and panels again, one it no longer has must not stay
 window.API.DEBUG.onGameReloaded(() => {
+  setCategories([]);
   setRegistry([]);
   setOpened(null);
   setExported(null);
@@ -386,8 +407,11 @@ export const tweakStore = {
   close,
   revert,
   requestExport,
-  groupPanels,
+  run,
+  categoriesOf: (tab: string) => categories().filter((category) => category.tab === tab),
+  category: (id: string) => categories().find((category) => category.id === id),
+  categoryPanels,
   openPage,
-  openGroup,
-  requestGroupExport,
+  openCategory,
+  requestCategoryExport,
 };

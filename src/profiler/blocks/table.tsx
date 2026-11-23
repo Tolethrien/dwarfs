@@ -12,14 +12,22 @@ export default function Table(props: {
   empty?: string;
   // any CSS color drawn as a swatch before the cell text
   cellColor?: (row: number, column: number) => string | undefined;
+  // columns as wide as their content and the table no wider than them, instead of spread over the panel
+  hug?: boolean;
 }) {
   const template = () =>
-    props.columns.map((column) => column.width ?? "minmax(0,1fr)").join(" ");
+    props.columns
+      .map((column) => column.width ?? (props.hug ? "minmax(0,max-content)" : "minmax(0,1fr)"))
+      .join(" ");
   const alignedRight = (index: number) =>
     props.columns[index]?.align === "right";
 
   return (
-    <div class="grid" style={{ "grid-template-columns": template() }}>
+    <div
+      class="grid"
+      classList={{ "w-fit max-w-full": props.hug }}
+      style={{ "grid-template-columns": template() }}
+    >
       <For each={props.columns}>
         {(column) => (
           <div

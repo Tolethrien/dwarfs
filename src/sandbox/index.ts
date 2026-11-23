@@ -16,9 +16,11 @@ import decoGlow from "@sandbox/assets/deco/deco-glow.png";
 import icons from "@sandbox/assets/icons/resources.png";
 import buildings from "@sandbox/assets/structures/camp-buildings-spritesheet.png";
 import dwarfCard from "@sandbox/assets/ui/dwarf-card-spritesheet.png";
+import uiSheet from "@sandbox/assets/ui/ui-spritesheet.png";
 import buffsIco from "@sandbox/assets/icons/buffs.png";
-import lato from "@sandbox/assets/fonts/Lato-Regular.ttf";
 import bebas from "@sandbox/assets/fonts/BebasNeue-Regular.ttf";
+import barlow from "@sandbox/assets/fonts/BarlowSemiCondensed-Regular.ttf";
+import barlowBold from "@sandbox/assets/fonts/BarlowSemiCondensed-Bold.ttf";
 import Cello from "@cello/cello";
 import { MAP_GEN } from "./game/mapGen/mapGen";
 import TileMap from "./game/gpu/tileMap";
@@ -30,6 +32,11 @@ import { startGame } from "./game/mapSetup";
 import { bindActions } from "./game/content/actions";
 import { closeMenu, openMenu } from "./menu/menuSetup";
 import { SPATIAL_EFFECT, ZOOM_VOLUME_EFFECT } from "./game/audio/spatial";
+import {
+  CAVE_REVERB_EFFECT,
+  MINE_ECHO_EFFECT,
+  RUBBLE_TONE_EFFECT,
+} from "./game/audio/mineEffects";
 
 async function preload() {
   await Aurora.config({
@@ -48,11 +55,13 @@ async function preload() {
       { name: "icons", url: icons },
       { name: "dwarfLayers", url: dwarfLayers },
       { name: "dwarfCard", url: dwarfCard },
+      { name: "uiSheet", url: uiSheet },
       { name: "buffs", url: buffsIco },
     ],
     fonts: [
-      { name: "lato", type: "dynamic", url: lato },
       { name: "bebas", type: "dynamic", url: bebas },
+      { name: "barlow", type: "dynamic", url: barlow },
+      { name: "barlowBold", type: "dynamic", url: barlowBold },
     ],
     rendering: {
       renderRes: "1080p",
@@ -85,7 +94,13 @@ async function preload() {
     ],
     masterVolume: 1,
     categoryTree: { mineEffects: { initVol: 1 }, ambient: { initVol: 1 } },
-    effects: { spatial: SPATIAL_EFFECT, zoomVolume: ZOOM_VOLUME_EFFECT },
+    effects: {
+      spatial: SPATIAL_EFFECT,
+      caveReverb: CAVE_REVERB_EFFECT,
+      mineEcho: MINE_ECHO_EFFECT,
+      rubbleTone: RUBBLE_TONE_EFFECT,
+      zoomVolume: ZOOM_VOLUME_EFFECT,
+    },
   });
 }
 

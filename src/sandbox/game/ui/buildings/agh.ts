@@ -15,7 +15,6 @@ import { button } from "../elements/button";
 import { column } from "../elements/column";
 import { confirm } from "../elements/confirm";
 import { paragraph } from "../elements/paragraph";
-import { row } from "../elements/row";
 import { tabs, type TabItem } from "../elements/tabs";
 import { text } from "../elements/text";
 import { tooltip } from "../elements/tooltip";
@@ -52,7 +51,7 @@ export default class AghUI {
   public open() {
     if (this.window.isOpen) return;
     const content = this.window.open();
-    this.tabBar = row(content, { fit: true });
+    this.tabBar = column(content);
     this.body = column(content);
     this.showTab();
   }
@@ -94,7 +93,7 @@ export default class AghUI {
       () => {
         if (next !== undefined) this.askUpgrade(id, next);
       },
-      { disabled: next === undefined },
+      { disabled: next === undefined, sprite: "red" },
     );
     tooltip(action, shown.description);
     text(item, shown.description, { color: UI_THEME.colors.muted });

@@ -1,5 +1,5 @@
 export const AURORA_PAGES = {
-  group: "aurora",
+  category: "aurora",
   order: {
     mood: 1,
     effects: 2,
@@ -13,5 +13,5 @@ export const AURORA_PAGES = {
 export type AuroraPage = keyof typeof AURORA_PAGES.order;
 
 export function auroraPage(page: AuroraPage) {
-  return { group: AURORA_PAGES.group, order: AURORA_PAGES.order[page], command: false };
+  return { category: AURORA_PAGES.category, order: AURORA_PAGES.order[page], command: false };
 }

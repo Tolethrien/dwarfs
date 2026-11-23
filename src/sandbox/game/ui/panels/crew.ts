@@ -13,7 +13,7 @@ import Shift from "../../components/dwarfs/shift";
 import Traits from "../../components/dwarfs/traits";
 import { SPECIAL_BEERS } from "../../content/beers";
 import { BASE_GEAR, BaseGearID, GEAR_SLOT_NAMES, ITEMS } from "../../content/gear";
-import { ACTIVE_MAIN_TRAITS, FOREMAN_TRAIT, MAIN_TRAITS, TRAITS, TraitsID, WORKER_TRAITS, type TraitData } from "../../content/traits";
+import { FOREMAN_TRAIT, MAIN_TRAITS, TRAITS, TraitsID, WORKER_TRAITS, type TraitData } from "../../content/traits";
 import { UI_THEME } from "../../content/ui";
 import { CALENDAR } from "../../systems/core/calendar";
 import type GameUI from "../../systems/ui/gameUI";
@@ -219,7 +219,7 @@ function traitChip(parent: UINode, label: string, color: RGBA, tip: () => string
     }),
     parent,
   );
-  text(chip, label, { size: CREW_UI.chipTextSize });
+  text(chip, label, { size: CREW_UI.chipTextSize, color: UI_THEME.paper.inkCream });
   tooltip(chip, tip);
 }
 
@@ -393,7 +393,7 @@ export function crewPanel(roster: Roster, workforce: Workforce, gameUI: GameUI):
       };
     });
     const assignTable = table(assignView, CREW_UI.assignColumns);
-    for (const main of ACTIVE_MAIN_TRAITS) {
+    for (const main of roster.recruitable()) {
       const mainData = MAIN_TRAITS[main];
       const assigned = workforce.assignments.get(main) ?? BaseGearID.universal;
       assignTable.row([
@@ -449,12 +449,12 @@ export function crewPanel(roster: Roster, workforce: Workforce, gameUI: GameUI):
       lastAssignVersion = -1;
     },
     build(content) {
-      text(content, summaryText, { color: UI_THEME.colors.muted });
-      const controls = row(content, { align: "between" });
-      tabs(controls, TABS, () => tab, (picked) => {
+      tabs(content, TABS, () => tab, (picked) => {
         tab = picked;
         showTab();
       });
+      const controls = row(content, { align: "between" });
+      text(controls, summaryText, { color: UI_THEME.colors.muted });
       sortRow = row(controls, { fit: true });
       dropdown(sortRow, SORT_ITEMS, sortBy, (picked) => {
         sortBy = picked;

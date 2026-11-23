@@ -20,7 +20,7 @@ interface BiomeDecoPool {
   wall: DecosID[];
 }
 
-const DECO_GEN = {
+export const DECO_GEN = {
   salt: { random: 71, cluster: 701, species: 709 },
   clusterFreq: 0.08,
   speciesFreq: 0.025,

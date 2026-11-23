@@ -27,6 +27,7 @@ export interface Style {
   rounded: number;
   backgroundImage: string | undefined;
   backgroundImageCrop: Crop;
+  backgroundImageSlice: Padding | undefined;
   outline: StyleOutline | undefined;
   shadow: DrawShadow | DrawShadow[] | undefined;
   backdrop: DrawBackdrop | undefined;
@@ -69,6 +70,7 @@ export const BASE_STYLE: Style = {
   rounded: 0,
   backgroundImage: undefined,
   backgroundImageCrop: { x: 0, y: 0, width: 0, height: 0 },
+  backgroundImageSlice: undefined,
   outline: undefined,
   shadow: undefined,
   backdrop: undefined,
@@ -78,7 +80,7 @@ export const BASE_STYLE: Style = {
   textShadow: undefined,
   textMaterial: undefined,
   textSize: 14,
-  textFont: "lato",
+  textFont: "barlow",
   layout: "none",
   direction: "col",
   zIndex: 0,

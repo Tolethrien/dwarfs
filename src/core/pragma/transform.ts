@@ -38,6 +38,9 @@ export default class Transform extends PragmaComponent {
   public getScale(): Vec2 {
     return this.scale;
   }
+  public getRotation(): number {
+    return this.rotation;
+  }
   /**DO NOT MUTATE THIS */
   public getWorldPosition(): Vec2 {
     if (!this.worldPositionCache)

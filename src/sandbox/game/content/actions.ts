@@ -11,8 +11,6 @@ export const ACTIONS = {
   aim: { mouse: "LEFT", mods: "NoMod" },
   select: { mouse: "LEFT", mods: "NoMod" },
   stopShooting: { key: KEY.escape, mods: "NoMod" },
-  toggleDig: { key: KEY.f5, mods: "NoMod" },
-  dig: { mouse: "LEFT", mods: "NoMod" },
   toggleBuild: { key: KEY.tab, mods: "NoMod" },
   cancelBuild: { key: KEY.escape, mods: "NoMod" },
   place: { mouse: "LEFT", mods: "NoMod" },

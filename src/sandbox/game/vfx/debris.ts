@@ -11,7 +11,7 @@ import { solidAt, type VfxConnect, type VfxContext, type VfxLayer } from "./vfx"
 // force: 0 a block barely broken (ratio 1, or worn down by earlier hits), 1 broken with fullForce
 // times its strength or more, or by a piercing ball; the share of pieces pushed along the flight
 // grows with it, the rest falls out of the face
-const DEBRIS = {
+export const DEBRIS = {
   capacity: 3000,
   viewMargin: 200,
   fullForce: 2,

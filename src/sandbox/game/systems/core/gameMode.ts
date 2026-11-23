@@ -9,7 +9,7 @@ export const VIEW: ActionName[] = ["cameraUp", "cameraDown", "cameraLeft", "came
 // the actions each mode lets through, the rest do nothing in it
 const MODE_ACTIONS: Record<GameModeName, Set<ActionName>> = {
   cutscene: new Set(),
-  game: new Set([...VIEW, "select", "toggleDig", "dig", "toggleBuild"]),
+  game: new Set([...VIEW, "select", "toggleBuild"]),
   build: new Set([...VIEW, "toggleBuild", "cancelBuild", "place", "rotateBuild"]),
   shoot: new Set([...VIEW, "aim", "stopShooting"]),
 };

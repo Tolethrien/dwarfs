@@ -55,14 +55,20 @@ const STATES: Record<DwarfState, string> = {
 const TAVERN_UI = {
   width: 640,
   listHeight: 360,
-  // both lists end at the same edge, the window's width without its padding and the scrollbar:
-  // columns add up to 570 and 558 (the gaps and the row padding make up the rest)
-  applications: { look: 32, name: 190, type: 90, bph: 50, offer: 208 },
-  crew: { look: 32, name: 140, type: 60, rank: 60, state: 166, shift: 60, bph: 40 },
+  // both lists end at the same edge, the window's width without its padding, frame and scrollbar:
+  // columns add up to 550 and 538 (the gaps and the row padding make up the rest)
+  applications: { look: 32, name: 148, type: 90, bph: 50, offer: 208 },
+  crew: { look: 32, name: 122, type: 60, rank: 60, state: 142, shift: 60, bph: 40 },
 };
 
 export default class TavernUI {
-  private readonly window = new UIWindow({ kind: "docked", width: TAVERN_UI.width, title: "Tavern", closeOnMove: closeOnCameraMove() });
+  private readonly window = new UIWindow({
+    kind: "docked",
+    width: TAVERN_UI.width,
+    title: "Tavern",
+    paper: true,
+    closeOnMove: closeOnCameraMove(),
+  });
   private tab: TavernTab = "applications";
   declare private tabBar: UINode;
   declare private body: UINode;
@@ -75,7 +81,7 @@ export default class TavernUI {
   public open() {
     if (this.window.isOpen) return;
     const content = this.window.open();
-    this.tabBar = row(content, { fit: true });
+    this.tabBar = column(content);
     this.body = column(content);
     this.showTab();
   }
@@ -108,7 +114,7 @@ export default class TavernUI {
 
   private showTab() {
     Navi.clear(this.tabBar);
-    tabs(this.tabBar, TABS, this.tab, (tab) => this.pick(tab));
+    tabs(this.tabBar, TABS, this.tab, (tab) => this.pick(tab), true);
     Navi.clear(this.body);
     if (this.tab === "applications") this.buildApplications(this.body);
     else this.buildCrew(this.body);
@@ -129,8 +135,8 @@ export default class TavernUI {
 
   private buildApplications(parent: UINode) {
     const actions = this.actions;
-    const section = header(parent, () => `Applications ${actions.applications().length}/${actions.limit}`);
-    text(section, () => this.arrivalText(), { color: UI_THEME.colors.muted });
+    const section = header(parent, () => `Applications ${actions.applications().length}/${actions.limit}`, true, false);
+    text(section, () => this.arrivalText(), { color: UI_THEME.paper.inkMuted });
     const columns = TAVERN_UI.applications;
     this.list = table(
       section,
@@ -141,7 +147,7 @@ export default class TavernUI {
         { title: "BPH", width: columns.bph, align: "end" },
         { title: "", width: columns.offer, align: "end" },
       ],
-      { height: TAVERN_UI.listHeight },
+      { height: TAVERN_UI.listHeight, paper: true },
     );
     this.fillApplications();
   }
@@ -172,13 +178,13 @@ export default class TavernUI {
   private addOffer(cell: UINode, dwarf: Dwarf) {
     const offer = row(cell, { fit: true });
     const price = this.actions.hireCost;
-    cost(offer, costEntries(price, this.actions.lacking(price)));
-    button(offer, "Hire", () => this.actions.hire(dwarf), { tag: "tavern:hire" });
-    button(offer, "Dismiss", () => this.actions.dismiss(dwarf));
+    cost(offer, costEntries(price, this.actions.lacking(price)), true);
+    button(offer, "Hire", () => this.actions.hire(dwarf), { tag: "tavern:hire", sprite: "red" });
+    button(offer, "Dismiss", () => this.actions.dismiss(dwarf), { sprite: "dark" });
   }
 
   private buildCrew(parent: UINode) {
-    const section = header(parent, () => `Crew ${this.actions.crew().length}`);
+    const section = header(parent, () => `Crew ${this.actions.crew().length}`, true, false);
     const columns = TAVERN_UI.crew;
     this.list = table(
       section,
@@ -191,7 +197,7 @@ export default class TavernUI {
         { title: "Shift", width: columns.shift },
         { title: "BPH", width: columns.bph, align: "end" },
       ],
-      { height: TAVERN_UI.listHeight, offset: this.crewScroll },
+      { height: TAVERN_UI.listHeight, offset: this.crewScroll, paper: true },
     );
     this.crewScroll = 0;
     this.fillCrew();

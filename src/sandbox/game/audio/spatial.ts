@@ -1,10 +1,11 @@
 import AxiomMath from "@axiom/math";
 import { Camera } from "@engine/camera/camera";
 
-const SPATIAL = {
-  near: 600,
-  far: 2500,
+export const SPATIAL = {
+  near: 900,
+  far: 4200,
   pan: 0.8,
+  lowpassHz: { near: 18000, far: 1600 },
 };
 
 export const ZOOM_VOLUME_EFFECT = {
@@ -20,17 +21,29 @@ export const SPATIAL_EFFECT = {
   scope: "perInstance" as const,
   build: (ctx: AudioContext, runtimeArgs?: unknown) => {
     const gain = ctx.createGain();
+    const lowpass = ctx.createBiquadFilter();
     const panner = ctx.createStereoPanner();
-    gain.connect(panner);
+    lowpass.type = "lowpass";
+    lowpass.frequency.value = SPATIAL.lowpassHz.near;
+    gain.connect(lowpass);
+    lowpass.connect(panner);
     const position = (runtimeArgs as { position?: Position2D } | undefined)?.position;
     if (position) {
       const center = Camera.getCenter;
       const view = Camera.getViewBounds;
       const away = Math.hypot(position.x - center.x, position.y - center.y);
-      gain.gain.value = 1 - AxiomMath.clamp(AxiomMath.inverseLerp(SPATIAL.near, SPATIAL.far, away), 0, 1);
+      const distance = AxiomMath.clamp(AxiomMath.inverseLerp(SPATIAL.near, SPATIAL.far, away), 0, 1);
+      gain.gain.value = 1 - distance;
+      // octave scale so high-frequency rolloff sounds even across distance
+      lowpass.frequency.value =
+        SPATIAL.lowpassHz.near * Math.pow(SPATIAL.lowpassHz.far / SPATIAL.lowpassHz.near, distance);
       const halfWidth = (view.max.x - view.min.x) / 2;
       panner.pan.value = AxiomMath.clamp((position.x - center.x) / halfWidth, -1, 1) * SPATIAL.pan;
     }
-    return { input: gain, output: panner };
+    return {
+      input: gain,
+      output: panner,
+      dispose: () => lowpass.disconnect(),
+    };
   },
 };

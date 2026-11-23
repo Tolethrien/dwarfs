@@ -16,6 +16,7 @@ import type PlayerStats from "../../systems/core/playerStats";
 import type { PanelDef } from "../../systems/ui/gameUI";
 import { button } from "../elements/button";
 import { collapsible } from "../elements/collapsible";
+import { column } from "../elements/column";
 import { divider } from "../elements/divider";
 import { paragraph } from "../elements/paragraph";
 import { row } from "../elements/row";
@@ -42,7 +43,9 @@ export function glossaryPanel(glossary: Glossary, stats: PlayerStats): PanelDef 
   let selectedId: string | undefined;
   let tabBarHost: UINode | undefined;
   let bodyHost: UINode | undefined;
+  let entryList: UINode | undefined;
   let detailList: UINode | undefined;
+  let listScroll = 0;
   let shownVersion = -1;
   let shownMined = -1;
   let shownName = "";
@@ -72,6 +75,7 @@ export function glossaryPanel(glossary: Glossary, stats: PlayerStats): PanelDef 
       if (tab === picked) return;
       tab = picked;
       selectedId = undefined;
+      listScroll = 0;
       renderBody();
     });
   }
@@ -100,6 +104,7 @@ export function glossaryPanel(glossary: Glossary, stats: PlayerStats): PanelDef 
     const wasUnread = glossary.isUnread(id);
     if (wasUnread) glossary.markRead(id);
     if (wasUnread) {
+      listScroll = entryList?.scrollOffset.y ?? 0;
       renderAll();
       return;
     }
@@ -109,7 +114,13 @@ export function glossaryPanel(glossary: Glossary, stats: PlayerStats): PanelDef 
   function renderCategory(category: GlossaryCategoryID) {
     if (!bodyHost) return;
     const layout = row(bodyHost, { align: "start", gap: UI_THEME.spacing.windowGap });
-    const list = scrollList(layout, { width: GLOSSARY_UI.listWidth, height: GLOSSARY_UI.height, autoScroll: true });
+    const list = scrollList(layout, {
+      width: GLOSSARY_UI.listWidth,
+      height: GLOSSARY_UI.height,
+      offset: listScroll,
+      autoScroll: true,
+    });
+    entryList = list;
     const detailWidth = innerWidth() - GLOSSARY_UI.listWidth - UI_THEME.spacing.windowGap;
     detailList = scrollList(layout, { width: detailWidth, height: GLOSSARY_UI.height, autoScroll: true });
 
@@ -184,13 +195,15 @@ export function glossaryPanel(glossary: Glossary, stats: PlayerStats): PanelDef 
     onClose() {
       tabBarHost = undefined;
       bodyHost = undefined;
+      entryList = undefined;
       detailList = undefined;
+      listScroll = 0;
       shownVersion = -1;
       shownMined = -1;
       shownName = "";
     },
     build(content) {
-      tabBarHost = row(content, { align: "start" });
+      tabBarHost = column(content);
       bodyHost = row(content, { align: "start" });
       renderAll();
     },

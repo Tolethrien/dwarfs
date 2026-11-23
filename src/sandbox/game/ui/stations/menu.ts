@@ -8,7 +8,7 @@ import { STATION } from "../../actors/station";
 import LayeredSprite from "../../components/common/layeredSprite";
 import Shift from "../../components/dwarfs/shift";
 import Traits from "../../components/dwarfs/traits";
-import { ACTIVE_MAIN_TRAITS, MAIN_TRAITS, MainTraitsID } from "../../content/traits";
+import { MAIN_TRAITS, MainTraitsID } from "../../content/traits";
 import { SPECIAL_BEERS, type SpecialBeerID } from "../../content/beers";
 import type { ResourceCost, ResourcesID } from "../../content/resources";
 import { UI_THEME } from "../../content/ui";
@@ -29,6 +29,7 @@ import { collapsible } from "../elements/collapsible";
 import { input } from "../elements/input";
 
 export interface StationMenuActions {
+  classes: () => MainTraitsID[];
   freeCount: (main: MainTraitsID) => number;
   wage: (main: MainTraitsID, hours: number) => ResourceCost | undefined;
   lacking: (cost: ResourceCost) => [ResourcesID, number][];
@@ -50,11 +51,10 @@ export interface StationMenuActions {
 
 const MENU = {
   width: 400,
-  ordered: { look: 32, name: 130, state: 190, listHeight: 135 },
+  ordered: { look: 32, name: 112, state: 156, listHeight: 135 },
   nameLength: 24,
 };
 
-const CLASSES = ACTIVE_MAIN_TRAITS;
 const BEERS: DropdownItem<SpecialBeerID | undefined>[] = [
   { id: undefined, title: "No special beer" },
   ...(Object.keys(SPECIAL_BEERS).map(Number) as SpecialBeerID[]).map((id) => ({
@@ -69,11 +69,12 @@ export default class StationMenuUI {
     slot: "center",
     width: MENU.width,
     title: () => this.station?.name ?? "",
+    paper: true,
     closeOnMove: closeOnCameraMove(),
     onClose: () => (this.station = undefined),
   });
   private station: Station | undefined;
-  private main = CLASSES[0];
+  private main = MainTraitsID.intern;
   private hours = STATION.shift.start;
   private beer: SpecialBeerID | undefined = undefined;
   private settingsOpen = false;
@@ -126,10 +127,11 @@ export default class StationMenuUI {
   }
 
   private build(content: UINode, station: Station) {
-    text(content, () => `Haul: ${this.actions.haul(station)}`);
-    const order = header(content, "Order");
+    const paper = UI_THEME.paper;
+    text(content, () => `Haul: ${this.actions.haul(station)}`, { color: paper.inkRed });
+    const order = header(content, "Order", true);
     this.unconnected = text(order, "Not connected to the shaft, nobody can be sent here", {
-      color: UI_THEME.colors.lacking,
+      color: paper.inkRed,
     });
     this.unconnected.setActive(!this.actions.connected(station));
     this.classes = gridCells(order);
@@ -141,11 +143,11 @@ export default class StationMenuUI {
       (step) => {
         this.hours = AxiomMath.clamp(this.hours + step, STATION.shift.min, STATION.shift.max);
       },
-      { plusTag: "station:shiftPlus" },
+      { plusTag: "station:shiftPlus", paper: true },
     );
     const beer = row(order, { align: "between" });
-    text(beer, "Beer");
-    dropdown(beer, BEERS, this.beer, (id) => (this.beer = id));
+    text(beer, "Beer", { color: paper.ink });
+    dropdown(beer, BEERS, this.beer, (id) => (this.beer = id), { paper: true });
     const actions = row(order, { align: "between" });
     this.wage = row(actions, { fit: true });
     this.wage.tags.add("station:wage");
@@ -154,13 +156,18 @@ export default class StationMenuUI {
     const buttons = row(actions, { fit: true });
     this.orderButton = button(buttons, "Order", () => this.actions.order(this.main, this.hours, this.beer, station), {
       tag: "station:order",
+      sprite: "dark",
     });
-    this.shootButton = button(buttons, "Shoot", () => this.actions.shoot(station), { tag: "station:shoot" });
+    this.shootButton = button(buttons, "Shoot", () => this.actions.shoot(station), {
+      tag: "station:shoot",
+      sprite: "dark",
+    });
     this.addSendNow(order, station);
 
     const ordered = header(
       content,
       () => `Ordered ${this.actions.assigned(station).length}/${STATION.manualLimit}`,
+      true,
     );
     const columns = MENU.ordered;
     this.list = table(
@@ -170,26 +177,31 @@ export default class StationMenuUI {
         { title: "Name", width: columns.name },
         { title: "", width: columns.state },
       ],
-      { height: columns.listHeight },
+      { height: columns.listHeight, paper: true },
     );
     this.shownOrdered = [];
     this.fillOrdered(station);
     const recall = row(content, { fit: true });
-    button(recall, "Recall waiting", () => this.actions.recall(station, false));
-    button(recall, "Recall all", () => this.actions.recall(station, true));
-    this.addSettings(content, station);
+    button(recall, "Recall waiting", () => this.actions.recall(station, false), { sprite: "dark" });
+    button(recall, "Recall all", () => this.actions.recall(station, true), { sprite: "dark" });
+    this.addSettings(this.window.frame, station);
   }
 
   private addSendNow(parent: UINode, station: Station) {
     const line = row(parent, { align: "between" });
-    text(line, "Debug");
+    text(line, "Debug", { color: UI_THEME.paper.ink });
     const pick = row(line, { fit: true });
     this.shownTavern = [];
     this.showTavern();
-    dropdown(pick, this.tavernItems, this.picked, (dwarf) => (this.picked = dwarf));
-    button(pick, "Send now", () => {
-      if (this.picked) this.actions.sendNow(this.picked, this.hours, this.beer, station);
-    });
+    dropdown(pick, this.tavernItems, this.picked, (dwarf) => (this.picked = dwarf), { paper: true });
+    button(
+      pick,
+      "Send now",
+      () => {
+        if (this.picked) this.actions.sendNow(this.picked, this.hours, this.beer, station);
+      },
+      { sprite: "dark" },
+    );
   }
 
   private showTavern() {
@@ -208,25 +220,32 @@ export default class StationMenuUI {
   }
 
   private addSettings(parent: UINode, station: Station) {
-    const settings = collapsible(parent, "Settings", this.settingsOpen, (open) => (this.settingsOpen = open));
+    const settings = collapsible(parent, "Settings", this.settingsOpen, (open) => (this.settingsOpen = open), "footer");
     const name = row(settings, { align: "between" });
-    text(name, "Name");
+    text(name, "Name", { color: UI_THEME.paper.ink });
     input(name, {
       value: station.name,
       maxLength: MENU.nameLength,
       width: MENU.width / 2,
+      paper: true,
       submit: (value) => {
         if (value.trim().length > 0) this.actions.rename(station, value.trim());
       },
     });
-    stepper(settings, "Priority", () => `${station.priority}`, (step) => {
-      this.actions.setPriority(station, Math.max(station.priority + step, 0));
-    });
+    stepper(
+      settings,
+      "Priority",
+      () => `${station.priority}`,
+      (step) => {
+        this.actions.setPriority(station, Math.max(station.priority + step, 0));
+      },
+      { paper: true },
+    );
   }
 
   private showClasses() {
     Navi.clear(this.classes);
-    for (const main of CLASSES)
+    for (const main of this.actions.classes())
       button(
         this.classes,
         () => `${MainTraitsID[main]} (${this.actions.freeCount(main)})`,
@@ -234,7 +253,7 @@ export default class StationMenuUI {
           this.main = main;
           this.showClasses();
         },
-        { selected: main === this.main },
+        { selected: main === this.main, sprite: "paper" },
       );
   }
 
@@ -245,8 +264,8 @@ export default class StationMenuUI {
     if (shown === this.shownWage) return;
     this.shownWage = shown;
     Navi.clear(this.wage);
-    if (wage) cost(this.wage, costEntries(wage, lacking));
-    else text(this.wage, "Nobody free", { color: UI_THEME.colors.muted });
+    if (wage) cost(this.wage, costEntries(wage, lacking), true);
+    else text(this.wage, "Nobody free", { color: UI_THEME.paper.inkMuted });
   }
 
   private showOrdered(station: Station) {

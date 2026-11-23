@@ -14,7 +14,7 @@ import Terrain from "../world/terrain";
 import Rails, { type RailStart } from "./rails";
 import type { ShaftJoint } from "../../world/railShape";
 
-const TRAVEL = { walk: 3, lane: 6, rail: 4, tunnel: 4, belly: 0.1, deck: 0.1, leaveGap: 0.5 };
+export const TRAVEL = { walk: 3, lane: 6, rail: 4, tunnel: 4, belly: 0.1, deck: 0.1, leaveGap: 0.5 };
 
 export type RouteLeg =
   | { kind: "free" }

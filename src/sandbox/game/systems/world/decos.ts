@@ -16,7 +16,7 @@ import Discovery from "./discovery";
 import GameEvents from "../core/gameEvents";
 import Terrain from "./terrain";
 
-const DECO_VIEW = {
+export const DECO_VIEW = {
   spriteMargin: 1,
   lightMargin: 4,
 };

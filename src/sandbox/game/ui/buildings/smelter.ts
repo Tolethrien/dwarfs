@@ -1,7 +1,8 @@
 import Navi from "@navi/navi";
 import type UINode from "@navi/node";
-import { formatAmount, RESOURCES, type ResourceCost, type ResourcesID } from "../../content/resources";
+import { formatAmount, RESOURCES, ResourcesID, type ResourceCost } from "../../content/resources";
 import { RECIPES, recipeCost, type RecipeID } from "../../content/smelter";
+import { describeResourceDrop, formatResourceRange } from "../../drops/resources";
 import type { SmelterOrder } from "../../components/buildings/smelter";
 import { UI_THEME } from "../../content/ui";
 import { closeOnCameraMove, UIWindow } from "../elements/window";
@@ -16,7 +17,8 @@ import { bar } from "../elements/bar";
 
 export interface SmelterActions {
   recipes: readonly RecipeID[];
-  power: () => number;
+  fuel: () => number;
+  coalPerHour: () => number;
   orders: () => readonly SmelterOrder[];
   status: () => string;
   missing: (cost: ResourceCost) => [ResourcesID, number][];
@@ -48,7 +50,7 @@ export default class SmelterUI {
     const content = this.window.open();
     this.buildRecipes(content);
     this.buildQueue(content);
-    text(content, `Power: ${this.actions.power()} kg of input an hour`, { color: UI_THEME.colors.muted });
+    this.buildFuel(content);
   }
 
   public close() {
@@ -72,16 +74,29 @@ export default class SmelterUI {
     ]);
     for (const id of this.actions.recipes) {
       const recipe = RECIPES[id];
+      const main = recipe.output.main;
       list.row([
-        { build: (cell) => icon(cell, RESOURCES[recipe.output].icon, { tooltip: RESOURCES[recipe.output].name }) },
-        { build: (cell) => stepper(cell, "", () => formatAmount(recipe.output, this.batchesOf(id) * recipe.yield), (step) => this.pick(id, step)) },
+        {
+          build: (cell) => {
+            if (main) icon(cell, RESOURCES[main.id].icon, { tooltip: describeResourceDrop(recipe.output) });
+          },
+        },
+        {
+          build: (cell) =>
+            stepper(
+              cell,
+              "",
+              () => (main ? formatResourceRange(main.id, main.amount, this.batchesOf(id)) : `×${this.batchesOf(id)}`),
+              (step) => this.pick(id, step),
+            ),
+        },
         {
           build: (cell) => {
             this.costCells.set(id, cell);
             this.showCost(id);
           },
         },
-        { build: (cell) => button(cell, "Smelt", () => this.actions.order(id, this.batchesOf(id))) },
+        { build: (cell) => button(cell, "Smelt", () => this.actions.order(id, this.batchesOf(id)), { sprite: "red" }) },
       ]);
     }
   }
@@ -108,6 +123,17 @@ export default class SmelterUI {
     this.empty = text(parent, "Nothing to smelt", { color: UI_THEME.colors.muted });
   }
 
+  private buildFuel(parent: UINode) {
+    header(parent, "Fuel");
+    bar(parent, {
+      value: this.actions.fuel,
+      label: () => `${Math.round(this.actions.fuel() * 100)}%`,
+    });
+    text(parent, () => `${formatAmount(ResourcesID.coal, this.actions.coalPerHour())} ${RESOURCES[ResourcesID.coal].name} / h`, {
+      color: UI_THEME.colors.muted,
+    });
+  }
+
   private syncQueue() {
     const queue = this.queue;
     if (queue === undefined) return;
@@ -123,10 +149,18 @@ export default class SmelterUI {
 
   private orderRow(queue: UITable, order: SmelterOrder) {
     const recipe = RECIPES[order.recipe];
+    const main = recipe.output.main;
     return queue.row([
-      { build: (cell) => icon(cell, RESOURCES[recipe.output].icon, { tooltip: RESOURCES[recipe.output].name }) },
+      {
+        build: (cell) => {
+          if (main) icon(cell, RESOURCES[main.id].icon, { tooltip: describeResourceDrop(recipe.output) });
+        },
+      },
       recipe.name,
-      () => `${formatAmount(recipe.output, order.done * recipe.yield)} / ${formatAmount(recipe.output, order.batches * recipe.yield)}`,
+      () =>
+        main
+          ? `${formatResourceRange(main.id, main.amount, order.done)} / ${formatResourceRange(main.id, main.amount, order.batches)}`
+          : `${order.done} / ${order.batches}`,
       { build: (cell) => bar(cell, { value: () => order.progress }) },
       { build: (cell) => button(cell, "Remove", () => this.actions.cancel(order)) },
     ]);

@@ -1,15 +1,17 @@
 import Navi from "@navi/navi";
 import UINode from "@navi/node";
 import UIText from "@navi/elements/text";
-import { auto } from "@navi/units";
+import { auto, px } from "@navi/units";
+import { COLOR } from "@axiom/color";
 import type Buffs from "../../systems/dwarfs/buffs";
 import { BUFFS, type BuffID } from "../../content/buffs";
-import { UI_THEME } from "../../content/ui";
+import { UI_SHEET, UI_THEME } from "../../content/ui";
 import { hudSlot } from "../hud";
 import { icon } from "../elements/icon";
 
 const BUFF_BAR = {
-  size: 48,
+  size: 46,
+  slotSize: 54,
   gap: 6,
   textSize: 13,
   textOutline: 2,
@@ -57,7 +59,24 @@ export default class BuffBarUI {
   }
 
   private addTile(id: BuffID) {
-    const tile = icon(this.bar, BUFFS[id].icon, {
+    const slot = UI_SHEET.slot;
+    const frame = Navi.append(
+      new UINode({
+        size: { width: px(BUFF_BAR.slotSize), height: px(BUFF_BAR.slotSize) },
+        input: "none",
+        style: {
+          backgroundColor: COLOR.WHITE,
+          backgroundImage: UI_SHEET.image,
+          backgroundImageCrop: slot.crop,
+          backgroundImageSlice: slot.slice,
+          layout: "stack",
+          alignMain: "center",
+          alignCross: "center",
+        },
+      }),
+      this.bar,
+    );
+    const tile = icon(frame, BUFFS[id].icon, {
       size: BUFF_BAR.size,
       image: "buffs",
       tooltip: () => describeBuff(id),
@@ -69,13 +88,13 @@ export default class BuffBarUI {
         style: {
           anchorX: "center",
           anchorY: "end",
-          textColor: UI_THEME.colors.text,
+          textColor: UI_THEME.paper.inkCream,
           textSize: BUFF_BAR.textSize,
           textOutline: { width: BUFF_BAR.textOutline, color: UI_THEME.colors.textOutline },
         },
       }),
       tile,
     );
-    return tile;
+    return frame;
   }
 }

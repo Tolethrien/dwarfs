@@ -49,9 +49,10 @@ export const ORES = {
   // single lumps grown into cave walls: chance per wall tile; an ore may show up to lookAhead tiles
   // above its own depth, the rarer it is here, the likelier
   walls: { chance: 0.004, size: { min: 3, max: 6 }, lookAhead: 150, minWeight: 0.05 },
-  // guaranteed lumps of coal and iron mixed under the first shaft: nests of each ore, in a ring that
-  // starts margin tiles past the crater's edge and reaches that many tiles further
-  starter: { nests: { coal: 8, iron: 16 }, size: { min: 3, max: 5 }, margin: 1, reach: 8, tries: 30 },
+  // guaranteed seams of coal and iron beside the first crater, one on each side in random order,
+  // filling the caves they cross; offset of their middles from the crater's middle, radius in tiles,
+  // tilt leans their tops outwards, edge frayed by jag
+  starter: { offset: { x: 16, y: 7 }, radius: { x: 8, y: 11 }, tilt: 0.35, jag: 0.35, frequency: 0.25 },
 };
 
 const HOSTS = new Set([
@@ -81,30 +82,35 @@ export function placeOres(world: World, seed: number) {
   placeVeins(world, new SeededRandom(SeededRandom.derive(seed, SALT.iron)));
   placeNests(world, new SeededRandom(SeededRandom.derive(seed, SALT.fossils)));
   placeWallNests(world, new SeededRandom(SeededRandom.derive(seed, SALT.walls)));
-  placeStarterNests(world, new SeededRandom(SeededRandom.derive(seed, SALT.starter)));
+  placeStarterSeams(world, noise, new SeededRandom(SeededRandom.derive(seed, SALT.starter)));
 }
 
-// below and to the sides of the first crater, the ores taken in turn so they lie mixed
-function placeStarterNests(world: World, random: SeededRandom) {
+function placeStarterSeams(world: World, noise: Noise, random: SeededRandom) {
   const starter = ORES.starter;
-  const crater = STRUCTURES.station.crater;
   const center = craterCenter(world, STRUCTURES.shaft.startDepth);
-  const inner = crater.radius * (1 + crater.jag) + starter.margin;
-  const blocks: BlocksID[] = [];
-  for (let index = 0; index < Math.max(starter.nests.coal, starter.nests.iron); index++) {
-    if (index < starter.nests.coal) blocks.push(ORES.coal.block);
-    if (index < starter.nests.iron) blocks.push(ORES.iron.block);
-  }
-  for (const block of blocks) {
-    for (let attempt = 0; attempt < starter.tries; attempt++) {
-      const angle = random.float(0, Math.PI);
-      const distance = random.float(inner, inner + starter.reach);
-      const start = { x: Math.floor(center.x + Math.cos(angle) * distance), y: Math.floor(center.y + Math.sin(angle) * distance) };
-      if (!isHost(world, start.x, start.y)) continue;
-      growNest(world, random, start, random.int(starter.size.min, starter.size.max), block);
-      break;
+  const blocks = random.next() < 0.5 ? [ORES.iron.block, ORES.coal.block] : [ORES.coal.block, ORES.iron.block];
+  blocks.forEach((block, index) => {
+    const side = index === 0 ? -1 : 1;
+    const middle = { x: center.x + side * starter.offset.x, y: center.y + starter.offset.y };
+    placeStarterSeam(world, noise, middle, side, block, SALT.starter + index * 100);
+  });
+}
+
+function placeStarterSeam(world: World, noise: Noise, middle: Position2D, side: number, block: BlocksID, salt: number) {
+  const starter = ORES.starter;
+  const sin = Math.sin(starter.tilt);
+  const cos = Math.cos(starter.tilt);
+  const reach = Math.ceil(Math.max(starter.radius.x, starter.radius.y) * (1 + starter.jag));
+  for (let gy = Math.floor(middle.y) - reach; gy <= Math.floor(middle.y) + reach; gy++)
+    for (let gx = Math.floor(middle.x) - reach; gx <= Math.floor(middle.x) + reach; gx++) {
+      const dx = gx + 0.5 - middle.x;
+      const dy = gy + 0.5 - middle.y;
+      const across = (cos * dx + side * sin * dy) / starter.radius.x;
+      const along = (cos * dy - side * sin * dx) / starter.radius.y;
+      const edge = 1 + starter.jag * noise.simplex2D(gx * starter.frequency + salt, gy * starter.frequency);
+      if (Math.hypot(across, along) > edge) continue;
+      if (isHost(world, gx, gy) || world.getType(gx, gy) === BlocksID.air) world.setTile(gx, gy, block, world.getLook(gx, gy));
     }
-  }
 }
 
 function placeSeams(world: World, noise: Noise) {

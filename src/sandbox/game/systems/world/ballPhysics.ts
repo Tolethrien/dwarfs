@@ -6,11 +6,12 @@ import SpatialGrid from "@axiom/SpatialGrid";
 import Time from "@engine/time";
 import type Ball from "../../components/dwarfs/ball";
 import { BLOCKS } from "../../content/blocks";
+import { rollResources } from "../../drops/resources";
 import GameEvents from "../core/gameEvents";
 import Terrain, { type Hit } from "./terrain";
 
 // decayRate: how fast a shot slows back to the base speed; a break through costs no speed
-const PHYS = {
+export const PHYS = {
   maxBouncesPerStep: 4,
   skin: 0.01,
   decayRate: 1,
@@ -51,7 +52,7 @@ export default class BallPhysics extends PragmaSystem {
     const events = this.scene.getSystem(GameEvents);
     this.connect(events.terrain.mined, (tile) => {
       const drop = BLOCKS[tile.type].drops;
-      if (drop) tile.hit.by.storage.stock.add(drop.id, drop.amount);
+      if (drop) tile.hit.by.storage.stock.addAll(rollResources(drop));
     });
   }
 

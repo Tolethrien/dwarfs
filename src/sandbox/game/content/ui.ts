@@ -2,20 +2,22 @@ import AxiomColor, { COLOR, PALETTE } from "@axiom/color";
 
 const MINE = PALETTE.MINE;
 
+export const UI_FONTS = ["bebas", "barlow", "barlowBold"] as const;
+
 export const UI_THEME = {
   colors: {
     panel: AxiomColor.withAlpha(MINE.CONCRETE, 245),
     frame: MINE.SOOT,
-    row: MINE.SLAB,
-    rowHover: MINE.GRANITE,
-    pressed: MINE.COAL,
+    row: [165, 138, 108, 45] as RGBA,
+    rowHover: [165, 138, 108, 105] as RGBA,
+    pressed: [140, 114, 86, 130] as RGBA,
     selected: MINE.BANNER,
     accent: MINE.BANNER,
     closeButton: MINE.BANNER_DARK,
-    title: MINE.BONE,
-    text: MINE.BONE,
-    muted: MINE.ASH,
-    lacking: MINE.ALARM,
+    title: [152, 27, 23, 255] as RGBA,
+    text: [40, 31, 25, 255] as RGBA,
+    muted: [105, 88, 74, 255] as RGBA,
+    lacking: [152, 27, 23, 255] as RGBA,
     scrollTrack: MINE.COAL,
     scrollThumb: MINE.OAK,
     scrollThumbHover: MINE.PINE,
@@ -33,9 +35,9 @@ export const UI_THEME = {
     slotFrame: MINE.BRASS,
     inputBack: MINE.COAL,
     inputFocus: MINE.EBONY,
-    placeholder: MINE.GRANITE,
+    placeholder: MINE.ASH,
     caret: MINE.BRASS,
-    gain: MINE.GOLD,
+    gain: [36, 72, 38, 255] as RGBA,
     transparent: COLOR.TRANSPARENT,
     dim: AxiomColor.withAlpha(COLOR.BLACK, 140),
     beer: MINE.GOLD,
@@ -57,7 +59,7 @@ export const UI_THEME = {
     textSize: { name: 24, type: 15, status: 15, body: 14, label: 12, button: 14, close: 18 },
   },
   font: {
-    body: "lato",
+    body: "barlowBold",
     display: "bebas",
   },
   text: {
@@ -65,7 +67,7 @@ export const UI_THEME = {
     header: 22,
     button: 18,
     bigButton: 28,
-    body: 14,
+    body: 15,
   },
   radius: {
     button: 0,
@@ -73,9 +75,9 @@ export const UI_THEME = {
   },
   // frame drawn inside the box; depth: how far the hard shadow is cast down and right
   panel: {
-    window: { frame: 1, rounded: 0, depth: 5, padding: { top: 12, right: 12, bottom: 12, left: 12 } },
-    hud: { frame: 1, rounded: 0, depth: 4, padding: { top: 6, right: 10, bottom: 6, left: 10 } },
-    small: { frame: 1, rounded: 0, depth: 3, padding: { top: 4, right: 8, bottom: 4, left: 8 } },
+    window: { frame: 1, rounded: 0, depth: 5, padding: { top: 14, right: 16, bottom: 14, left: 16 } },
+    hud: { frame: 1, rounded: 0, depth: 4, padding: { top: 12, right: 16, bottom: 12, left: 16 } },
+    small: { frame: 1, rounded: 0, depth: 3, padding: { top: 12, right: 16, bottom: 12, left: 16 } },
     shadowColor: AxiomColor.withAlpha(COLOR.BLACK, 230),
     // the red stripe on the bar's left edge is an inset shadow pushed in by its width
     titleBar: { color: MINE.SOOT, stripe: MINE.BANNER, stripeWidth: 10, padding: { top: 6, right: 6, bottom: 6, left: 22 } },
@@ -96,7 +98,7 @@ export const UI_THEME = {
     rowPadding: { top: 4, right: 6, bottom: 4, left: 4 },
   },
   scroll: {
-    width: 6,
+    width: 10,
     auto: { deadzone: 8, speed: 6 },
   },
   icon: {
@@ -109,7 +111,7 @@ export const UI_THEME = {
     innerGap: 3,
   },
   bar: {
-    height: 14,
+    height: 18,
     textSize: 12,
     textOutline: 2,
   },
@@ -126,7 +128,7 @@ export const UI_THEME = {
     gap: 3,
   },
   toggle: {
-    box: 12,
+    box: 22,
   },
   badge: {
     size: 16,
@@ -168,9 +170,9 @@ export const UI_THEME = {
   },
   menu: {
     offset: 4,
-    gap: 2,
+    gap: 4,
     zIndex: 105,
-    padding: { top: 4, right: 4, bottom: 4, left: 4 },
+    padding: { top: 10, right: 12, bottom: 10, left: 12 },
   },
   message: {
     seconds: 3,
@@ -200,16 +202,16 @@ export const UI_THEME = {
     top: 80,
     max: 5,
     zIndex: 100,
-    padding: { top: 8, right: 16, bottom: 8, left: 16 },
+    padding: { top: 12, right: 20, bottom: 12, left: 20 },
     kinds: {
-      error: { frame: MINE.RUST, text: MINE.RUST },
-      info: { frame: MINE.IRON, text: MINE.BONE },
-      success: { frame: MINE.GOLD, text: MINE.GOLD },
+      error: { frame: [92, 24, 22, 255] as RGBA, text: [92, 24, 22, 255] as RGBA },
+      info: { frame: [40, 31, 25, 255] as RGBA, text: [40, 31, 25, 255] as RGBA },
+      success: { frame: [32, 62, 34, 255] as RGBA, text: [32, 62, 34, 255] as RGBA },
     },
   },
   slider: {
-    height: 14,
-    thumb: 12,
+    height: 20,
+    thumb: 22,
   },
   motion: {
     popInMs: 200,
@@ -217,4 +219,60 @@ export const UI_THEME = {
   },
   // a window of something on the map closes once the camera goes this many pixels away
   worldWindow: { closeDistance: 600 },
+  paper: {
+    ink: [40, 31, 25, 255] as RGBA,
+    inkMuted: [105, 88, 74, 255] as RGBA,
+    inkRed: [152, 27, 23, 255] as RGBA,
+    inkCream: [238, 224, 196, 255] as RGBA,
+    inkDisabled: [92, 86, 80, 255] as RGBA,
+    hoverTint: [255, 244, 224, 255] as RGBA,
+    pressTint: [205, 192, 174, 255] as RGBA,
+  },
+};
+
+export const UI_SHEET = {
+  image: "uiSheet",
+  paper:             { crop: { x:    4, y:    4, width: 435, height: 577 }, slice: { top: 24, right: 24, bottom: 24, left: 24 } },
+  headerBarA:        { crop: { x:  443, y:  443, width: 478, height:  73 }, slice: { top:  0, right: 210, bottom:  0, left: 105 } },
+  headerBarB:        { crop: { x:  443, y:  348, width: 485, height:  91 }, slice: { top:  0, right: 215, bottom:  0, left: 110 } },
+  footerBarA:        { crop: { x:  443, y:  520, width: 478, height:  69 }, slice: { top:  0, right: 210, bottom:  0, left:  90 } },
+  footerBarB:        { crop: { x:  268, y:  593, width: 485, height:  48 }, slice: { top:  0, right: 105, bottom:  0, left:  70 } },
+  tabRedA:           { crop: { x:  832, y:  694, width: 133, height:  34 }, slice: { top:  0, right:  20, bottom:  0, left:  20 } },
+  tabPaperA:         { crop: { x:  695, y:  694, width: 133, height:  34 }, slice: { top:  0, right:  20, bottom:  0, left:  20 } },
+  tabTanA:           { crop: { x: 1008, y:  694, width: 133, height:  34 }, slice: { top:  0, right:  20, bottom:  0, left:  20 } },
+  tabDarkA:          { crop: { x:    4, y:  737, width: 133, height:  34 }, slice: { top:  0, right:  20, bottom:  0, left:  20 } },
+  btnRed:            { crop: { x:  925, y:  520, width: 128, height:  49 }, slice: { top: 10, right:  12, bottom: 10, left:  12 } },
+  btnPaper:          { crop: { x: 1057, y:  520, width: 128, height:  48 }, slice: { top: 10, right:  14, bottom: 10, left:  14 } },
+  btnDark:           { crop: { x:    4, y:  593, width: 128, height:  48 }, slice: { top: 10, right:  12, bottom: 10, left:  12 } },
+  btnDisabled:       { crop: { x:  136, y:  593, width: 128, height:  48 }, slice: { top: 10, right:  12, bottom: 10, left:  12 } },
+  btnClose:          { crop: { x:  818, y:  645, width:  40, height:  40 } },
+  btnMinus:          { crop: { x:  862, y:  645, width:  40, height:  40 } },
+  btnPlus:           { crop: { x:  730, y:  645, width:  40, height:  40 } },
+  btnSquare:         { crop: { x:  774, y:  645, width:  40, height:  40 } },
+  dropdown:          { crop: { x:    4, y:  694, width: 209, height:  39 }, slice: { top:  8, right:  34, bottom:  8, left:  10 } },
+  dropdownBlank:     { crop: { x:  499, y:  645, width: 227, height:  41 }, slice: { top:  8, right:  10, bottom:  8, left:  10 } },
+  arrowCream:        { crop: { x:  712, y:  803, width:  24, height:  20 } },
+  input:             { crop: { x:  906, y:  645, width: 275, height:  39 }, slice: { top:  8, right:  10, bottom:  8, left:  10 } },
+  frameList:         { crop: { x:  657, y:    4, width: 303, height: 140 }, slice: { top: 14, right:  14, bottom: 14, left:  14 } },
+  framePortrait:     { crop: { x: 1058, y:    4, width: 127, height: 126 }, slice: { top: 22, right:  22, bottom: 22, left:  22 } },
+  slot:              { crop: { x:  932, y:  348, width:  75, height:  75 }, slice: { top: 10, right:  10, bottom: 10, left:  10 } },
+  scrollTrack:       { crop: { x:  964, y:    4, width:  23, height: 127 }, slice: { top:  8, right:   6, bottom:  8, left:   6 } },
+  scrollThumb:       { crop: { x:  899, y:  593, width:  24, height:  46 }, slice: { top:  8, right:   6, bottom:  8, left:   6 } },
+  barTrack:          { crop: { x:  137, y:  775, width: 390, height:  24 }, slice: { top:  6, right:  10, bottom:  6, left:  10 } },
+  barBrass:          { crop: { x:  767, y:  803, width: 294, height:  15 }, slice: { top:  4, right:   8, bottom:  4, left:   8 } },
+  barRed:            { crop: { x:  349, y:  803, width: 359, height:  21 }, slice: { top:  4, right:   8, bottom:  4, left:   8 } },
+  sliderKnob:        { crop: { x:  969, y:  694, width:  35, height:  34 } },
+  checkboxEmpty:     { crop: { x:  656, y:  694, width:  35, height:  35 } },
+  checkboxChecked:   { crop: { x:  147, y:  645, width:  47, height:  43 } },
+  badgeRed:          { crop: { x: 1017, y:  737, width:  58, height:  25 }, slice: { top:  6, right:  12, bottom:  6, left:  12 } },
+  dividerRedThin:    { crop: { x:  672, y:  829, width: 253, height:   8 }, slice: { top:  0, right:  12, bottom:  0, left:  12 } },
+  dividerRedThick:   { crop: { x:    4, y:  829, width: 253, height:  15 }, slice: { top:  0, right:  12, bottom:  0, left:  12 } },
+  dividerDarkThin:   { crop: { x:  825, y:  848, width: 216, height:   2 }, slice: { top:  0, right:   8, bottom:  0, left:   8 } },
+  dividerDarkThick:  { crop: { x:  929, y:  829, width: 216, height:   4 }, slice: { top:  0, right:   8, bottom:  0, left:   8 } },
+  sideBarThin:       { crop: { x:  609, y:    4, width:  10, height: 161 }, slice: { top: 10, right:   0, bottom: 10, left:   0 } },
+  sectionBar:        { crop: { x:  217, y:  694, width: 219, height:  39 }, slice: { top:  0, right:  24, bottom:  0, left:  24 } },
+  hudBarMedA:        { crop: { x:    4, y:  861, width: 246, height:  60 }, slice: { top:  0, right:  74, bottom:  0, left:  42 } },
+  hudBarLongA:       { crop: { x:  256, y:  861, width: 308, height:  60 }, slice: { top:  0, right:  88, bottom:  0, left:  48 } },
+  hudBarMedB:        { crop: { x:    4, y:  927, width: 304, height:  56 }, slice: { top:  0, right:  24, bottom:  0, left:  24 } },
+  hudBarLongB:       { crop: { x:  314, y:  927, width: 404, height:  56 }, slice: { top:  0, right:  24, bottom:  0, left:  24 } },
 };

@@ -3,7 +3,7 @@ import UINode from "@navi/node";
 import { Tweens } from "@navi/tween";
 import { auto, ph, pw, px, type Unit } from "@navi/units";
 import { COLOR } from "@axiom/color";
-import { UI_THEME } from "../content/ui";
+import { UI_SHEET, UI_THEME } from "../content/ui";
 import { button, runClicked } from "./elements/button";
 import { text } from "./elements/text";
 import { paragraph } from "./elements/paragraph";
@@ -11,7 +11,6 @@ import { UIWindow } from "./elements/window";
 import { input } from "./elements/input";
 import { UICurtain } from "./elements/curtain";
 import { CoroutineAnswer } from "@engine/coroutines/coroutine";
-import { panelStyle } from "./elements/panel";
 
 // fromBottom: the bar's bottom edge, in percent of the screen's height; fromTop: pixels from the top
 // edge for the bar over an open window; letterbox: the black strips over and under the view while the
@@ -62,7 +61,7 @@ export default class StoryUI {
       new UINode({
         position: { x: px(skip.margin), y: px(skip.margin) },
         size: { width: auto(), height: auto() },
-        style: { anchorX: "end", anchorY: "start", zIndex: 1 },
+        style: { anchorX: "end", anchorY: "start", backgroundColor: UI_THEME.colors.transparent, zIndex: 1 },
       }),
     );
     button(this.skip, skip.label, () => this.onSkip?.());
@@ -107,9 +106,9 @@ export default class StoryUI {
   }
 
   public offer(label: string) {
-    this.show("bottom");
+    this.show("bottom", false);
     const pressed = new CoroutineAnswer<void>(() => this.hideBars(), label);
-    button(this.bar, label, () => pressed.give(), { big: true, pulse: STORY_UI.pulse });
+    button(this.bar, label, () => pressed.give(), { big: true, pulse: STORY_UI.pulse, sprite: "red" });
     return pressed;
   }
 
@@ -138,13 +137,17 @@ export default class StoryUI {
       keepOnBlur: true,
       submit: trySign,
     });
-    button(content, letter.sign, () => trySign(field.value), { big: true });
+    button(content, letter.sign, () => trySign(field.value), { big: true, sprite: "red" });
     return signed;
   }
 
   public hint(line: string, place: HintPlace = "bottom") {
-    this.show(place);
-    text(this.bar, line, { size: UI_THEME.text.bigButton });
+    this.show(place, true);
+    text(this.bar, line, {
+      color: UI_THEME.paper.inkCream,
+      size: UI_THEME.text.bigButton,
+      font: UI_THEME.font.display,
+    });
   }
 
   public hide() {
@@ -185,9 +188,21 @@ export default class StoryUI {
     this.skipCurtain.destroy();
   }
 
-  private show(place: HintPlace) {
+  private show(place: HintPlace, framed: boolean) {
     this.hideBars();
     this.bar = this.bars[place];
+    const sheet = UI_SHEET.hudBarLongA;
+    if (framed) {
+      this.bar.style.backgroundColor = COLOR.WHITE;
+      this.bar.style.backgroundImage = UI_SHEET.image;
+      this.bar.style.backgroundImageCrop = sheet.crop;
+      this.bar.style.backgroundImageSlice = sheet.slice;
+      this.bar.style.padding = { top: 13, right: 20, bottom: 13, left: 22 };
+    } else {
+      this.bar.style.backgroundColor = UI_THEME.colors.transparent;
+      this.bar.style.backgroundImage = undefined;
+      this.bar.style.padding = { top: 0, right: 0, bottom: 0, left: 0 };
+    }
     this.bar.setActive(true);
   }
 
@@ -205,6 +220,7 @@ export default class StoryUI {
 }
 
 function createBar(anchorY: "start" | "end", y: Unit) {
+  const sheet = UI_SHEET.sectionBar;
   const bar = Navi.append(
     new UINode({
       position: { x: px(0), y: y },
@@ -212,7 +228,11 @@ function createBar(anchorY: "start" | "end", y: Unit) {
       style: {
         anchorX: "center",
         anchorY: anchorY,
-        ...panelStyle("hud"),
+        backgroundColor: COLOR.WHITE,
+        backgroundImage: UI_SHEET.image,
+        backgroundImageCrop: sheet.crop,
+        backgroundImageSlice: sheet.slice,
+        padding: { top: 13, right: 20, bottom: 13, left: 22 },
         layout: "stack",
         direction: "row",
         alignCross: "center",

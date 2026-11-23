@@ -11,7 +11,7 @@ import { WORLD } from "../../sceneData";
 import type World from "../../world/world";
 import BallPhysics from "./ballPhysics";
 
-const DISCOVERY = {
+export const DISCOVERY = {
   edge: 0.8,
   intoRock: 30,
 };

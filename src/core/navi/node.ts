@@ -6,7 +6,9 @@ import {
   cloneStyle,
   createStyle,
   mergeStyle,
+  Padding,
   Style,
+  StyleMaterial,
   StyleOutline,
 } from "./style";
 import { px, toPx, Unit, UnitPosition2D, Units, UnitSize2D } from "./units";
@@ -170,20 +172,24 @@ export default class UINode {
     const material = style.backgroundMaterial?.use;
     const params = style.backgroundMaterial?.params;
     if (backgroundImage) {
-      Draw.sprite({
-        position,
-        size,
-        tint: color,
-        rounded,
-        outline,
-        shadow,
-        backdrop,
-        material,
-        params,
-        texture: backgroundImage,
-        atlas: "ui",
-        crop: backgroundImageCrop,
-      });
+      if (style.backgroundImageSlice && backgroundImageCrop.width > 0 && backgroundImageCrop.height > 0) {
+        this.drawSlicedSprite(position, size, backgroundImage, backgroundImageCrop, style.backgroundImageSlice, color, material, params);
+      } else {
+        Draw.sprite({
+          position,
+          size,
+          tint: color,
+          rounded,
+          outline,
+          shadow,
+          backdrop,
+          material,
+          params,
+          texture: backgroundImage,
+          atlas: "ui",
+          crop: backgroundImageCrop,
+        });
+      }
     } else {
       Draw.rect({
         position,
@@ -196,6 +202,64 @@ export default class UINode {
         material,
         params,
       });
+    }
+  }
+
+  private drawSlicedSprite(
+    position: Position3D,
+    size: Size2D,
+    texture: string,
+    crop: Crop,
+    slice: Padding,
+    tint: RGBA,
+    material: StyleMaterial["use"] | undefined,
+    params: StyleMaterial["params"] | undefined,
+  ) {
+    const horizontalOnly = slice.top === 0 && slice.bottom === 0;
+    const verticalOnly = slice.left === 0 && slice.right === 0;
+    const scaleX = horizontalOnly ? size.height / crop.height : 1;
+    const scaleY = verticalOnly ? size.width / crop.width : 1;
+
+    let dstLeft = Math.round(slice.left * scaleX);
+    let dstRight = Math.round(slice.right * scaleX);
+    let dstTop = Math.round(slice.top * scaleY);
+    let dstBottom = Math.round(slice.bottom * scaleY);
+
+    if (dstLeft + dstRight > size.width && dstLeft + dstRight > 0) {
+      const ratio = size.width / (dstLeft + dstRight);
+      dstLeft = Math.floor(dstLeft * ratio);
+      dstRight = Math.floor(size.width) - dstLeft;
+    }
+    if (dstTop + dstBottom > size.height && dstTop + dstBottom > 0) {
+      const ratio = size.height / (dstTop + dstBottom);
+      dstTop = Math.floor(dstTop * ratio);
+      dstBottom = Math.floor(size.height) - dstTop;
+    }
+
+    const sx = [crop.x, crop.x + slice.left, crop.x + crop.width - slice.right, crop.x + crop.width];
+    const sy = [crop.y, crop.y + slice.top, crop.y + crop.height - slice.bottom, crop.y + crop.height];
+    const dx = [position.x, position.x + dstLeft, Math.round(position.x + size.width) - dstRight, Math.round(position.x + size.width)];
+    const dy = [position.y, position.y + dstTop, Math.round(position.y + size.height) - dstBottom, Math.round(position.y + size.height)];
+
+    for (let row = 0; row < 3; row++) {
+      const sh = sy[row + 1] - sy[row];
+      const dh = dy[row + 1] - dy[row];
+      if (sh <= 0 || dh <= 0) continue;
+      for (let col = 0; col < 3; col++) {
+        const sw = sx[col + 1] - sx[col];
+        const dw = dx[col + 1] - dx[col];
+        if (sw <= 0 || dw <= 0) continue;
+        Draw.sprite({
+          position: { x: dx[col], y: dy[row] },
+          size: { width: dw, height: dh },
+          tint,
+          material,
+          params,
+          texture,
+          atlas: "ui",
+          crop: { x: sx[col], y: sy[row], width: sw, height: sh },
+        });
+      }
     }
   }
 
@@ -406,6 +470,11 @@ export default class UINode {
     if (axis === "x")
       return Math.max(0, this.contentSize.width - this.pixelBox.w);
     return Math.max(0, this.contentSize.height - this.pixelBox.h);
+  }
+  // content can shrink under a scrolled view (a section collapsed), so the offset follows it
+  public clampScroll() {
+    this.scrollOffset.x = AxiomMath.clamp(this.scrollOffset.x, -this.maxScroll("x"), 0);
+    this.scrollOffset.y = AxiomMath.clamp(this.scrollOffset.y, -this.maxScroll("y"), 0);
   }
   public tickStyle(dt: number) {
     const target = this.activeStyle;

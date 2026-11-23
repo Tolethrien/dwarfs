@@ -2,8 +2,7 @@ import PragmaActor from "@pragma/actor";
 import LayeredSprite, { type SpriteLayer } from "../components/common/layeredSprite";
 import { RENDER_SHEET, SORT_ORDER } from "../content/render";
 import { DWARF_LOOK, DwarfRank } from "../content/dwarfs";
-import { LightsID } from "../content/lights";
-import type { MainTraitsID } from "../content/traits";
+import { MAIN_TRAITS, type MainTraitsID } from "../content/traits";
 import Drinker from "../components/dwarfs/drinker";
 import Traits from "../components/dwarfs/traits";
 import Ball from "../components/dwarfs/ball";
@@ -19,8 +18,9 @@ import type Buffs from "../systems/dwarfs/buffs";
 import type Workforce from "../systems/dwarfs/workforce";
 import type GameEvents from "../systems/core/gameEvents";
 
-const DWARF = {
+export const DWARF = {
   reveal: 20,
+  helmetLamp: { x: 16, y: -26, radius: 5.5 },
 };
 
 interface DwarfProps {
@@ -59,7 +59,11 @@ export default class Dwarf extends PragmaActor {
     this.addComponent(Effects, { buffs: props.buffs, workforce: props.workforce, events: props.events });
     this.addComponent(Ball, { radius: DWARF_LOOK.cell / 2 });
     this.addComponent(Shift);
-    this.addComponent(Lamp, { light: LightsID.helmet });
+    this.addComponent(Lamp, {
+      light: MAIN_TRAITS[props.mainTrait].light,
+      offset: DWARF.helmetLamp,
+      bulb: { radius: DWARF.helmetLamp.radius, zIndex: SORT_ORDER.dwarfs + 0.01 },
+    });
     this.addComponent(Revealer, { radius: DWARF.reveal, onStart: false });
     this.addComponent(Travel);
     this.addComponent(Morale);

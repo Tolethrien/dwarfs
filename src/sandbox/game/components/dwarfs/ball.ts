@@ -1,12 +1,19 @@
+import AxiomMath from "@axiom/math";
 import Vec2 from "@axiom/vec2";
 import type Effect from "../../effects/effect";
 import { assert } from "@axiom/utils";
 import PragmaComponent from "@pragma/component";
+import Time from "@engine/time";
 import Effects from "./effects";
+import LayeredSprite from "../common/layeredSprite";
 import type Storage from "../common/storage";
 import BallPhysics from "../../systems/world/ballPhysics";
 
-const BALL = { pixelsPerSpeed: 200 };
+export const BALL = {
+  pixelsPerSpeed: 200,
+  turnSpeed: 18,
+  flipDeadzone: 10,
+};
 
 interface BallProps {
   radius: number;
@@ -56,6 +63,31 @@ export default class Ball extends PragmaComponent {
     this.timers.clear();
     this.biomeArea = 0;
     this.physics.register(this);
+    this.orient(true);
+  }
+
+  fixedUpdate(): void {
+    if (!this.launched) return;
+    this.orient(false);
+  }
+
+  private orient(instant: boolean) {
+    const vx = this.velocity.x;
+    const vy = this.velocity.y;
+    if (vx * vx + vy * vy < 0.01) return;
+    const sprite = this.getSibling(LayeredSprite);
+    if (sprite && Math.abs(vx) > BALL.flipDeadzone) {
+      sprite.flipX = vx < 0;
+    }
+    const flipped = sprite?.flipX ?? false;
+    const target = flipped ? Math.atan2(-vy, -vx) : Math.atan2(vy, vx);
+    if (instant) {
+      this.actor.transform.setRotation(target);
+      return;
+    }
+    const current = this.actor.transform.getRotation();
+    const step = Math.min(1, Time.getFixedDeltaTime() * BALL.turnSpeed);
+    this.actor.transform.setRotation(AxiomMath.lerpAngle(current, target, step));
   }
 
   // read on every step: a beer poured mid-flight works at once
@@ -99,6 +131,7 @@ export default class Ball extends PragmaComponent {
   public land() {
     this.physics.unregister(this);
     this.launched = false;
+    this.actor.transform.setRotation(0);
   }
 
   destroy(): void {

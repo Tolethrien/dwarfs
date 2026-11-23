@@ -2,12 +2,14 @@ import Navi from "@navi/navi";
 import UINode from "@navi/node";
 import UIText from "@navi/elements/text";
 import { auto, px } from "@navi/units";
-import { UI_THEME } from "../../content/ui";
+import { COLOR } from "@axiom/color";
+import { UI_SHEET, UI_THEME } from "../../content/ui";
 
 class UIBadge extends UINode {
   private shown = -1;
 
   constructor(private readonly count: () => number) {
+    const pill = UI_SHEET.badgeRed;
     super({
       position: {
         x: px(-UI_THEME.badge.offset),
@@ -23,8 +25,10 @@ class UIBadge extends UINode {
         overlay: true,
         anchorX: "end",
         anchorY: "start",
-        backgroundColor: UI_THEME.colors.badge,
-        rounded: UI_THEME.radius.button,
+        backgroundColor: COLOR.WHITE,
+        backgroundImage: UI_SHEET.image,
+        backgroundImageCrop: pill.crop,
+        backgroundImageSlice: pill.slice,
         padding: UI_THEME.badge.padding,
         layout: "stack",
         alignMain: "center",
@@ -55,7 +59,7 @@ export function badge(node: UINode, count: () => number) {
       size: { width: auto(), height: auto() },
       input: "none",
       style: {
-        textColor: UI_THEME.colors.text,
+        textColor: UI_THEME.paper.inkCream,
         textSize: UI_THEME.badge.textSize,
       },
     }),

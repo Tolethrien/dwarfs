@@ -8,13 +8,14 @@ import { BlocksID, isNatural } from "../../content/blocks";
 import { WORLD } from "../../sceneData";
 import GameEvents from "../core/gameEvents";
 
-const SOUNDS = {
+export const SOUNDS = {
   zoom: { full: 1, quiet: 0.125, floor: 0 },
   rate: { min: 0.5, max: 3.2 },
   pitch: 0.12,
   hit: {
     name: "blockDamage",
     category: "mineEffects",
+    effects: ["spatial", "mineEcho", "caveReverb", "zoomVolume"],
     deflected: 0.35,
     wound: { weak: 0.5, strong: 1 },
     concurrent: 6,
@@ -23,7 +24,8 @@ const SOUNDS = {
   mined: {
     name: "blockDestroy",
     category: "mineEffects",
-    volume: 1,
+    effects: ["spatial", "rubbleTone", "caveReverb", "zoomVolume"],
+    volume: 0.4,
     hit: 1,
     concurrent: 4,
     gap: 0.06,
@@ -130,7 +132,7 @@ export default class Sounds extends PragmaSystem {
       rate: AxiomMath.clamp(pace, SOUNDS.rate.min, SOUNDS.rate.max),
       position: this.position,
       maxConcurrent: sound.concurrent,
-      effects: ["spatial", "zoomVolume"],
+      effects: sound.effects,
       categories: [sound.category],
     });
   }

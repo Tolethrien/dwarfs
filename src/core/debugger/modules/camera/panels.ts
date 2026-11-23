@@ -4,7 +4,7 @@ import { formatLiteral } from "../command/parse";
 import type { FreeCam } from "./freeCam";
 
 export const CAMERA_PAGES = {
-  group: "camera",
+  category: "camera",
   order: { cameraState: 1, cameraControl: 2 },
 } as const;
 
@@ -13,7 +13,7 @@ const ZOOM_STEP = { button: 0.5, slider: 0.05, range: 4 };
 
 function page(name: keyof typeof CAMERA_PAGES.order) {
   return {
-    group: CAMERA_PAGES.group,
+    category: CAMERA_PAGES.category,
     order: CAMERA_PAGES.order[name],
     command: false,
     exportable: false,

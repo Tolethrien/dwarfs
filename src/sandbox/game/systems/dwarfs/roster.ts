@@ -9,10 +9,11 @@ import Shift from "../../components/dwarfs/shift";
 import Traits from "../../components/dwarfs/traits";
 import type Station from "../../actors/station";
 import { DwarfRank, getRandomDwarfLook, getRandomDwarfName } from "../../content/dwarfs";
-import { ACTIVE_MAIN_TRAITS, TraitsID, type MainTraitsID } from "../../content/traits";
+import { MAIN_TRAIT_IDS, MAIN_TRAITS, TraitsID, type MainTraitsID } from "../../content/traits";
 import Buffs from "./buffs";
 import Workforce from "./workforce";
 import GameEvents from "../core/gameEvents";
+import PlayerStats from "../core/playerStats";
 
 const ROSTER = { startWorkers: 0 };
 
@@ -34,11 +35,13 @@ export default class Roster extends PragmaSystem {
   declare private buffs: Buffs;
   declare private workforce: Workforce;
   declare private events: GameEvents;
+  declare private playerStats: PlayerStats;
   public createInstead: (() => Dwarf) | undefined;
 
   awake(): void {
     this.buffs = this.scene.getSystem(Buffs);
     this.workforce = this.scene.getSystem(Workforce);
+    this.playerStats = this.scene.getSystem(PlayerStats);
     this.card = new DwarfCardUI(
       {
         previous: (dwarf) => this.neighbour(dwarf, -1),
@@ -111,7 +114,15 @@ export default class Roster extends PragmaSystem {
   }
 
   public createRandom(rank: DwarfRank) {
-    return this.create(ACTIVE_MAIN_TRAITS[AxiomMath.randomArrayIndex(ACTIVE_MAIN_TRAITS)], rank);
+    const recruitable = this.recruitable();
+    return this.create(recruitable[AxiomMath.randomArrayIndex(recruitable)], rank);
+  }
+
+  public recruitable() {
+    return MAIN_TRAIT_IDS.filter((main) => {
+      const plan = MAIN_TRAITS[main].plan;
+      return plan === undefined || this.playerStats.hasPlan(plan);
+    });
   }
 
   public enlist(dwarf: Dwarf) {

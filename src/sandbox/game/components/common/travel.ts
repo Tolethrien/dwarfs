@@ -3,6 +3,9 @@ import Time from "@engine/time";
 import AxiomMath from "@axiom/math";
 import { assert } from "@axiom/utils";
 import type { RideOrder, RouteLeg } from "../../systems/mine/transport";
+import LayeredSprite from "./layeredSprite";
+
+export const TRAVEL_LOOK = { turnSpeed: 14, flipDeadzone: 1 };
 
 export interface RoutePoint {
   position: Position2D;
@@ -79,15 +82,30 @@ export default class Travel extends PragmaComponent {
             const at = transform.getPosition();
             const left = AxiomMath.distance2d(at, goal);
             const step = point.speed * Time.getDeltaTime();
+            const dx = goal.x - at.x;
+            const dy = goal.y - at.y;
+            const sprite = travel.getSibling(LayeredSprite);
+            if (sprite && Math.abs(dx) > TRAVEL_LOOK.flipDeadzone) {
+              sprite.flipX = dx < 0;
+            }
+            if (point.leg.kind === "tunnel" && left > 0.01) {
+              const flipped = sprite?.flipX ?? false;
+              const target = flipped ? Math.atan2(-dy, -dx) : Math.atan2(dy, dx);
+              const step = Math.min(1, Time.getDeltaTime() * TRAVEL_LOOK.turnSpeed);
+              transform.setRotation(AxiomMath.lerpAngle(transform.getRotation(), target, step));
+            } else {
+              transform.setRotation(0);
+            }
             if (step >= left) {
               transform.setPosition(goal.x, goal.y);
               break;
             }
-            transform.translate(((goal.x - at.x) / left) * step, ((goal.y - at.y) / left) * step);
+            transform.translate((dx / left) * step, (dy / left) * step);
             yield;
           }
           if (ride.next < ride.route.length - 1 && ride.onPoint?.(ride.next)) return;
         }
+        transform.setRotation(0);
         travel.current = undefined;
         travel.last = ride.route[ride.route.length - 1];
         ride.onArrive();

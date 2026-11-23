@@ -1,19 +1,29 @@
 import PragmaSystem from "@pragma/system";
 import AxiomMath from "@axiom/math";
+import { UI_THEME } from "../../game/content/ui";
 import { UIWindow } from "../../game/ui/elements/window";
 import { column } from "../../game/ui/elements/column";
 import { button } from "../../game/ui/elements/button";
 import { text } from "../../game/ui/elements/text";
 
 const MAIN_MENU = {
-  width: 360,
+  width: 420,
   seed: { min: 1, max: 2_147_483_647 },
   // the loading text gets drawn and shown before the generation freezes the frame
   framesBeforeStart: 2,
 };
 
 export default class MainMenu extends PragmaSystem {
-  private readonly window = new UIWindow({ kind: "modal", width: MAIN_MENU.width, title: "Krasnokopalnia", required: true });
+  private readonly window = new UIWindow({
+    kind: "modal",
+    width: MAIN_MENU.width,
+    title: "Krasiokopalnia",
+    titleGradient: {
+      from: UI_THEME.paper.inkCream,
+      to: UI_THEME.paper.inkCream,
+    },
+    required: true,
+  });
   private leaving = false;
 
   constructor(

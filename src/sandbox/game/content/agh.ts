@@ -23,6 +23,7 @@ export const AGH_CATEGORY_IDS = Object.keys(AGH_CATEGORIES).map(Number) as AghCa
 
 export enum AghUpgradeID {
   miningGear,
+  pyro,
   railway,
   metalPalisade,
 }
@@ -62,6 +63,19 @@ export const AGH_UPGRADES: Record<AghUpgradeID, AghUpgradeData> = {
       gearLevel(BaseGearID.mining, 1, "Mining Gear I"),
       gearLevel(BaseGearID.mining, 2, "Mining Gear II"),
       gearLevel(BaseGearID.mining, 3, "Mining Gear III"),
+    ],
+  },
+  [AghUpgradeID.pyro]: {
+    category: AghCategoryID.roster,
+    levels: [
+      {
+        title: "Pyro",
+        description: "Pyros start showing up among the tavern's applications.",
+        apply: (ctx) => {
+          ctx.playerStats.unlock("pyro");
+          ctx.workforce.touch();
+        },
+      },
     ],
   },
   [AghUpgradeID.railway]: {

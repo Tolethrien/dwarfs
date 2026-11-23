@@ -83,7 +83,7 @@ export function openMenu(
     const entry = button(node, item.label, item.run, {
       disabled: item.disabled,
       selected: item.selected,
-      color: UI_THEME.colors.transparent,
+      sprite: "paper",
     });
     if (item.tooltip !== undefined) tooltip(entry, item.tooltip);
   }

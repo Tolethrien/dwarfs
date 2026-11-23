@@ -2,6 +2,7 @@ import { BiomesID } from "./biomes";
 import { BlocksID } from "./blocks";
 import { formatAmount, RESOURCES, ResourcesID } from "./resources";
 import { RecipeID, RECIPES } from "./smelter";
+import { describeResourceDrop } from "../drops/resources";
 
 export type GlossaryCategoryID = "mine" | "crew" | "structures" | "recipes" | "world";
 
@@ -68,10 +69,18 @@ export const GLOSSARY_SUBCATEGORIES: GlossarySubcategoryData[] = [
 
 function smelterFacts(id: RecipeID) {
   const recipe = RECIPES[id];
-  const inputs = [`${formatAmount(recipe.input, recipe.batch)} ${RESOURCES[recipe.input].name}`];
-  if (recipe.coal > 0) inputs.push(`${formatAmount(ResourcesID.coal, recipe.coal)} ${RESOURCES[ResourcesID.coal].name}`);
-  const output = `${formatAmount(recipe.output, recipe.yield)} ${RESOURCES[recipe.output].name}`;
-  return ["Building: Smelter", `Input: ${inputs.join(" + ")}`, `Output: ${output}`];
+  const inputs = Object.entries(recipe.input)
+    .filter(([, amount]) => (amount ?? 0) > 0)
+    .map(([resource, amount]) => {
+      const resourceId = Number(resource) as ResourcesID;
+      return `${formatAmount(resourceId, amount!)} ${RESOURCES[resourceId].name}`;
+    });
+  return [
+    "Building: Smelter",
+    `Input: ${inputs.join(" + ")}`,
+    `Time: ${recipe.hours} h`,
+    `Output: ${describeResourceDrop(recipe.output)}`,
+  ];
 }
 
 // test entries to verify unlocking, unread highlights, and layout
@@ -171,6 +180,14 @@ export const GLOSSARY_ENTRIES: GlossaryEntryData[] = [
     lore: "Seasoned hands who know how to read a seam and keep their footing when the tunnel shakes.",
     facts: ["Base DMG: 4", "Speed: 3", "Wage: 4 L/h"],
     startsUnlocked: true,
+  },
+  {
+    id: "crew.pyro",
+    subcategory: "classes",
+    title: "Pyro",
+    lore: "Smells of saltpetre and singed beard. Every swing of his pick cracks the rock around it too, so stand well back.",
+    facts: ["Base DMG: 3", "Speed: 3", "Wage: 5 L/h", "Each strike also deals 3 DMG to adjacent blocks"],
+    unlock: { kind: "plan", plan: "pyro" },
   },
   {
     id: "trait.tired",

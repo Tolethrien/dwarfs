@@ -67,11 +67,11 @@ export function inboxPanel(inbox: Inbox): PanelDef {
     },
     build(content) {
       inbox.markAllRead();
-      const top = row(content, { align: "between" });
-      tabs(top, TABS, () => tab, (picked) => {
+      tabs(content, TABS, () => tab, (picked) => {
         tab = picked;
         renderEntries();
       });
+      const top = row(content, { fit: true });
       button(top, "Clear", () => inbox.clear());
       const padding = UI_THEME.panel.window.padding;
       const listWidth = INBOX_UI.width - padding.left - padding.right;

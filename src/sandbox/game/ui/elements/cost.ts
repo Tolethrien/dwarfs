@@ -28,14 +28,14 @@ export function costEntries(resourceCost: ResourceCost, lacking: [ResourcesID, n
   });
 }
 
-export function cost(parent: UINode, entries: CostEntry[]) {
+export function cost(parent: UINode, entries: CostEntry[], paper = true) {
   const line = row(parent, { fit: true, gap: UI_THEME.cost.gap });
+  const lackingColor = paper ? UI_THEME.paper.inkRed : UI_THEME.colors.lacking;
+  const normalColor = paper ? UI_THEME.paper.ink : UI_THEME.colors.text;
   for (const entry of entries) {
     const item = row(line, { fit: true, gap: UI_THEME.cost.innerGap });
     tooltip(item, entry.tooltip ?? entry.label);
-    const color = entry.lacking
-      ? UI_THEME.colors.lacking
-      : UI_THEME.colors.text;
+    const color = entry.lacking ? lackingColor : normalColor;
     text(item, `${entry.amount}`, { color: color });
     if (hasIcon(entry.icon))
       icon(item, entry.icon, { size: UI_THEME.cost.icon });

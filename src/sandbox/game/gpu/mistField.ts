@@ -6,7 +6,7 @@ import { MAP_LOOK } from "./gameGlobals";
 type Box = { fromX: number; toX: number; fromY: number; toY: number };
 
 // dust is simulated only in chunks of the map that hold some; under the cutoff a tile is clean
-const DUST_FIELD = { chunk: 16, cutoff: 0.5 / 255 };
+export const DUST_FIELD = { chunk: 16, cutoff: 0.5 / 255 };
 
 export default class MistField {
   // per tile: the mist's thickness in the low byte, the dust in the next one (globals.wgsl)

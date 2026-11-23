@@ -67,11 +67,12 @@ export class AuroraDevModule implements IAuroraModule {
     command: ICommandModule,
   ) {
     this.memory = new MemoryTracker(log);
+    tweak.categories("aurora", { [AURORA_PAGES.category]: { title: "Settings", icon: "⚙" } });
     // editable, or the console refuses to call its methods; frozen, so aurora.config cannot be replaced
     const root = Object.freeze({
       config: (page?: string) =>
         page === undefined
-          ? this.tweak.openGroup(AURORA_PAGES.group)
+          ? this.tweak.openCategory(AURORA_PAGES.category)
           : this.tweak.open(page),
     });
     command.expose("aurora", () => root, {

@@ -1,7 +1,13 @@
 import Table from "../../blocks/table";
-import StatGrid from "../../blocks/statGrid";
+import StatStrip from "../../blocks/statStrip";
 import { Block, Rows } from "../../grid/layout";
 import { gameStore } from "../../game/store";
+import type { GameStationRow } from "@/core/debugger/modules/game/report";
+
+function link(station: GameStationRow) {
+  if (station.atShaft) return "shaft";
+  return station.connected ? "connected" : "cut off";
+}
 
 export default function GameNetworkPanel() {
   const rails = () => gameStore.report().rails;
@@ -9,7 +15,7 @@ export default function GameNetworkPanel() {
     (gameStore.report().stations ?? []).map((station) => [
       station.name,
       station.position,
-      station.atShaft ? "shaft's bottom" : station.connected ? "connected" : "cut off",
+      link(station),
       String(station.priority),
       String(station.queue),
       `${station.ordered} / ${station.manualLimit}`,
@@ -18,7 +24,7 @@ export default function GameNetworkPanel() {
   return (
     <Rows>
       <Block size="fit">
-        <StatGrid
+        <StatStrip
           stats={[
             { label: "Segments", value: String(rails()?.segments ?? 0) },
             { label: "Rail tiles", value: String(rails()?.tiles ?? 0) },
@@ -31,13 +37,14 @@ export default function GameNetworkPanel() {
       </Block>
       <Block size="fill">
         <Table
+          hug
           columns={[
-            { label: "Station", width: "minmax(6rem,1fr)" },
-            { label: "Tile", width: "auto" },
-            { label: "Link", width: "auto" },
-            { label: "Priority", width: "auto", align: "right" },
-            { label: "Sling queue", width: "auto", align: "right" },
-            { label: "Ordered", width: "auto", align: "right" },
+            { label: "Station" },
+            { label: "Tile" },
+            { label: "Link" },
+            { label: "Prio", align: "right" },
+            { label: "Queue", align: "right" },
+            { label: "Ordered", align: "right" },
           ]}
           rows={rows()}
           empty="no stations"

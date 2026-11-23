@@ -1,4 +1,5 @@
 import Pragma from "@pragma/pragma";
+import { debug } from "@debug";
 import Calendar from "./systems/core/calendar";
 import Conditions from "./systems/core/conditions";
 import Director from "./systems/core/director";
@@ -6,7 +7,6 @@ import GameEvents from "./systems/core/gameEvents";
 import GameMode from "./systems/core/gameMode";
 import Glossary from "./systems/core/glossary";
 import PlayerStats from "./systems/core/playerStats";
-import Profiler from "./systems/core/profiler";
 import StoryEvents from "./systems/core/storyEvents";
 import BallPhysics from "./systems/world/ballPhysics";
 import Biomes from "./systems/world/biomes";
@@ -34,8 +34,21 @@ import World from "./world/world";
 import { shaftColumns } from "./world/shaftShape";
 import Shaft from "./actors/shaft";
 import { generateMap, MAP_GEN } from "./mapGen/mapGen";
+import { DEBUG_CATEGORIES } from "../debug/categories";
+import CrewDebug from "../debug/systems/crew";
+import NetworkDebug from "../debug/systems/network";
+import CampDebug from "../debug/systems/camp";
+import StoryDebug from "../debug/systems/story";
+import TuneDebug from "../debug/systems/tune";
+import ToolsDebug from "../debug/systems/tools";
+import LookDebug from "../debug/systems/look";
+import VfxDebug from "../debug/systems/vfx";
+import MapGenDebug from "../debug/systems/mapGen";
+import { exposeCommands } from "../debug/pages";
 
 export function startGame(seed: number) {
+  debug.tweak.categories("game", DEBUG_CATEGORIES);
+  exposeCommands();
   const scene = Pragma.addScene("game");
   const world = new World(MAP_GEN.world);
   generateMap(world, seed);
@@ -73,5 +86,14 @@ export function startGame(seed: number) {
   scene.addSystem(BuildMode);
   scene.addSystem(ShootMode);
   scene.addSystem(StoryEvents, shaft);
-  scene.addSystem(Profiler);
+
+  scene.addSystem(ToolsDebug);
+  scene.addSystem(CrewDebug);
+  scene.addSystem(NetworkDebug);
+  scene.addSystem(CampDebug);
+  scene.addSystem(StoryDebug);
+  scene.addSystem(TuneDebug);
+  scene.addSystem(LookDebug);
+  scene.addSystem(VfxDebug);
+  scene.addSystem(MapGenDebug);
 }

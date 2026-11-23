@@ -10,7 +10,7 @@ import {
 import AxiomMath from "@/core/axiom/math";
 import Panel from "./panel";
 import LayoutBar from "./layoutBar";
-import { panelDefinition, panelTitle, type PanelId } from "../panels/registry";
+import { panelColumns, panelDefinition, panelTitle, type PanelId } from "../panels/registry";
 import {
   gridArea,
   moveItem,
@@ -42,19 +42,22 @@ export default function Grid(props: {
 }) {
   let container: HTMLDivElement | undefined;
   let grid: HTMLDivElement | undefined;
-  const metrics = { cell: 0, gap: 0 };
+  const metrics = { column: 0, row: 0, gap: 0 };
   const [columns, setColumns] = createSignal(1);
   const [drag, setDrag] = createSignal<Drag>();
+  // cells a fit panel needs for its content, measured by the panel itself
+  const [fitted, setFitted] = createSignal<Record<string, { w: number; h: number }>>({});
   const state = () => tabLayout(props.tabId);
 
   onMount(() => {
     const style = getComputedStyle(container!);
-    metrics.cell = parseFloat(style.getPropertyValue("--grid-cell"));
+    metrics.column = parseFloat(style.getPropertyValue("--grid-column"));
+    metrics.row = parseFloat(style.getPropertyValue("--grid-row"));
     metrics.gap = parseFloat(style.getPropertyValue("--grid-gap"));
 
     const observer = new ResizeObserver(([entry]) => {
       const fitting = Math.floor(
-        (entry.contentRect.width + metrics.gap) / (metrics.cell + metrics.gap),
+        (entry.contentRect.width + metrics.gap) / (metrics.column + metrics.gap),
       );
       setColumns(Math.max(1, fitting));
     });
@@ -66,14 +69,26 @@ export default function Grid(props: {
   const items = createMemo(() =>
     props.panels.map((id): LayoutItem => {
       const definition = panelDefinition(id);
+      const most = { w: Math.min(panelColumns(definition, columns()), columns()), h: definition.size.h };
+      const cells = definition.fit ? fitted()[id] : undefined;
       return {
         id,
         title: panelTitle(definition),
-        w: Math.min(definition.size.w, columns()),
-        h: definition.size.h,
+        w: cells === undefined ? most.w : Math.min(cells.w, most.w),
+        h: cells === undefined ? most.h : Math.min(cells.h, most.h),
       };
     }),
   );
+
+  function measured(id: PanelId, size: Size2D) {
+    const cells = {
+      w: Math.max(1, Math.ceil((size.width + metrics.gap) / (metrics.column + metrics.gap))),
+      h: Math.max(1, Math.ceil((size.height + metrics.gap) / (metrics.row + metrics.gap))),
+    };
+    const previous = fitted()[id];
+    if (previous?.w === cells.w && previous.h === cells.h) return;
+    setFitted((all) => ({ ...all, [id]: cells }));
+  }
   const itemById = createMemo(
     () => new Map(items().map((item) => [item.id, item])),
   );
@@ -121,7 +136,7 @@ export default function Grid(props: {
         0,
         columns() - width,
       ),
-      y: Math.max(0, Math.round(top / (metrics.cell + metrics.gap))),
+      y: Math.max(0, Math.round(top / (metrics.row + metrics.gap))),
     };
   }
 
@@ -226,7 +241,7 @@ export default function Grid(props: {
         >
           <div
             ref={grid}
-            class="grid gap-(--grid-gap) auto-rows-(--grid-cell)"
+            class="grid gap-(--grid-gap) auto-rows-(--grid-row)"
             style={{
               "grid-template-columns": `repeat(${columns()}, minmax(0, 1fr))`,
             }}
@@ -257,6 +272,7 @@ export default function Grid(props: {
                     draggable={state().layout().mode === "manual"}
                     dragOffset={dragged()?.offset}
                     onGrab={(event) => grab(id, event)}
+                    onMeasure={(size) => measured(id, size)}
                   />
                 );
               }}

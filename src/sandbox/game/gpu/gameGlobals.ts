@@ -51,7 +51,7 @@ type PerTile = (typeof GAME_GLOBALS.perTile)[number];
 
 export const MAP_LOOK = {
   damagedShade: 0.7,
-  lightIntoRock: 288,
+  lightIntoRock: 96,
   // cool and readable, so the lamps' warm light stands out of it
   ambient: { color: [175, 192, 230] as RGB, level: 0.32 },
   post: {

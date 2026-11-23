@@ -1,5 +1,6 @@
 import { Index, Match, Show, Switch } from "solid-js";
 import type {
+  TweakActionSectionInfo,
   TweakField,
   TweakFieldsSectionInfo,
   TweakListSectionInfo,
@@ -27,8 +28,9 @@ function FieldRow(props: {
   return (
     <div class="flex items-center gap-2 text-body">
       <span
-        class="w-28 shrink-0 cursor-pointer select-none truncate text-fg-dim hover:text-fg"
-        title={`${props.field.key} (double click = reset to default)`}
+        class="w-40 shrink-0 cursor-pointer select-none truncate text-fg-dim hover:text-fg"
+        classList={{ "underline decoration-dotted underline-offset-2": props.field.hint !== undefined }}
+        title={`${props.field.label ?? props.field.key}${props.field.hint ? `: ${props.field.hint}` : ""}\n(double click = reset to default)`}
         onDblClick={props.onReset}
       >
         {props.field.label ?? props.field.key}
@@ -81,6 +83,38 @@ function FieldsSection(props: {
                   tweakStore.commitValue(props.index, field().key);
                   tweakStore.endEdit();
                 }}
+                onReset={() => tweakStore.resetField(props.index, field().key)}
+              />
+            )}
+          </Index>
+        </div>
+      </Show>
+    </div>
+  );
+}
+
+// not collapsible: a page of actions reads as a list of buttons, the arguments right under each
+function ActionSection(props: { index: number; section: TweakActionSectionInfo }) {
+  return (
+    <div class="border-b border-divider px-3 py-1.5">
+      <div class="flex items-center gap-2">
+        <span class="min-w-0 flex-1 truncate text-body text-fg" title={props.section.call}>
+          {props.section.title}
+        </span>
+        <button class={HEADER_BUTTON} onClick={() => tweakStore.run(props.index)}>
+          {props.section.button ?? "Run"}
+        </button>
+      </div>
+      <Show when={props.section.fields.length > 0}>
+        <div class="mt-1.5 flex flex-col gap-1.5">
+          <Index each={props.section.fields}>
+            {(field) => (
+              <FieldRow
+                field={field()}
+                value={tweakStore.values()[props.index]?.[field().key]}
+                onChange={(value) => tweakStore.setValue(props.index, field().key, value)}
+                onBegin={() => tweakStore.beginEdit(props.index, field().key)}
+                onEnd={() => tweakStore.endEdit()}
                 onReset={() => tweakStore.resetField(props.index, field().key)}
               />
             )}
@@ -220,6 +254,9 @@ export function Section(props: {
 }) {
   return (
     <Switch>
+      <Match when={props.section.arg === "action" && props.section}>
+        {(section) => <ActionSection index={props.index} section={section() as TweakActionSectionInfo} />}
+      </Match>
       <Match when={props.section.arg === "list" && props.section}>
         {(section) => (
           <ListSection
@@ -229,7 +266,7 @@ export function Section(props: {
           />
         )}
       </Match>
-      <Match when={props.section.arg !== "list" && props.section}>
+      <Match when={props.section.arg !== "list" && props.section.arg !== "action" && props.section}>
         {(section) => (
           <FieldsSection
             panelName={props.panelName}
